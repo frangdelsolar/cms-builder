@@ -14,6 +14,10 @@ type Server struct {
 	*http.Server
 }
 
+func (s *Server) Router() *mux.Router {
+	return s.Handler.(*mux.Router)
+}
+
 func GetServer() (*Server, error) {
 	log.Warn().Interface("url", "http://localhost:8080/").Msgf("Running server on port %s", port)
 

@@ -13,19 +13,22 @@ func main() {
 		log.Fatal().Err(err).Msg("Error loading database")
 	}
 
-	cfg := cms.Config{
-		Logger: log.Logger,
-		DB:     db.DB,
-	}
-
-	cms.Setup(&cfg)
-
-	cms.Register(&Primitive{})
-
 	server, err := GetServer()
 	if err != nil {
 		log.Fatal().Err(err).Msg("Error starting server")
 	}
+
+	// Setup cms
+	cfg := cms.Config{
+		Logger: log.Logger,
+		DB:     db.DB,
+	}
+	cms.Setup(&cfg)
+	// Register models into cms
+	cms.Register(&Primitive{})
+
+	// Append cms routes to server
+	cms.Routes(server.Router())
 
 	err = server.ListenAndServe()
 	if err != nil {
