@@ -3,6 +3,9 @@ package cms_server
 import (
 	"fmt"
 	"reflect"
+	"strings"
+
+	pluralize "github.com/gertd/go-pluralize"
 )
 
 type Entity struct {
@@ -10,7 +13,13 @@ type Entity struct {
 }
 
 func (e *Entity) Name() string {
-	return fmt.Sprintf("%T", e.Model)
+	modelName := fmt.Sprintf("%T", e.Model)
+	name := modelName[strings.LastIndex(modelName, ".")+1:]
+	name = strings.ToLower(name)
+
+	p := pluralize.NewClient()
+	name = p.Plural(name)
+	return name
 }
 
 func (e *Entity) Fields() []string {

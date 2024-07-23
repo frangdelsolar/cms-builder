@@ -25,7 +25,7 @@ func main() {
 	}
 	cms.Setup(&cfg)
 	// Register models into cms
-	cms.Register(&Primitive{})
+	cms.Register(&Primary{})
 
 	// Append cms routes to server
 	cms.Routes(server.Router())

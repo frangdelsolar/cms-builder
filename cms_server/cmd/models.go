@@ -1,6 +1,6 @@
 package main
 
-type Primitive struct {
+type Primary struct {
 	StringField string  `json:"stringField"`
 	NumberField int     `json:"numberField"`
 	BoolField   bool    `json:"boolField"`

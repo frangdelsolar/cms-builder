@@ -7,6 +7,8 @@ import (
 
 var log *zerolog.Logger
 
+var entities []Entity
+
 type Config struct {
 	Logger *zerolog.Logger
 	DB     *gorm.DB
@@ -15,6 +17,8 @@ type Config struct {
 func Setup(cfg *Config) {
 	log = cfg.Logger
 	log.Info().Msg("Setting up CMS server")
+
+	entities = []Entity{}
 }
 
 func Register(model interface{}) {
@@ -24,8 +28,14 @@ func Register(model interface{}) {
 		Model: model,
 	}
 
+	entities = append(entities, entity)
+
 	log.Info().Interface("entity", entity).Msgf("Model registered")
 	log.Debug().Msgf("Name: %s", entity.Name())
 	log.Debug().Msgf("Fields: %s", entity.Fields())
 
+}
+
+func GetEntities() []Entity {
+	return entities
 }
