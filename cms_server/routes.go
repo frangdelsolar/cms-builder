@@ -3,9 +3,10 @@ package cms_server
 import "github.com/gorilla/mux"
 
 func Routes(r *mux.Router) {
-
-	// have everything wrapped in /admin group
+	// Define the group route for admin
 	adminRouter := r.PathPrefix("/admin").Subrouter()
+
+	// Admin routes
 	adminRouter.HandleFunc("/dashboard", Dashboard)
 
 }
