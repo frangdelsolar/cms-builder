@@ -15,7 +15,7 @@ type Server struct {
 }
 
 func GetServer() (*Server, error) {
-	log.Warn().Msg("Starting server...")
+	log.Warn().Interface("url", "http://localhost:8080/").Msgf("Running server on port %s", port)
 
 	// Define Router
 	r := mux.NewRouter()

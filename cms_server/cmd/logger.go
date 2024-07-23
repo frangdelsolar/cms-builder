@@ -1,4 +1,4 @@
-package tasker_go
+package main
 
 import (
 	"os"
