@@ -1,10 +1,17 @@
 package cms_server
 
 import (
-	"fmt"
+	"html/template"
 	"net/http"
 )
 
 func Dashboard(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Dashboard")
+	templateName := "base.html"
+	templatePath := config.RootDir + "/templates/layouts/" + templateName
+
+	t, err := template.New(templateName).ParseFiles(templatePath)
+	if err != nil {
+		panic(err)
+	}
+	t.Execute(w, nil)
 }

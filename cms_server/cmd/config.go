@@ -17,6 +17,7 @@ type Config struct {
 	FirebaseSecret string `yaml:"firebaseSecret"`
 	DbUrl          string `yaml:"dbUrl"`
 	Port           string `yaml:"port"`
+	RootDir        string `yaml:"rootDir"`
 }
 
 // LoadConfig loads the configuration file from the specified path and returns the parsed configuration.
@@ -57,6 +58,10 @@ func LoadConfig() (*Config, error) {
 
 	if os.Getenv("PORT") != "" {
 		config.Port = os.Getenv("PORT")
+	}
+
+	if os.Getenv("ROOT_DIR") != "" {
+		config.RootDir = os.Getenv("ROOT_DIR")
 	}
 
 	return config, nil

@@ -16,10 +16,12 @@ func (e *Entity) Name() string {
 	modelName := fmt.Sprintf("%T", e.Model)
 	name := modelName[strings.LastIndex(modelName, ".")+1:]
 	name = strings.ToLower(name)
-
-	p := pluralize.NewClient()
-	name = p.Plural(name)
 	return name
+}
+
+func (e *Entity) Plural() string {
+	p := pluralize.NewClient()
+	return p.Plural(e.Name())
 }
 
 func (e *Entity) Fields() []string {

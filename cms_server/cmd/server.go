@@ -18,8 +18,13 @@ func (s *Server) Router() *mux.Router {
 	return s.Handler.(*mux.Router)
 }
 
+func (s *Server) Run() error {
+	log.Debug().Interface("url", "http://localhost:8080/").Msgf("Running server on port %s", port)
+
+	return s.ListenAndServe()
+}
+
 func GetServer() (*Server, error) {
-	log.Warn().Interface("url", "http://localhost:8080/").Msgf("Running server on port %s", port)
 
 	// Define Router
 	r := mux.NewRouter()
