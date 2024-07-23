@@ -20,6 +20,8 @@ func main() {
 
 	cms.Setup(&cfg)
 
+	cms.Register(&Primitive{})
+
 	server, err := GetServer()
 	if err != nil {
 		log.Fatal().Err(err).Msg("Error starting server")
