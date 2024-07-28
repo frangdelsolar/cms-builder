@@ -3,13 +3,13 @@ module cms_server
 go 1.22.4
 
 require (
+	github.com/gertd/go-pluralize v0.2.1
 	github.com/gorilla/mux v1.8.1
 	github.com/rs/zerolog v1.33.0
 	gopkg.in/yaml.v2 v2.4.0
 	gorm.io/driver/postgres v1.5.9
 	gorm.io/driver/sqlite v1.5.6
 	gorm.io/gorm v1.25.11
-	github.com/gertd/go-pluralize v0.2.1
 )
 
 require (

@@ -1,2 +1,2 @@
 run:
-	cd cmd && go run *.go
+	nodemon --exec go run *.go --signal SIGTERM

@@ -1,7 +1,7 @@
 package main
 
 import (
-	cms "cms_server"
+	cms "cms_server/cms_admin"
 )
 
 func main() {

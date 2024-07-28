@@ -1,4 +1,4 @@
-package cms_server
+package cms_admin
 
 import (
 	"fmt"

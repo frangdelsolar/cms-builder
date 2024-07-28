@@ -1,4 +1,4 @@
-package cms_server
+package cms_admin
 
 import (
 	"fmt"
@@ -17,29 +17,35 @@ type Config struct {
 	RootDir string
 }
 
-func Setup(cfg *Config) error {
-	// Validate input
-	if cfg.Logger == nil {
+func (c *Config) Validate() error {
+	if c.Logger == nil {
 		return fmt.Errorf("logger is required")
 	}
 
-	if cfg.DB == nil {
+	if c.DB == nil {
 		return fmt.Errorf("database is required")
 	}
 
-	if cfg.RootDir == "" {
+	if c.RootDir == "" {
 		return fmt.Errorf("root directory is required")
 	}
 
+	return nil
+}
+
+func Setup(cfg *Config) error {
+	// Validate input
+	err := cfg.Validate()
+	if err != nil {
+		return err
+	}
+
 	// Initialize variables
-	config = cfg
 	log = cfg.Logger
 
 	log.Debug().Msg("Setting up CMS server")
 
-	// Load templates -> Maybe there is a better place to do this.
-	LoadTemplateConfiguration()
-	LoadTemplates()
+	config = cfg
 
 	return nil
 }
@@ -50,6 +56,8 @@ func Register(model interface{}) {
 	}
 
 	entities = append(entities, entity)
+
+	config.DB.AutoMigrate(model)
 
 	log.Debug().Interface("entity", entity).Msgf("Model %s registered", entity.Name())
 }
