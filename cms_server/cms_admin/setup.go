@@ -17,6 +17,11 @@ type Config struct {
 	RootDir string
 }
 
+type Example struct {
+	*gorm.Model
+	Field string `json:"field"`
+}
+
 func (c *Config) Validate() error {
 	if c.Logger == nil {
 		return fmt.Errorf("logger is required")
@@ -55,11 +60,15 @@ func Register(model interface{}) {
 		Model: model,
 	}
 
+	log.Info().Msgf("Registering model %s", entity.Name())
 	entities = append(entities, entity)
 
-	config.DB.AutoMigrate(model)
-
-	log.Debug().Interface("entity", entity).Msgf("Model %s registered", entity.Name())
+	err := config.DB.AutoMigrate(model)
+	if err != nil {
+		log.Fatal().Err(err).Msgf("Error migrating model %s", entity.Name())
+	} else {
+		log.Info().Msgf("Model %s migrated", entity.Name())
+	}
 }
 
 func GetEntities() []Entity {

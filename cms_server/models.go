@@ -1,8 +1,13 @@
 package main
 
+import (
+	"gorm.io/gorm"
+)
+
 type Primary struct {
-	StringField string  `json:"stringField"`
-	NumberField int     `json:"numberField"`
-	BoolField   bool    `json:"boolField"`
-	FloatField  float64 `json:"floatField"`
+	gorm.Model
+	StringField string  `json:"string_field"`
+	NumberField int     `json:"number_field"`
+	BoolField   bool    `json:"bool_field"`
+	FloatField  float64 `json:"float_field"`
 }
