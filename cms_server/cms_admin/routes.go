@@ -52,19 +52,19 @@ func Routes(r *mux.Router) {
 		log.Debug().Msgf("Registering %s routes", app.Name())
 		appRoutes := adminAPIRoutes.PathPrefix("/" + app.Plural()).Subrouter()
 		appRoutes.HandleFunc("", func(w http.ResponseWriter, r *http.Request) {
-			List(app, w, r)
+			APIList(app, w, r)
 		})
 		appRoutes.HandleFunc("/new", func(w http.ResponseWriter, r *http.Request) {
-			New(app, w, r)
+			APINew(app, w, r)
 		})
 		appRoutes.HandleFunc("/{id}", func(w http.ResponseWriter, r *http.Request) {
-			Detail(app, w, r)
+			APIDetail(app, w, r)
 		})
 		appRoutes.HandleFunc("/{id}/edit", func(w http.ResponseWriter, r *http.Request) {
-			Update(app, w, r)
+			APIUpdate(app, w, r)
 		})
 		appRoutes.HandleFunc("/{id}/delete", func(w http.ResponseWriter, r *http.Request) {
-			Destroy(app, w, r)
+			APIDestroy(app, w, r)
 		})
 	}
 

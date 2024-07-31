@@ -11,7 +11,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func List(app Entity, w http.ResponseWriter, r *http.Request) {
+func APIList(app Entity, w http.ResponseWriter, r *http.Request) {
 	// get out if not GET
 	method := r.Method
 	if method != "GET" {
@@ -58,7 +58,7 @@ func List(app Entity, w http.ResponseWriter, r *http.Request) {
 	w.Write(response)            // Send the JSON response
 }
 
-func New(app Entity, w http.ResponseWriter, r *http.Request) {
+func APINew(app Entity, w http.ResponseWriter, r *http.Request) {
 	// get out if not GET
 	method := r.Method
 	if method != "POST" {
@@ -116,7 +116,7 @@ func New(app Entity, w http.ResponseWriter, r *http.Request) {
 	w.Write(response)                 // Send the JSON response
 }
 
-func Detail(app Entity, w http.ResponseWriter, r *http.Request) {
+func APIDetail(app Entity, w http.ResponseWriter, r *http.Request) {
 	// get out if not GET
 	method := r.Method
 	if method != "GET" {
@@ -159,7 +159,7 @@ func Detail(app Entity, w http.ResponseWriter, r *http.Request) {
 	w.Write(response)            // Send the JSON response
 }
 
-func Update(app Entity, w http.ResponseWriter, r *http.Request) {
+func APIUpdate(app Entity, w http.ResponseWriter, r *http.Request) {
 
 	// get out if not PUT
 	method := r.Method
@@ -231,7 +231,7 @@ func Update(app Entity, w http.ResponseWriter, r *http.Request) {
 	w.Write(response)            // Send the JSON response
 }
 
-func Destroy(app Entity, w http.ResponseWriter, r *http.Request) {
+func APIDestroy(app Entity, w http.ResponseWriter, r *http.Request) {
 
 	// get out if not DELETE
 	method := r.Method
