@@ -1,6 +1,7 @@
 package cms_admin
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
@@ -25,21 +26,32 @@ func (e *Entity) Plural() string {
 }
 
 func (e *Entity) Fields() []string {
-	t := reflect.TypeOf(e.Model)
-	// Check if it's a pointer and dereference it
-	if t.Kind() == reflect.Ptr {
-		t = t.Elem()
-	}
 
-	// Ensure it's a struct type
-	if t.Kind() != reflect.Struct {
+	instanceType := reflect.TypeOf(e.Model)
+	if instanceType.Kind() == reflect.Ptr {
+		instanceType = instanceType.Elem()
+	}
+	instance := reflect.New(instanceType).Interface()
+
+	jsonDict, err := json.Marshal(instance)
+	if err != nil {
+		log.Error().Err(err).Msgf("Error marshalling %s record to JSON", e.Name())
+		return nil
+	}
+	log.Debug().Interface("response", string(jsonDict)).Msg("Fields")
+
+	// Iterate over the fields
+	fields := make(map[string]interface{})
+	err = json.Unmarshal(jsonDict, &fields)
+	if err != nil {
+		log.Error().Err(err).Msgf("Error unmarshalling %s record to JSON", e.Name())
 		return nil
 	}
 
 	var fieldNames []string
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
-		fieldNames = append(fieldNames, field.Name)
+	for k := range fields {
+		fieldNames = append(fieldNames, k)
 	}
+
 	return fieldNames
 }

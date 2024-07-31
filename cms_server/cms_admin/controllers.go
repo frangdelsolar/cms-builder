@@ -12,6 +12,13 @@ import (
 )
 
 func List(app Entity, w http.ResponseWriter, r *http.Request) {
+	// get out if not GET
+	method := r.Method
+	if method != "GET" {
+		fmt.Fprintf(w, "Not implemented")
+		return
+	}
+
 	db := config.DB
 
 	// Get the type of the model
@@ -52,65 +59,71 @@ func List(app Entity, w http.ResponseWriter, r *http.Request) {
 }
 
 func New(app Entity, w http.ResponseWriter, r *http.Request) {
+	// get out if not GET
 	method := r.Method
-	if method == "GET" {
+	if method != "POST" {
 		fmt.Fprintf(w, "Not implemented")
 		return
 	}
 
-	if method == "POST" {
-		defer r.Body.Close()
+	defer r.Body.Close()
 
-		bodyBytes, err := io.ReadAll(r.Body)
-		if err != nil {
-			log.Error().Err(err).Msgf("Error reading request body for %s creation", app.Name())
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-
-		log.Debug().Interface("bodyBytes", string(bodyBytes)).Msg("Request")
-
-		// Create a new instance of the model
-		instanceType := reflect.TypeOf(app.Model)
-		instance := reflect.New(instanceType).Interface()
-
-		// Unmarshal the bodyBytes into the instance
-		err = json.Unmarshal(bodyBytes, instance)
-		if err != nil {
-			log.Error().Err(err).Msgf("Error unmarshalling request body for %s creation", app.Name())
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-
-		log.Debug().Interface("instance", instance).Msgf("Creating new %s", app.Name())
-
-		// Use reflection to get a pointer to the instance
-		instancePtr := reflect.ValueOf(instance).Elem().Interface()
-
-		// Perform database operations
-		result := config.DB.Create(instancePtr)
-		if result.Error != nil {
-			log.Error().Err(result.Error).Msgf("Error creating %s in database", app.Name())
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-
-		// Marshal instance into JSON
-		response, err := json.Marshal(instance)
-		if err != nil {
-			log.Error().Err(err).Msgf("Error marshalling response for %s creation", app.Name())
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-
-		// Set the content type to application/json
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated) // 201 Created
-		w.Write(response)                 // Send the JSON response
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Error().Err(err).Msgf("Error reading request body for %s creation", app.Name())
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
 	}
+
+	log.Debug().Interface("bodyBytes", string(bodyBytes)).Msg("Request")
+
+	// Create a new instance of the model
+	instanceType := reflect.TypeOf(app.Model)
+	instance := reflect.New(instanceType).Interface()
+
+	// Unmarshal the bodyBytes into the instance
+	err = json.Unmarshal(bodyBytes, instance)
+	if err != nil {
+		log.Error().Err(err).Msgf("Error unmarshalling request body for %s creation", app.Name())
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	log.Debug().Interface("instance", instance).Msgf("Creating new %s", app.Name())
+
+	// Use reflection to get a pointer to the instance
+	instancePtr := reflect.ValueOf(instance).Elem().Interface()
+
+	// Perform database operations
+	result := config.DB.Create(instancePtr)
+	if result.Error != nil {
+		log.Error().Err(result.Error).Msgf("Error creating %s in database", app.Name())
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Marshal instance into JSON
+	response, err := json.Marshal(instance)
+	if err != nil {
+		log.Error().Err(err).Msgf("Error marshalling response for %s creation", app.Name())
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Set the content type to application/json
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated) // 201 Created
+	w.Write(response)                 // Send the JSON response
 }
 
 func Detail(app Entity, w http.ResponseWriter, r *http.Request) {
+	// get out if not GET
+	method := r.Method
+	if method != "GET" {
+		fmt.Fprintf(w, "Not implemented")
+		return
+	}
+
 	id := mux.Vars(r)["id"]
 	log.Info().Msgf("Detail %s %s", app.Name(), id)
 
@@ -147,6 +160,14 @@ func Detail(app Entity, w http.ResponseWriter, r *http.Request) {
 }
 
 func Update(app Entity, w http.ResponseWriter, r *http.Request) {
+
+	// get out if not PUT
+	method := r.Method
+	if method != "PUT" {
+		fmt.Fprintf(w, "Not implemented")
+		return
+	}
+
 	id := mux.Vars(r)["id"]
 	log.Info().Msgf("Update %s %s", app.Name(), id)
 
@@ -211,6 +232,14 @@ func Update(app Entity, w http.ResponseWriter, r *http.Request) {
 }
 
 func Destroy(app Entity, w http.ResponseWriter, r *http.Request) {
+
+	// get out if not DELETE
+	method := r.Method
+	if method != "DELETE" {
+		fmt.Fprintf(w, "Not implemented")
+		return
+	}
+
 	id := mux.Vars(r)["id"]
 	log.Info().Msgf("Destroy %s %s", app.Name(), id)
 

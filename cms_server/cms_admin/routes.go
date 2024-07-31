@@ -1,22 +1,46 @@
 package cms_admin
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/gorilla/mux"
 )
 
-func Routes(r *mux.Router) {
-	/*
-		No views, just api
-	*/
-	// Define the group route for admin
-	adminRouter := r.PathPrefix("/admin/api").Subrouter()
+type EntityDetail struct {
+	Name   string
+	Slug   string
+	Fields []string
+}
 
-	entityRoutes := adminRouter.PathPrefix("/entities").Subrouter()
+func Routes(r *mux.Router) {
+	apps := GetEntities()
+
+	// Define the group route for admin
+	adminRouter := r.PathPrefix("/admin").Subrouter()
+
+	// API
+	adminAPIRoutes := adminRouter.PathPrefix("/api").Subrouter()
+	entityRoutes := adminAPIRoutes.PathPrefix("/entities").Subrouter()
 	entityRoutes.HandleFunc("", func(w http.ResponseWriter, r *http.Request) {
+
+		es := []EntityDetail{}
+
+		for _, app := range apps {
+			es = append(es, EntityDetail{
+				Name:   app.Name(),
+				Slug:   app.Plural(),
+				Fields: app.Fields(),
+			})
+		}
+		response, err := json.Marshal(es)
+		if err != nil {
+			log.Error().Err(err).Msgf("Error marshalling entities to JSON")
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Entities List"))
+		w.Write(response)
 	})
 	entityRoutes.HandleFunc("/{id}", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -24,11 +48,9 @@ func Routes(r *mux.Router) {
 	})
 
 	// CRUD routes
-	apps := GetEntities()
-
 	for _, app := range apps {
 		log.Debug().Msgf("Registering %s routes", app.Name())
-		appRoutes := adminRouter.PathPrefix("/" + app.Plural()).Subrouter()
+		appRoutes := adminAPIRoutes.PathPrefix("/" + app.Plural()).Subrouter()
 		appRoutes.HandleFunc("", func(w http.ResponseWriter, r *http.Request) {
 			List(app, w, r)
 		})
