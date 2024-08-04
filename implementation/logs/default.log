@@ -1,0 +1,2 @@
+{"level":"info","caller":"implementation/main.go:28","time":"2024-08-04T12:21:20-03:00","message":"Hello World!"}
+{"level":"info","caller":"implementation/main.go:29","time":"2024-08-04T12:21:20-03:00","message":"Environment: dev"}

@@ -1,27 +1,29 @@
 package builder
 
 type Builder struct {
+	env    string
 	logger *Logger
 	// db     *Database
-	env string
 
 	// server *Server
 	// router *Router
 }
 
 type BuilderConfig struct {
+	Environment string
 	*LoggerConfig
 	// *DatabaseConfig
-	Environment string
 }
 
 func NewBuilder(cfg *BuilderConfig) *Builder {
 
-	logger := NewLogger(cfg.LoggerConfig)
-
+	// Environment
 	if cfg.Environment == "" {
 		cfg.Environment = "dev"
 	}
+
+	// Logger
+	logger := NewLogger(cfg.LoggerConfig)
 
 	// if cfg.DatabaseConfig == nil {
 	// 	cfg.DatabaseConfig = &DatabaseConfig{}

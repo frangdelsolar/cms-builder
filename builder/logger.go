@@ -1,6 +1,7 @@
 package builder
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -9,63 +10,54 @@ import (
 )
 
 const (
-	defaultLogFile  = "default.log"
-	logsDir         = "logs"
-	defaultLogLevel = zerolog.DebugLevel
+	defaultLogFilPath = "logs/default.log"
+	defaultLogLevel   = zerolog.InfoLevel
 )
 
 type Logger struct {
 	*zerolog.Logger
 }
 
-// NewLogger creates a new Logger instance with the provided zerolog.Logger.
-//
-// Parameters:
-// - logger: A pointer to a zerolog.Logger instance.
-//
-// Returns:
-// - A pointer to the newly created Logger instance.
-
+// LoggerConfig defines the configuration options for the logger.
 type LoggerConfig struct {
-	LogLevel    string
-	LogFile     string
-	WriteToFile bool
+	LogLevel    string `json:"logLevel"`
+	WriteToFile bool   `json:"writeToFile"`
+	LogFilePath string `json:"logFilePath"`
 }
 
-// GetZeroLevel returns the zero log level based on the logger configuration.
-//
-// It takes no parameters and returns a zerolog.Level.
-func (lc LoggerConfig) GetZeroLevel() zerolog.Level {
-	if lc.LogLevel == "" {
-		return defaultLogLevel
+// NewLogger creates a new zerolog.Logger instance based on the provided configuration.
+func NewLogger(config *LoggerConfig) *Logger {
+
+	// Handle nil config gracefully
+	if config == nil {
+		config = &LoggerConfig{
+			LogLevel:    defaultLogLevel.String(),
+			WriteToFile: true,
+			LogFilePath: defaultLogFilPath,
+		}
 	}
-	level, err := zerolog.ParseLevel(lc.LogLevel)
+
+	// Validate log level
+	level, err := zerolog.ParseLevel(config.LogLevel)
 	if err != nil {
 		level = defaultLogLevel
 	}
-	return level
-}
 
-// GetZeroLogger returns a zerolog.Logger instance with the specified logging level and output configuration.
-//
-// Parameters:
-// - lc: A LoggerConfig struct containing the configuration for the logger.
-//
-// Returns:
-// - A zerolog.Logger instance with the specified logging level and output configuration.
-func (lc LoggerConfig) GetZeroLogger() zerolog.Logger {
-	// Set Loggging Level
-	zerolog.SetGlobalLevel(lc.GetZeroLevel())
+	// Set global level
+	zerolog.SetGlobalLevel(level)
 
-	// Set Caller -> This will show the file name and line number in the log output
+	// Configure caller
 	zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
 		path := filepath.Dir(file)
 		file = filepath.Base(path) + "/" + filepath.Base(file)
 		return file + ":" + strconv.Itoa(line)
 	}
 
-	if !lc.WriteToFile {
-		return zerolog.New(zerolog.ConsoleWriter{
+	var logger zerolog.Logger
+
+	// CONSOLE MODE
+	if !config.WriteToFile {
+		logger = zerolog.New(zerolog.ConsoleWriter{
 			Out:        os.Stdout,
 			TimeFormat: "15:04:05",
 		}).
@@ -73,35 +65,42 @@ func (lc LoggerConfig) GetZeroLogger() zerolog.Logger {
 			Caller().
 			Timestamp().
 			Logger()
+
+		return &Logger{&logger}
 	}
 
-	runLogFile, _ := os.OpenFile(
-		lc.LogFile,
+	// FILE MODE
+
+	// Create log directory if it doesn't exist
+	err = os.MkdirAll(filepath.Dir(config.LogFilePath), os.ModePerm)
+	if err != nil {
+		fmt.Errorf("failed to create log directory: %w", err)
+		panic(err)
+	}
+
+	// Open log file
+	logFile, err := os.OpenFile(
+		config.LogFilePath,
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
 		0664,
 	)
 
-	// This are the writters that will be used in the logger: console and file
-	multi := zerolog.MultiLevelWriter(zerolog.ConsoleWriter{
+	if err != nil {
+		fmt.Errorf("failed to open log file: %w", err)
+		panic(err)
+	}
+
+	// Create writer
+	writer := zerolog.MultiLevelWriter(zerolog.ConsoleWriter{
 		Out:        os.Stdout,
 		TimeFormat: "15:04:05",
-	}, runLogFile)
+	}, logFile)
 
-	return zerolog.New(multi).
+	logger = zerolog.New(writer).
 		With().
 		Caller().
 		Timestamp().
 		Logger()
-}
 
-// NewLogger creates a new Logger instance based on the provided LoggerConfig.
-//
-// Parameters:
-// - cfg: The LoggerConfig used to configure the Logger.
-//
-// Returns:
-// - *Logger: A pointer to the newly created Logger instance.
-func NewLogger(config *LoggerConfig) *Logger {
-	logger := config.GetZeroLogger()
 	return &Logger{&logger}
 }

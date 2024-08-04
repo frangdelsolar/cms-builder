@@ -17,11 +17,6 @@ type Config struct {
 	RootDir string
 }
 
-type Example struct {
-	*gorm.Model
-	Field string `json:"field"`
-}
-
 func (c *Config) Validate() error {
 	if c.Logger == nil {
 		return fmt.Errorf("logger is required")
