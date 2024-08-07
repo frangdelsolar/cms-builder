@@ -1,7 +1,6 @@
 package builder
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -74,7 +73,6 @@ func NewLogger(config *LoggerConfig) *Logger {
 	// Create log directory if it doesn't exist
 	err = os.MkdirAll(filepath.Dir(config.LogFilePath), os.ModePerm)
 	if err != nil {
-		fmt.Errorf("failed to create log directory: %w", err)
 		panic(err)
 	}
 
@@ -86,7 +84,6 @@ func NewLogger(config *LoggerConfig) *Logger {
 	)
 
 	if err != nil {
-		fmt.Errorf("failed to open log file: %w", err)
 		panic(err)
 	}
 

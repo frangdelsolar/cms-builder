@@ -1,55 +1,43 @@
 package builder
 
+var log *Logger
+
 type Builder struct {
 	env    string
 	logger *Logger
-	// db     *Database
-
-	// server *Server
-	// router *Router
 }
 
 type BuilderConfig struct {
 	Environment string
 	*LoggerConfig
-	// *DatabaseConfig
 }
 
 func NewBuilder(cfg *BuilderConfig) *Builder {
+
+	var output = &Builder{}
+
+	// Logger
+	log = NewLogger(cfg.LoggerConfig)
+	output.logger = log
+
+	// Load config
+	err := output.LoadConfig()
+	if err != nil {
+		log.Fatal().Err(err).Msg("Error loading config")
+	}
 
 	// Environment
 	if cfg.Environment == "" {
 		cfg.Environment = "dev"
 	}
+	output.env = cfg.Environment
 
-	// Logger
-	logger := NewLogger(cfg.LoggerConfig)
-
-	// if cfg.DatabaseConfig == nil {
-	// 	cfg.DatabaseConfig = &DatabaseConfig{}
-	// }
-	// dbConfig := cfg.DatabaseConfig
-	// dbConfig.AppEnv = cfg.Environment
-
-	// db, err := NewDB(dbConfig)
-	// if err != nil {
-	// 	logger.Fatal().Err(err).Msg("Failed to initialize database")
-	// }
-
-	return &Builder{
-		logger: logger,
-		env:    cfg.Environment,
-		// db:     db,
-	}
+	return output
 }
 
 func (b *Builder) GetLogger() *Logger {
 	return b.logger
 }
-
-// func (b *Builder) GetDatabase() *Database {
-// 	return b.db
-// }
 
 func (b *Builder) GetEnvironment() string {
 	return b.env
