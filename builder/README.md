@@ -55,7 +55,7 @@ For more information on zerolog and its advanced features, refer to the official
 
 ## Configuration Management
 The builder uses the `viper` library to manage application configuration loaded from a YAML file (default: `config.yaml`). 
-If you pass configuration settings on builder initialization, you may have access to a `viper` instance.
+If you pass configuration settings on [builder initialization](#getting-started), you may have access to a `viper` instance.
 ```go
   ConfigFile: &builder.ConfigFile{
     UseConfigFile: true,  // Optional, defaults to false
