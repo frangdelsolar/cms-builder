@@ -4,35 +4,38 @@ import (
 	builder "cms/builder"
 )
 
-var config *builder.BuilderConfig
-var engine *builder.Builder
-var log *builder.Logger
-
 type Example struct {
 	Field string
 }
 
 func main() {
+	var config *builder.BuilderConfig
+	var engine *builder.Builder
+	var log *builder.Logger
 
+	// Setup
 	config = &builder.BuilderConfig{
 		LoggerConfig: &builder.LoggerConfig{
 			LogLevel:    "debug",
-			LogFilePath: "loggings/defaultee.log",
+			LogFilePath: "logs/default.log",
 			WriteToFile: true,
 		},
-		Environment: "dev",
+		ConfigFile: &builder.ConfigFile{
+			UseConfigFile: true,
+			ConfigPath:    "config.yaml",
+		},
 	}
 
-	engine := builder.NewBuilder(config)
+	// Build
+	engine = builder.NewBuilder(config)
 
+	// Logging example
 	log = engine.GetLogger()
-
-	// db = engine.GetDatabase()
-
 	log.Info().Msg("Hello World!")
-	log.Info().Msgf("Environment: %s", engine.GetEnvironment())
 
-	// log.Info().Msgf("Database: %s", db.AutoMigrate)
-	// db.Register(&Example{})
+	// Reading a config example
+	cfg := engine.GetConfigReader()
+	dict := cfg.GetStringMapString("dict")
+	log.Info().Msgf("dict: %s", dict)
 
 }
