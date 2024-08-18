@@ -2,7 +2,7 @@
 This is a Go library that provides a foundation for building applications. It offers functionalities for:
 
 - [**Logging**](#logger): Manages application logs for debugging and monitoring purposes.
-- [**Configuration Management**](#configuration): Loads configuration options from a YAML file.
+- [**Configuration Management**](#configuration-management): Loads configuration options from a YAML file.
 
 ### Getting Started
 1. **Install dependencies**:
@@ -16,11 +16,14 @@ import "github.com/frangdelsolar/go-builder"
 3. **Create a builder instance**:
 ```go
 config := &builder.BuilderConfig{
-  Environment: "dev", // Optional, defaults to "dev"
   LoggerConfig: &builder.LoggerConfig{
     LogLevel:    "debug", // Optional, defaults to "info"
     WriteToFile: true,   // Optional, defaults to true
     LogFilePath: "logs/app.log", // Optional, defaults to "logs/default.log"
+  },
+  ConfigFile: &builder.ConfigFile{
+    UseConfigFile: true,  // Optional, defaults to false
+    ConfigPath:    "config.yaml", // Optional, defaults to "config.yaml"
   },
 }
 
@@ -50,15 +53,14 @@ For more information on zerolog and its advanced features, refer to the official
 
 ---
 
-## Configuration
-The builder uses the `viper` library to manage application configuration loaded from a YAML file (default: `config.yaml`). You need to call `builder.LoadConfig()` to read the configuration file before accessing its values.
-
-### Loading Configuration:
+## Configuration Management
+The builder uses the `viper` library to manage application configuration loaded from a YAML file (default: `config.yaml`). 
+If you pass configuration settings on builder initialization, you may have access to a `viper` instance.
 ```go
-err := builder.LoadConfig()
-if err != nil {
-  // Handle error
-}
+  ConfigFile: &builder.ConfigFile{
+    UseConfigFile: true,  // Optional, defaults to false
+    ConfigPath:    "config.yaml", // Optional, defaults to "config.yaml"
+  }
 ```
 
 ### Accessing Configuration Values:

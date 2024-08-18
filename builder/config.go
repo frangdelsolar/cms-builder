@@ -1,28 +1,40 @@
 package builder
 
 import (
-	"fmt"
-
 	"github.com/spf13/viper"
 )
 
-const configFilePath = "config.yaml"
+const defaultConfigPath = "config.yaml"
 
-func (builder *Builder) LoadConfig() error {
-	viper.SetConfigName("config") // name of config file (without extension)
-	viper.SetConfigType("yaml")   // REQUIRED if the config file does not have the extension in the name
-	viper.AddConfigPath(".")      // optionally look for config in the working directory
-	err := viper.ReadInConfig()   // Find and read the config file
-	if err != nil {               // Handle errors reading the config file
-		panic(fmt.Errorf("fatal error config file: %w", err))
-	}
-
-	firebaseSecret := viper.Get("dict")
-	log.Debug().Msgf("firebaseSecret: %s", firebaseSecret)
-
-	return nil
+type ConfigFile struct {
+	UseConfigFile bool
+	ConfigPath    string
 }
 
-func (builder *Builder) GetConfigReader() *viper.Viper {
-	return viper.GetViper()
+// NewConfigReader returns a viper instance with the loaded configuration.
+//
+// It takes a ConfigFile pointer as a parameter, which specifies whether to use a config file and the path to the config file.
+// If the config file path is empty, it defaults to the defaultConfigPath.
+// Returns a viper instance and an error if the config file cannot be read.
+func NewConfigReader(config *ConfigFile) (*viper.Viper, error) {
+
+	if !config.UseConfigFile {
+		log.Warn().Msg("No config file used")
+		return nil, nil
+	}
+
+	path := config.ConfigPath
+	if path == "" {
+		path = defaultConfigPath
+	}
+
+	viper.SetConfigFile(path)
+
+	err := viper.ReadInConfig()
+	if err != nil {
+		log.Error().Err(err).Msgf("Error reading config file: %s", path)
+		return nil, err
+	}
+
+	return viper.GetViper(), nil
 }
