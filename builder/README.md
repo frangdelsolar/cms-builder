@@ -1,8 +1,8 @@
 # Go App Builder v0.0.1
 This is a Go library that provides a foundation for building applications. It offers functionalities for:
 
-- **Logging**: Manages application logs for debugging and monitoring purposes.
-- **Configuration Management**: Loads configuration options from a YAML file.
+- [**Logging**](#logger): Manages application logs for debugging and monitoring purposes.
+- [**Configuration Management**](#configuration): Loads configuration options from a YAML file.
 
 ### Getting Started
 1. **Install dependencies**:
@@ -26,6 +26,7 @@ config := &builder.BuilderConfig{
 
 builder := builder.NewBuilder(config)
 ```
+---
 
 ## Logger
 The builder provides a pre-configured `zerolog` logger instance. It allows for centralized logging with customizable levels and output destination.
@@ -43,6 +44,10 @@ logger := builder.GetLogger()
 logger.Info().Msg("Application started")
 ```
 
+### Reference
+For more information on zerolog and its advanced features, refer to the official documentation: https://github.com/rs/zerolog
+---
+
 ## Configuration
 The builder uses the `viper` library to manage application configuration loaded from a YAML file (default: `config.yaml`). You need to call `builder.LoadConfig()` to read the configuration file before accessing its values.
 
@@ -55,8 +60,18 @@ if err != nil {
 ```
 
 ### Accessing Configuration Values:
-You can either access the viper instance with the `builder.GetConfigReader()` method provided, or you can access a specific variable `builder.GetConfig(key: string)`.
+This method retrieves the underlying `viper` instance used by the builder. You can then use the various methods provided by `viper` to access configuration values:
+
+- `Get(key string) interface{}`: Returns the value for the given key as an interface{}. You might need to type-cast it to the desired type.
+- `GetString(key string) string`: Returns the value for the given key as a string.
+- `GetInt(key string) int`: Returns the value for the given key as an integer.
+- `GetFloat64(key string) float64`: Returns the value for the given key as a float64.
+- `GetBool(key string) bool`: Returns the value for the given key as a bool.
+
 ```go
 configReader := builder.GetConfigReader()
 firebaseSecret := configReader.GetString("firebaseSecret")
 ```
+
+### Reference
+Refer to the viper documentation for a complete list of available methods: https://github.com/spf13/viper
