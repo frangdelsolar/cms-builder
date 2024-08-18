@@ -26,6 +26,7 @@ config := &builder.BuilderConfig{
 
 builder := builder.NewBuilder(config)
 ```
+
 ---
 
 ## Logger
@@ -46,6 +47,7 @@ logger.Info().Msg("Application started")
 
 ### Reference
 For more information on zerolog and its advanced features, refer to the official documentation: https://github.com/rs/zerolog
+
 ---
 
 ## Configuration
