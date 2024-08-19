@@ -122,6 +122,7 @@ if err != nil {
 
 ### Reference
 For more information refer to [GORM documentation](https://gorm.io/)
+
 ---
 
 ## Server
@@ -130,50 +131,50 @@ The builder library provides a basic HTTP server with routing capabilities, midd
 ### Server configuration
 You can configure the server host and port using the builder.ServerConfig struct:
 ```go
-	// Server setup
-	serverConfig := builder.ServerConfig{
-		Host: cfg.GetString("host"),
-		Port: cfg.GetString("port"),
-	}
-	err = engine.SetServerConfig(serverConfig)
-	if err != nil {
-		// handle error
-	}
+// Server setup
+serverConfig := builder.ServerConfig{
+  Host: cfg.GetString("host"),
+  Port: cfg.GetString("port"),
+}
+err = engine.SetServerConfig(serverConfig)
+if err != nil {
+  // handle error
+}
 ```
 Note: If not configured, the server will default to listening on all interfaces (`0.0.0.0`) and port `8080`.
 
 ### Retrieve the server instance
 You can access the server instance using the `builder.GetServer` method:
 ```go
-	svr, err := engine.GetServer()
-	if err != nil {
-		// handle error
-	}
+svr, err := engine.GetServer()
+if err != nil {
+  // handle error
+}
 ```
 
 ### Adding middlewares
 Middleware allows you to intercept requests and responses, adding functionalities like logging, authentication, or request validation before reaching the actual route handler. You can chain multiple middleware functions.
 ```go
-	svr.AddMiddleware(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			log.Info().Msg(r.RequestURI)
-			next.ServeHTTP(w, r)
-		})
-	})
+svr.AddMiddleware(func(next http.Handler) http.Handler {
+  return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+    log.Info().Msg(r.RequestURI)
+    next.ServeHTTP(w, r)
+  })
+})
 ```
 
 ### Adding routes
 ```go
-	svr.AddRoute("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Home")
-	}, "home")
+svr.AddRoute("/", func(w http.ResponseWriter, r *http.Request) {
+  fmt.Fprintf(w, "Home")
+}, "home")
 ```
 
 ### Start the server
 Start the server listening for requests with the `svr.Run` method:
 
 ```go
-	svr.Run()
+svr.Run()
 ```
 
 ### Reference
