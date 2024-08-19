@@ -35,7 +35,12 @@ func main() {
 
 	// Reading a config example
 	cfg := engine.GetConfigReader()
-	dict := cfg.GetStringMapString("dict")
-	log.Info().Msgf("dict: %s", dict)
+
+	// DB setup
+	dbConfig := builder.DBConfig{
+		URL:  "",
+		Path: cfg.GetString("dbFile"),
+	}
+	engine.ConnectDB(&dbConfig)
 
 }

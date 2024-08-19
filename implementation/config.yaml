@@ -1,5 +1,1 @@
-appEnv: prod
-logLevel: debug
-firebaseSecret: "your-firebase-secret"
-dict:
-  nested: "foo"
+dbFile: default.db
