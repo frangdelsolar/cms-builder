@@ -18,6 +18,13 @@ type ConfigFile struct {
 // Returns a viper instance and an error if the config file cannot be read.
 func NewConfigReader(config *ConfigFile) (*viper.Viper, error) {
 
+	if config == nil {
+		config = &ConfigFile{
+			UseConfigFile: false,
+			ConfigPath:    "",
+		}
+	}
+
 	if !config.UseConfigFile {
 		log.Warn().Msg("No config file used")
 		return nil, nil

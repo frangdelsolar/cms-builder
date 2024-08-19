@@ -30,11 +30,17 @@ func main() {
 	engine = builder.NewBuilder(config)
 
 	// Logging example
-	log = engine.GetLogger()
+	log, err := engine.GetLogger()
+	if err != nil {
+		panic(err)
+	}
 	log.Info().Msg("Hello World!")
 
 	// Reading a config example
-	cfg := engine.GetConfigReader()
+	cfg, err := engine.GetConfigReader()
+	if err != nil {
+		panic(err)
+	}
 
 	// DB setup
 	dbConfig := builder.DBConfig{

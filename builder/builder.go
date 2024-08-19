@@ -1,6 +1,17 @@
 package builder
 
-import "github.com/spf13/viper"
+import (
+	"errors"
+
+	"github.com/spf13/viper"
+)
+
+var (
+	ErrLoggerNotInitialized = errors.New("logger not initialized")
+	ErrDBNotInitialized     = errors.New("database not initialized")
+	ErrDBConfigNotProvided  = errors.New("database config not provided")
+	ErrConfigNotInitialized = errors.New("config file not initialized")
+)
 
 var log *Logger
 
@@ -29,17 +40,14 @@ func NewBuilder(cfg *BuilderConfig) *Builder {
 	output.logger = log
 
 	// Config File
-	if cfg.ConfigFile == nil {
-		cfg.ConfigFile = &ConfigFile{
-			UseConfigFile: false,
-			ConfigPath:    "",
-		}
-	}
 	configReader, err := NewConfigReader(cfg.ConfigFile)
 	if err != nil {
 		log.Error().Err(err).Msg("Error loading config")
 	}
 	output.configReader = configReader
+
+	configData := configReader.AllSettings()
+	log.Info().Interface("Config", configData).Msg("Loaded Config")
 
 	return output
 }
@@ -48,7 +56,7 @@ func NewBuilder(cfg *BuilderConfig) *Builder {
 //
 // The config parameter is a pointer to a DBConfig struct that contains the database connection settings.
 // No return values.
-func (b *Builder) ConnectDB(config *DBConfig) {
+func (b *Builder) ConnectDB(config *DBConfig) error {
 	// Remember configuration
 	b.config.DBConfig = config
 
@@ -56,30 +64,35 @@ func (b *Builder) ConnectDB(config *DBConfig) {
 	db, err := LoadDB(config)
 	if err != nil {
 		log.Error().Err(err).Msg("Error loading database")
+		return err
 	}
 
 	// Remember connection
 	b.db = db
 
 	log.Info().Interface("DBConfig", config).Msg("Connected to database")
+	return nil
 }
 
 // GetLogger returns the logger instance associated with the Builder.
 //
 // No parameters.
 // Returns a pointer to the Logger instance.
-func (b *Builder) GetLogger() *Logger {
-	return b.logger
+func (b *Builder) GetLogger() (*Logger, error) {
+	if b.logger == nil {
+		return nil, ErrLoggerNotInitialized
+	}
+	return b.logger, nil
 }
 
 // GetConfigReader returns a viper.Viper instance used to read configuration settings.
 //
 // No parameters.
 // Returns a pointer to a viper.Viper instance.
-func (builder *Builder) GetConfigReader() *viper.Viper {
+func (builder *Builder) GetConfigReader() (*viper.Viper, error) {
 	if !builder.config.UseConfigFile {
 		log.Error().Msg("No config file used")
-		return nil
+		return nil, ErrConfigNotInitialized
 	}
-	return builder.configReader
+	return builder.configReader, nil
 }

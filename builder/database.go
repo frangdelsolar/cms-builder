@@ -1,8 +1,6 @@
 package builder
 
 import (
-	"fmt"
-
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -20,7 +18,7 @@ type DBConfig struct {
 func LoadDB(config *DBConfig) (*Database, error) {
 
 	if config.URL == "" && config.Path == "" {
-		return nil, fmt.Errorf("no database configuration provided")
+		return nil, ErrDBConfigNotProvided
 	}
 
 	var db *Database
@@ -47,5 +45,5 @@ func LoadDB(config *DBConfig) (*Database, error) {
 		}, nil
 	}
 
-	return db, fmt.Errorf("no database configuration provided")
+	return db, ErrDBConfigNotProvided
 }
