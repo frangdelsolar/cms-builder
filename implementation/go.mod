@@ -8,6 +8,7 @@ require cms/builder v0.0.0-00010101000000-000000000000
 
 require (
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
+	github.com/gertd/go-pluralize v0.2.1 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect

@@ -7,6 +7,24 @@ import (
 	"github.com/gorilla/mux"
 )
 
+type Router struct {
+	*mux.Router
+}
+
+func (r *Router) RegisterApp(appName string, app interface{}) {
+	appRoutes := r.PathPrefix("/api/" + appName).Subrouter()
+	appRoutes.HandleFunc("", func(w http.ResponseWriter, r *http.Request) {
+	})
+	appRoutes.HandleFunc("/new", func(w http.ResponseWriter, r *http.Request) {
+	})
+	appRoutes.HandleFunc("/{id}", func(w http.ResponseWriter, r *http.Request) {
+	})
+	appRoutes.HandleFunc("/{id}/delete", func(w http.ResponseWriter, r *http.Request) {
+	})
+	appRoutes.HandleFunc("/{id}/edit", func(w http.ResponseWriter, r *http.Request) {
+	})
+}
+
 // RouteHandler defines a structure for storing route information.
 type RouteHandler struct {
 	route   string                                   // route is the path for the route. i.e. /users/{id}
@@ -19,7 +37,7 @@ type Server struct {
 	*http.Server                                   // Server is the underlying HTTP server
 	middlewares  []func(http.Handler) http.Handler // middlewares is a slice of middleware functions
 	routes       []RouteHandler                    // routes is a slice of route handlers
-	Router       *mux.Router                       // Router is the router for the server
+	Router       *Router                           // Router is the router for the server
 }
 
 // ServerConfig defines the configuration options for creating a new Server.
@@ -49,6 +67,10 @@ func NewServer(config *ServerConfig) (*Server, error) {
 
 	r := mux.NewRouter()
 
+	adminRouter := &Router{
+		r.PathPrefix("/admin").Subrouter(),
+	}
+
 	svr := &Server{
 		Server: &http.Server{
 			Addr:    config.Host + ":" + config.Port,
@@ -56,7 +78,7 @@ func NewServer(config *ServerConfig) (*Server, error) {
 		},
 		middlewares: []func(http.Handler) http.Handler{},
 		routes:      []RouteHandler{},
-		Router:      r,
+		Router:      adminRouter,
 	}
 
 	svr.AddMiddleware(loggingMiddleware)

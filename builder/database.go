@@ -58,3 +58,13 @@ func LoadDB(config *DBConfig) (*Database, error) {
 
 	return db, ErrDBConfigNotProvided // Should never be reached, but added for completeness
 }
+
+// Migrate calls the AutoMigrate method on the GORM DB instance.
+func (db *Database) Migrate(model interface{}) error {
+	if db == nil {
+		return ErrDBNotInitialized
+	}
+	db.DB.AutoMigrate(model)
+	log.Debug().Interface("Model", model).Msg("Database migration complete")
+	return nil
+}

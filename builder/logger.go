@@ -1,6 +1,7 @@
 package builder
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -9,8 +10,8 @@ import (
 )
 
 const (
-	defaultLogFilPath = "logs/default.log"
-	defaultLogLevel   = zerolog.InfoLevel
+	defaultLogFilePath = "logs/default.log"
+	defaultLogLevel    = zerolog.InfoLevel
 )
 
 type Logger struct {
@@ -32,13 +33,14 @@ func NewLogger(config *LoggerConfig) *Logger {
 		config = &LoggerConfig{
 			LogLevel:    defaultLogLevel.String(),
 			WriteToFile: true,
-			LogFilePath: defaultLogFilPath,
+			LogFilePath: defaultLogFilePath,
 		}
 	}
 
 	// Validate log level
 	level, err := zerolog.ParseLevel(config.LogLevel)
 	if err != nil {
+		fmt.Printf("Invalid log level: %s\n", config.LogLevel)
 		level = defaultLogLevel
 	}
 

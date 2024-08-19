@@ -5,6 +5,7 @@ This is a Go library that provides a foundation for building applications. It of
 - [**Logging**](#logger): Manages application logs for debugging and monitoring purposes.
 - [**Database**](#database): Establishes connections to databases using GORM.
 - [**Server**](#server): Provides a basic HTTP server with routing capabilities.
+- [**Admin**](#admin): 
 
 ### Getting Started
 1. **Install dependencies**:
@@ -179,5 +180,42 @@ svr.Run()
 
 ### Reference
 For extra documentation, visit [Mux](https://github.com/gorilla/mux)
+
+---
+
+## Admin
+
+Once you have initialized your server, you can setup your admin panel
+
+```go
+	svr, err := engine.GetServer()
+	if err != nil {
+    // handle
+	}
+
+  ...
+
+	// Admin setup --> Needs to happen after the server is setup
+	err = engine.SetupAdmin()
+	if err != nil {
+		log.Error().Err(err).Msg("Error setting up admin panel")
+		panic(err)
+	}
+
+	admin := engine.GetAdmin()
+	admin.Register(&Example{})
+
+  ...
+
+	svr.Run()
+```
+
+This will setup db migration for that entity
+and also the endpoints for crud operations
+- list: `/`
+- new: `/new`
+- details: `/{id}`
+- edit: `/{id}/edit`
+- delete: `/{id}/delete`
 
 ---

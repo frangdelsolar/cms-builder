@@ -24,6 +24,7 @@ type Builder struct {
 	config       *BuilderConfig // Pointer to the main configuration object
 	db           *Database      // Reference to the connected database instance (if applicable)
 	server       *Server        // Reference to the created Server instance (if applicable)
+	admin        *Admin         // Reference to the created Admin instance (if applicable)
 }
 
 // BuilderConfig defines a nested configuration structure for various aspects of the application.
@@ -32,6 +33,7 @@ type BuilderConfig struct {
 	*ConfigFile   // Embedded configuration for the config file
 	*DBConfig     // Embedded configuration for the database
 	*ServerConfig // Embedded configuration for the server
+	*AdminConfig  // Embedded configuration for the admin
 }
 
 // NewBuilder creates a new Builder instance and initializes its configuration.
@@ -94,6 +96,7 @@ func (b *Builder) ConnectDB(config *DBConfig) error {
 // It takes a LoggerConfig struct as input and updates the internal configuration for the logger.
 func (b *Builder) SetLoggerConfig(config LoggerConfig) {
 	b.config.LoggerConfig = &config
+	b.logger = NewLogger(&config)
 }
 
 // GetLogger returns the logger instance associated with the Builder.
@@ -142,4 +145,23 @@ func (builder *Builder) GetServer() (*Server, error) {
 		return nil, ErrServerNotInitialized
 	}
 	return builder.server, nil
+}
+
+func (builder *Builder) SetupAdmin() error {
+	if builder.db == nil {
+		log.Error().Msg("Database not initialized")
+		return ErrDBNotInitialized
+	}
+	config := AdminConfig{}
+	builder.config.AdminConfig = &config
+	admin := NewAdmin(&config, builder.db, builder.server)
+	builder.admin = admin
+
+	log.Debug().Interface("Admin", builder.admin).Msg("Admin panel setup")
+
+	return nil
+}
+
+func (builder *Builder) GetAdmin() *Admin {
+	return builder.admin
 }

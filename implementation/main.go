@@ -42,7 +42,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	log.Info().Msg("Hello World!")
+	log.Info().Msg("Logger setup")
 
 	// DB setup
 	dbConfig := builder.DBConfig{
@@ -51,6 +51,8 @@ func main() {
 	}
 	engine.ConnectDB(&dbConfig)
 
+	log.Debug().Interface("DBConfig", dbConfig).Msg("DB setup")
+
 	// Server setup
 	serverConfig := builder.ServerConfig{
 		Host: cfg.GetString("host"),
@@ -58,13 +60,26 @@ func main() {
 	}
 	err = engine.SetServerConfig(serverConfig)
 	if err != nil {
+		log.Error().Err(err).Msg("Error setting up server")
 		panic(err)
 	}
 
 	svr, err := engine.GetServer()
 	if err != nil {
+		log.Error().Err(err).Msg("Error getting server")
 		panic(err)
 	}
+
+	// Admin setup --> Needs to happen after the server is setup
+	err = engine.SetupAdmin()
+	if err != nil {
+		log.Error().Err(err).Msg("Error setting up admin panel")
+		panic(err)
+	}
+
+	admin := engine.GetAdmin()
+	admin.Register(&Example{})
+
 	svr.Run()
 
 }
