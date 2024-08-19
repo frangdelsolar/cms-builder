@@ -1,1 +1,7 @@
+# Logger Config
+logLevel: debug
+writeToFile: true
+writeToFilePath: logs/default.log
+
+# Database Config
 dbFile: default.db

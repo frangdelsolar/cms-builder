@@ -15,11 +15,6 @@ func main() {
 
 	// Setup
 	config = &builder.BuilderConfig{
-		LoggerConfig: &builder.LoggerConfig{
-			LogLevel:    "debug",
-			LogFilePath: "logs/default.log",
-			WriteToFile: true,
-		},
 		ConfigFile: &builder.ConfigFile{
 			UseConfigFile: true,
 			ConfigPath:    "config.yaml",
@@ -29,18 +24,25 @@ func main() {
 	// Build
 	engine = builder.NewBuilder(config)
 
-	// Logging example
-	log, err := engine.GetLogger()
-	if err != nil {
-		panic(err)
-	}
-	log.Info().Msg("Hello World!")
-
 	// Reading a config example
 	cfg, err := engine.GetConfigReader()
 	if err != nil {
 		panic(err)
 	}
+
+	loggerConfig := builder.LoggerConfig{
+		LogLevel:    cfg.GetString("logLevel"),
+		LogFilePath: cfg.GetString("writeToFilePath"),
+		WriteToFile: cfg.GetBool("writeToFile"),
+	}
+	engine.SetLoggerConfig(loggerConfig)
+
+	// Logging example
+	log, err = engine.GetLogger()
+	if err != nil {
+		panic(err)
+	}
+	log.Info().Msg("Hello World!")
 
 	// DB setup
 	dbConfig := builder.DBConfig{

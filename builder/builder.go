@@ -74,6 +74,10 @@ func (b *Builder) ConnectDB(config *DBConfig) error {
 	return nil
 }
 
+func (b *Builder) SetLoggerConfig(config LoggerConfig) {
+	b.config.LoggerConfig = &config
+}
+
 // GetLogger returns the logger instance associated with the Builder.
 //
 // No parameters.
