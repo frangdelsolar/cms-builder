@@ -51,4 +51,20 @@ func main() {
 	}
 	engine.ConnectDB(&dbConfig)
 
+	// Server setup
+	serverConfig := builder.ServerConfig{
+		Host: cfg.GetString("host"),
+		Port: cfg.GetString("port"),
+	}
+	err = engine.SetServerConfig(serverConfig)
+	if err != nil {
+		panic(err)
+	}
+
+	svr, err := engine.GetServer()
+	if err != nil {
+		panic(err)
+	}
+	svr.Run()
+
 }
