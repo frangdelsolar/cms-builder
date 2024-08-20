@@ -2,8 +2,6 @@ package builder
 
 import (
 	"errors"
-
-	"github.com/spf13/viper"
 )
 
 var (
@@ -20,7 +18,7 @@ var log *Logger // Global variable for the logger instance
 // Builder defines a central configuration and management structure for building applications.
 type Builder struct {
 	logger       *Logger        // Reference to the application's logger instance
-	configReader *viper.Viper   // Reference to the Viper instance used for configuration
+	configReader *ConfigReader  // Reference to the Viper instance used for configuration
 	config       *BuilderConfig // Pointer to the main configuration object
 	db           *Database      // Reference to the connected database instance (if applicable)
 	server       *Server        // Reference to the created Server instance (if applicable)
@@ -113,7 +111,7 @@ func (b *Builder) GetLogger() (*Logger, error) {
 //
 // It checks if the `UseConfigFile` flag is set in the configuration. If not, it logs an error
 // and returns an error. Otherwise, it returns a pointer to the viper.Viper instance.
-func (builder *Builder) GetConfigReader() (*viper.Viper, error) {
+func (builder *Builder) GetConfigReader() (*ConfigReader, error) {
 	if !builder.config.UseConfigFile {
 		log.Error().Msg("No config file used")
 		return nil, ErrConfigNotInitialized

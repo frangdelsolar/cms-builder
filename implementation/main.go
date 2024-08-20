@@ -2,10 +2,13 @@ package main
 
 import (
 	builder "cms/builder"
+
+	"gorm.io/gorm"
 )
 
 type Example struct {
-	Field string
+	*gorm.Model
+	Field string `json:"field"`
 }
 
 func main() {
@@ -32,8 +35,8 @@ func main() {
 
 	loggerConfig := builder.LoggerConfig{
 		LogLevel:    cfg.GetString("logLevel"),
-		LogFilePath: cfg.GetString("writeToFilePath"),
-		WriteToFile: cfg.GetBool("writeToFile"),
+		LogFilePath: cfg.GetString("logFilePath"),
+		WriteToFile: cfg.GetBool("logWriteToFile"),
 	}
 	engine.SetLoggerConfig(loggerConfig)
 
@@ -70,7 +73,7 @@ func main() {
 		panic(err)
 	}
 
-	// Admin setup --> Needs to happen after the server is setup
+	// Admin setup
 	err = engine.SetupAdmin()
 	if err != nil {
 		log.Error().Err(err).Msg("Error setting up admin panel")

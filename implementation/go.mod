@@ -2,7 +2,7 @@ module implementation
 
 go 1.22.4
 
-replace cms/builder => /Users/fgs/Personal/cms/builder
+replace cms/builder => /Users/frangdelsolar/Desktop/code/cms/builder
 
 require cms/builder v0.0.0-00010101000000-000000000000
 

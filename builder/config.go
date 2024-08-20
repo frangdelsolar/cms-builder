@@ -11,12 +11,16 @@ type ConfigFile struct {
 	ConfigPath    string
 }
 
+type ConfigReader struct {
+	*viper.Viper
+}
+
 // NewConfigReader returns a viper instance with the loaded configuration.
 //
 // It takes a ConfigFile pointer as a parameter, which specifies whether to use a config file and the path to the config file.
 // If the config file path is empty, it defaults to the defaultConfigPath.
 // Returns a viper instance and an error if the config file cannot be read.
-func NewConfigReader(config *ConfigFile) (*viper.Viper, error) {
+func NewConfigReader(config *ConfigFile) (*ConfigReader, error) {
 
 	if config == nil {
 		config = &ConfigFile{
@@ -43,5 +47,5 @@ func NewConfigReader(config *ConfigFile) (*viper.Viper, error) {
 		return nil, err
 	}
 
-	return viper.GetViper(), nil
+	return &ConfigReader{viper.GetViper()}, nil
 }
