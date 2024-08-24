@@ -5,33 +5,36 @@ import (
 )
 
 var (
-	ErrConfigNotInitialized    = errors.New("config file not initialized")
-	ErrLoggerNotInitialized    = errors.New("logger not initialized")
-	ErrDBNotInitialized        = errors.New("database not initialized")
-	ErrDBConfigNotProvided     = errors.New("database config not provided")
-	ErrServerNotInitialized    = errors.New("server not initialized")
-	ErrServerConfigNotProvided = errors.New("server config not provided")
+	ErrConfigNotInitialized      = errors.New("config file not initialized")
+	ErrLoggerNotInitialized      = errors.New("logger not initialized")
+	ErrDBNotInitialized          = errors.New("database not initialized")
+	ErrDBConfigNotProvided       = errors.New("database config not provided")
+	ErrServerNotInitialized      = errors.New("server not initialized")
+	ErrServerConfigNotProvided   = errors.New("server config not provided")
+	ErrFirebaseConfigNotProvided = errors.New("firebase config not provided")
 )
 
 var log *Logger // Global variable for the logger instance
 
 // Builder defines a central configuration and management structure for building applications.
 type Builder struct {
-	logger       *Logger        // Reference to the application's logger instance
-	configReader *ConfigReader  // Reference to the Viper instance used for configuration
-	config       *BuilderConfig // Pointer to the main configuration object
-	db           *Database      // Reference to the connected database instance (if applicable)
-	server       *Server        // Reference to the created Server instance (if applicable)
-	admin        *Admin         // Reference to the created Admin instance (if applicable)
+	logger        *Logger        // Reference to the application's logger instance
+	configReader  *ConfigReader  // Reference to the Viper instance used for configuration
+	config        *BuilderConfig // Pointer to the main configuration object
+	db            *Database      // Reference to the connected database instance (if applicable)
+	server        *Server        // Reference to the created Server instance (if applicable)
+	admin         *Admin         // Reference to the created Admin instance (if applicable)
+	firebaseAdmin *FirebaseAdmin // Reference to the created Firebase instance (if applicable)
 }
 
 // BuilderConfig defines a nested configuration structure for various aspects of the application.
 type BuilderConfig struct {
-	*LoggerConfig // Embedded configuration for the logger
-	*ConfigFile   // Embedded configuration for the config file
-	*DBConfig     // Embedded configuration for the database
-	*ServerConfig // Embedded configuration for the server
-	*AdminConfig  // Embedded configuration for the admin
+	*LoggerConfig   // Embedded configuration for the logger
+	*ConfigFile     // Embedded configuration for the config file
+	*DBConfig       // Embedded configuration for the database
+	*ServerConfig   // Embedded configuration for the server
+	*AdminConfig    // Embedded configuration for the admin
+	*FirebaseConfig // Embedded configuration for firebase
 }
 
 // NewBuilder creates a new Builder instance and initializes its configuration.
@@ -162,4 +165,27 @@ func (builder *Builder) SetupAdmin() error {
 
 func (builder *Builder) GetAdmin() *Admin {
 	return builder.admin
+}
+
+func (builder *Builder) SetupFirebase() error {
+
+	cfg := FirebaseConfig{
+		Secret: builder.configReader.GetString("firebaseSecret"),
+	}
+
+	if cfg.Secret == "" {
+		return ErrFirebaseConfigNotProvided
+	}
+
+	firebase, err := NewFirebaseAdmin(&cfg)
+	if err != nil {
+		log.Error().Err(err).Msg("Error creating firebase")
+		return err
+	}
+
+	builder.firebaseAdmin = firebase
+
+	log.Debug().Interface("Firebase", builder.firebaseAdmin).Msg("Firebase setup")
+	return nil
+
 }

@@ -6,6 +6,7 @@ This is a Go library that provides a foundation for building applications. It of
 - [**Database**](#database): Establishes connections to databases using GORM.
 - [**Server**](#server): Provides a basic HTTP server with routing capabilities.
 - [**Admin**](#admin): 
+- [**Firebase**]:
 
 ### Getting Started
 1. **Install dependencies**:
@@ -219,3 +220,8 @@ and also the endpoints for crud operations
 - delete: `/{id}/delete`
 
 ---
+
+## Firebase
+
+Have configured `firebaseSecret` which should be a base64 encoding of the secret provided by google.
+call the method `builder.SetupFirebase()`

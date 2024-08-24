@@ -83,6 +83,8 @@ func main() {
 	admin := engine.GetAdmin()
 	admin.Register(&Example{})
 
+	engine.SetupFirebase()
+
 	svr.Run()
 
 }

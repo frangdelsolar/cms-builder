@@ -8,7 +8,27 @@ import (
 
 // Database represents a database connection managed by GORM.
 type Database struct {
-	*gorm.DB // Embedded GORM DB instance for database access
+	DB *gorm.DB // Embedded GORM DB instance for database access
+}
+
+func (db *Database) GetById(id string, entity interface{}) *gorm.DB {
+	log.Debug().Msg("looking for something")
+	return db.DB.Where("id = ?", id).First(entity)
+}
+
+func (db *Database) GetAll(entity interface{}) *gorm.DB {
+	return db.DB.Find(entity)
+}
+
+func (db *Database) Create(entity interface{}) *gorm.DB {
+	return db.DB.Create(entity)
+}
+
+func (db *Database) Delete() error {
+	return nil
+}
+func (db *Database) Save() error {
+	return nil
 }
 
 // DBConfig defines the configuration options for connecting to a database.

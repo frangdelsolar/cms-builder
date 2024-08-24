@@ -33,7 +33,7 @@ func List(model App, db *Database, w http.ResponseWriter, r *http.Request) {
 	sliceType := reflect.SliceOf(modelType)
 	entities := reflect.New(sliceType).Interface()
 
-	result := db.Find(entities)
+	result := db.GetAll(entities)
 	if result.Error != nil {
 		log.Error().Err(result.Error).Msgf("Error fetching %s records", model)
 		return
@@ -125,7 +125,7 @@ func Get(id string, model App, db *Database, w http.ResponseWriter, r *http.Requ
 	instance := reflect.New(instanceType.Elem()).Interface()
 
 	// Query the database to find the record by ID
-	result := db.Where("id = ?", id).First(instance)
+	result := db.GetById(id, instance)
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
 			http.Error(w, "Not found", http.StatusNotFound)
@@ -169,7 +169,7 @@ func Update(id string, model App, db *Database, w http.ResponseWriter, r *http.R
 	instance := reflect.New(instanceType).Interface()
 
 	// Retrieve the existing record from the database
-	result := db.Where("id = ?", id).First(instance)
+	result := db.GetById(id, instance)
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
 			http.Error(w, "Not found", http.StatusNotFound)
@@ -198,7 +198,8 @@ func Update(id string, model App, db *Database, w http.ResponseWriter, r *http.R
 	}
 
 	// Update the record in the database
-	result = db.Save(instance)
+
+	result = db.DB.Save(instance)
 	if result.Error != nil {
 		log.Error().Err(result.Error).Msgf("Error updating record")
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -237,7 +238,8 @@ func Delete(id string, model App, db *Database, w http.ResponseWriter, r *http.R
 	instance := reflect.New(instanceType).Interface()
 
 	// Delete the record by ID
-	result := db.Where("id = ?", id).Delete(instance)
+	item := db.GetById(id, instance)
+	result := db.DB.Delete(item)
 	if result.Error != nil {
 		if result.RowsAffected == 0 {
 			http.Error(w, "Not found", http.StatusNotFound)
