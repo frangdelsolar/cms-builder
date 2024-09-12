@@ -126,7 +126,9 @@ func NewBuilder(input *NewBuilderInput) (*Builder, error) {
 
 	// Firebase
 	if input.InitiliazeFirebase {
-		builder.InitFirebase(nil)
+		builder.InitFirebase(&FirebaseConfig{
+			Secret: config.GetString("firebaseSecret"),
+		})
 	}
 
 	return builder, nil
