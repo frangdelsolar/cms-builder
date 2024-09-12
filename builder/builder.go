@@ -2,102 +2,164 @@ package builder
 
 import (
 	"errors"
-)
-
-var (
-	ErrConfigNotInitialized      = errors.New("config file not initialized")
-	ErrLoggerNotInitialized      = errors.New("logger not initialized")
-	ErrDBNotInitialized          = errors.New("database not initialized")
-	ErrDBConfigNotProvided       = errors.New("database config not provided")
-	ErrServerNotInitialized      = errors.New("server not initialized")
-	ErrServerConfigNotProvided   = errors.New("server config not provided")
-	ErrFirebaseConfigNotProvided = errors.New("firebase config not provided")
+	"fmt"
 )
 
 var log *Logger // Global variable for the logger instance
 
-// Builder defines a central configuration and management structure for building applications.
-type Builder struct {
-	logger        *Logger        // Reference to the application's logger instance
-	configReader  *ConfigReader  // Reference to the Viper instance used for configuration
-	config        *BuilderConfig // Pointer to the main configuration object
-	db            *Database      // Reference to the connected database instance (if applicable)
-	server        *Server        // Reference to the created Server instance (if applicable)
-	admin         *Admin         // Reference to the created Admin instance (if applicable)
-	firebaseAdmin *FirebaseAdmin // Reference to the created Firebase instance (if applicable)
+func init() {
+	// Make sure the logger is initialized
+	var err error
+	log, err = NewLogger(nil)
+	if err != nil {
+		fmt.Println("Error initializing logger:", err)
+		// TODO: handle error gracefully
+		panic(err)
+	}
 }
+
+var (
+	ErrBuilderConfigNotProvided   = errors.New("builder configuration not provided")
+	ErrConfigReaderNotInitialized = errors.New("config reader not initialized")
+	ErrLoggerNotInitialized       = errors.New("logger not initialized")
+)
 
 // BuilderConfig defines a nested configuration structure for various aspects of the application.
 type BuilderConfig struct {
-	*LoggerConfig   // Embedded configuration for the logger
-	*ConfigFile     // Embedded configuration for the config file
-	*DBConfig       // Embedded configuration for the database
-	*ServerConfig   // Embedded configuration for the server
-	*AdminConfig    // Embedded configuration for the admin
-	*FirebaseConfig // Embedded configuration for firebase
+	configFile     *ReaderConfig   // Embedded configuration for the config file (optional)
+	loggerConfig   *LoggerConfig   // Embedded configuration for the logger (optional)
+	dbConfig       *DBConfig       // Embedded configuration for the database (optional)
+	serverConfig   *ServerConfig   // Embedded configuration for the server (optional)
+	adminConfig    *AdminConfig    // Embedded configuration for the admin (optional)
+	firebaseConfig *FirebaseConfig // Embedded configuration for firebase (optional)
 }
 
-// NewBuilder creates a new Builder instance and initializes its configuration.
-//
-// It takes a pointer to a BuilderConfig struct as input, which encapsulates all
-// application configuration options. If the provided config argument is nil,
-// it will return nil.
-//
-// On successful initialization, it returns a pointer to the newly created Builder instance.
-func NewBuilder(cfg *BuilderConfig) *Builder {
-	if cfg == nil {
-		return nil
-	}
-
-	var output = &Builder{
-		config: cfg,
-	}
-
-	// Initialize Logger
-	log = NewLogger(cfg.LoggerConfig)
-	output.logger = log
-
-	// Initialize Config Reader
-	configReader, err := NewConfigReader(cfg.ConfigFile)
-	if err != nil {
-		log.Error().Err(err).Msg("Error loading config")
-	}
-	output.configReader = configReader
-
-	configData := configReader.AllSettings()
-	log.Info().Interface("Config", configData).Msg("Loaded Config")
-
-	return output
+// Builder defines a central configuration and management structure for building applications.
+type Builder struct {
+	config   *BuilderConfig // Pointer to the main configuration object
+	reader   *ConfigReader  // Reference to the Viper instance used for configuration
+	logger   *Logger        // Reference to the application's logger instance
+	db       *Database      // Reference to the connected database instance (if applicable)
+	server   *Server        // Reference to the created Server instance (if applicable)
+	admin    *Admin         // Reference to the created Admin instance (if applicable)
+	firebase *FirebaseAdmin // Reference to the created Firebase instance (if applicable)
 }
 
-// ConnectDB connects to the database using the provided configuration.
-//
-// It takes a pointer to a DBConfig struct that contains the database connection settings.
-// On successful connection, it returns nil. Otherwise, it returns an error.
-func (b *Builder) ConnectDB(config *DBConfig) error {
-	// Remember configuration
-	b.config.DBConfig = config
+// NewBuilderInput defines the input parameters for the Builder constructor.
+type NewBuilderInput struct {
+	ReadConfigFromFile bool   // Whether to read the configuration from a file
+	ConfigFilePath     string // Path to the configuration file
+	InitializeLogger   bool   // Whether to initialize the logger, needs readConfigFromFile to be true
+	InitiliazeDB       bool   // Whether to initialize the database, needs readConfigFromFile to be true
+	InitiliazeServer   bool   // Whether to initialize the server, needs readConfigFromFile to be true
+	InitiliazeAdmin    bool   // Whether to initialize the admin, needs readConfigFromFile to be true
+	InitiliazeFirebase bool   // Whether to initialize the firebase, needs readConfigFromFile to be true
+}
 
-	// Load database
-	db, err := LoadDB(config)
+// NewBuilder creates a new Builder instance.
+func NewBuilder(input *NewBuilderInput) (*Builder, error) {
+
+	if input == nil {
+		return nil, ErrBuilderConfigNotProvided
+	}
+
+	builder := &Builder{
+		config: &BuilderConfig{
+			configFile:     &ReaderConfig{},
+			loggerConfig:   &LoggerConfig{},
+			dbConfig:       &DBConfig{},
+			serverConfig:   &ServerConfig{},
+			adminConfig:    &AdminConfig{},
+			firebaseConfig: &FirebaseConfig{},
+		},
+	}
+
+	if !input.ReadConfigFromFile {
+		return builder, nil
+	}
+
+	// Setup reader and read configuration data from file
+	builder.InitConfigReader(&ReaderConfig{ConfigPath: input.ConfigFilePath})
+	config, err := builder.GetConfigReader()
 	if err != nil {
-		log.Error().Err(err).Msg("Error loading database")
+		return nil, err
+	}
+
+	settings := config.AllSettings()
+	log.Info().Interface("Config", settings).Msg("Loaded Config")
+
+	// Logger
+	if input.InitializeLogger {
+		builder.InitLogger(&LoggerConfig{
+			LogLevel:    config.GetString("logLevel"),
+			WriteToFile: config.GetBool("logWriteToFile"),
+			LogFilePath: config.GetString("logfilePath"),
+		})
+	} else {
+		builder.InitLogger(nil) // Use default logger
+	}
+
+	log, _ = builder.GetLogger()
+
+	// Database
+	if !input.InitiliazeDB {
+		return builder, nil
+	}
+	builder.InitDatabase(&DBConfig{
+		Path: config.GetString("dbFile"),
+		URL:  config.GetString("dbURL"),
+	})
+
+	// Server
+	if !input.InitiliazeServer {
+		return builder, nil
+	}
+	builder.InitServer(&ServerConfig{
+		Host: config.GetString("serverHost"),
+		Port: config.GetString("serverPort"),
+	})
+
+	// Admin
+	if input.InitiliazeAdmin {
+		builder.InitAdmin(nil)
+	}
+
+	// Firebase
+	if input.InitiliazeFirebase {
+		builder.InitFirebase(nil)
+	}
+
+	return builder, nil
+}
+
+// InitConfigReader initializes the configuration reader based on the provided configuration file.
+func (b *Builder) InitConfigReader(configFile *ReaderConfig) error {
+	b.config.configFile = configFile
+	reader, err := NewConfigReader(b.config.configFile)
+	if err != nil {
 		return err
 	}
-
-	// Remember connection
-	b.db = db
-
-	log.Info().Interface("DBConfig", config).Msg("Connected to database")
+	b.reader = reader
 	return nil
 }
 
-// SetLoggerConfig allows you to update the logger configuration after Builder initialization.
-//
-// It takes a LoggerConfig struct as input and updates the internal configuration for the logger.
-func (b *Builder) SetLoggerConfig(config LoggerConfig) {
-	b.config.LoggerConfig = &config
-	b.logger = NewLogger(&config)
+// GetConfigReader returns the configuration reader.
+func (b *Builder) GetConfigReader() (*ConfigReader, error) {
+	if b.reader == nil {
+		return nil, ErrConfigReaderNotInitialized
+	}
+	return b.reader, nil
+}
+
+// InitLogger initializes the logger based on the provided configuration.
+func (b *Builder) InitLogger(config *LoggerConfig) error {
+	b.config.loggerConfig = config
+	logger, err := NewLogger(config)
+	if err != nil {
+		return err
+	}
+	b.logger = logger
+	return nil
 }
 
 // GetLogger returns the logger instance associated with the Builder.
@@ -110,82 +172,84 @@ func (b *Builder) GetLogger() (*Logger, error) {
 	return b.logger, nil
 }
 
-// GetConfigReader returns a viper.Viper instance used to read configuration settings.
-//
-// It checks if the `UseConfigFile` flag is set in the configuration. If not, it logs an error
-// and returns an error. Otherwise, it returns a pointer to the viper.Viper instance.
-func (builder *Builder) GetConfigReader() (*ConfigReader, error) {
-	if !builder.config.UseConfigFile {
-		log.Error().Msg("No config file used")
-		return nil, ErrConfigNotInitialized
-	}
-	return builder.configReader, nil
-}
-
-// SetServerConfig sets the server configuration and creates a new Server instance.
-//
-// It takes a ServerConfig struct as input and updates the internal configuration for the server.
-// It then creates a new Server instance using the provided configuration and stores it in the Builder.
-// On success, it returns nil. On error, it returns an error indicating the problem.
-func (builder *Builder) SetServerConfig(config ServerConfig) error {
-	builder.config.ServerConfig = &config
-	svr, err := NewServer(builder.config.ServerConfig)
+// InitDatabase initializes the database based on the provided configuration.
+func (b *Builder) InitDatabase(config *DBConfig) error {
+	b.config.dbConfig = config
+	db, err := LoadDB(config)
 	if err != nil {
-		log.Error().Err(err).Msg("Error creating server")
 		return err
 	}
-	builder.server = svr
+	b.db = db
 	return nil
 }
 
-// GetServer returns the Server instance associated with the Builder.
+// GetDatabase returns the database instance associated with the Builder.
 //
-// It checks if the server is initialized and returns an error if not. Otherwise, it returns a pointer to the Server instance.
-func (builder *Builder) GetServer() (*Server, error) {
-	if builder.server == nil {
+// It checks if the database is initialized and returns an error if not. Otherwise, it returns a pointer to the database instance.
+func (b *Builder) GetDatabase() (*Database, error) {
+	if b.db == nil {
+		return nil, ErrDBNotInitialized
+	}
+	return b.db, nil
+}
+
+// InitServer initializes the server based on the provided configuration.
+func (b *Builder) InitServer(config *ServerConfig) error {
+	b.config.serverConfig = config
+	server, err := NewServer(config)
+	if err != nil {
+		return err
+	}
+	b.server = server
+	return nil
+}
+
+// GetServer returns the server instance associated with the Builder.
+//
+// It checks if the server is initialized and returns an error if not. Otherwise, it returns a pointer to the server instance.
+func (b *Builder) GetServer() (*Server, error) {
+	if b.server == nil {
 		return nil, ErrServerNotInitialized
 	}
-	return builder.server, nil
+	return b.server, nil
 }
 
-func (builder *Builder) SetupAdmin() error {
-	if builder.db == nil {
-		log.Error().Msg("Database not initialized")
-		return ErrDBNotInitialized
-	}
-	config := AdminConfig{}
-	builder.config.AdminConfig = &config
-	admin := NewAdmin(&config, builder.db, builder.server)
-	builder.admin = admin
-
-	log.Debug().Interface("Admin", builder.admin).Msg("Admin panel setup")
-
-	return nil
+// InitAdmin initializes the admin based on the provided configuration.
+func (b *Builder) InitAdmin(config *AdminConfig) {
+	b.config.adminConfig = config
+	admin := NewAdmin(config, b.db, b.server)
+	b.admin = admin
 }
 
-func (builder *Builder) GetAdmin() *Admin {
-	return builder.admin
+// GetAdmin returns the admin instance associated with the Builder.
+//
+// It checks if the admin is initialized and returns an error if not. Otherwise, it returns a pointer to the admin instance.
+func (b *Builder) GetAdmin() (*Admin, error) {
+	if b.admin == nil {
+		return nil, ErrAdminNotInitialized
+	}
+	return b.admin, nil
 }
 
-func (builder *Builder) SetupFirebase() error {
-
-	cfg := FirebaseConfig{
-		Secret: builder.configReader.GetString("firebaseSecret"),
-	}
-
-	if cfg.Secret == "" {
-		return ErrFirebaseConfigNotProvided
-	}
-
-	firebase, err := NewFirebaseAdmin(&cfg)
+// InitFirebase initializes the Firebase Admin based on the provided configuration.
+//
+// It checks if the Firebase Admin is initialized and returns an error if not. Otherwise, it returns a pointer to the Firebase Admin instance.
+func (b *Builder) InitFirebase(config *FirebaseConfig) error {
+	b.config.firebaseConfig = config
+	fb, err := NewFirebaseAdmin(config)
 	if err != nil {
-		log.Error().Err(err).Msg("Error creating firebase")
 		return err
 	}
-
-	builder.firebaseAdmin = firebase
-
-	log.Debug().Interface("Firebase", builder.firebaseAdmin).Msg("Firebase setup")
+	b.firebase = fb
 	return nil
+}
 
+// GetFirebase returns the Firebase Admin instance associated with the Builder.
+//
+// It checks if the Firebase Admin is initialized and returns an error if not. Otherwise, it returns a pointer to the Firebase Admin instance.
+func (b *Builder) GetFirebase() (*FirebaseAdmin, error) {
+	if b.firebase == nil {
+		return nil, ErrFirebaseNotInitialized
+	}
+	return b.firebase, nil
 }

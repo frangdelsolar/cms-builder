@@ -1,12 +1,17 @@
 package builder
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/gertd/go-pluralize"
 	"github.com/gorilla/mux"
+)
+
+var (
+	ErrAdminNotInitialized = errors.New("admin not initialized")
 )
 
 type App interface{}

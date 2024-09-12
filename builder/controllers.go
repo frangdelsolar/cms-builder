@@ -209,7 +209,7 @@ func Update(id string, model App, db *Database, w http.ResponseWriter, r *http.R
 	// Marshal the updated instance into JSON
 	response, err := json.Marshal(instance)
 	if err != nil {
-		log.Error().Err(err).Msgf("Error marshalling %s record to JSON")
+		log.Error().Err(err).Msg("error marshalling record to JSON")
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}

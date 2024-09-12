@@ -10,7 +10,10 @@ import (
 func TestDefaultLogger(t *testing.T) {
 
 	// Create the logger
-	log := builder.NewLogger(nil)
+	log, err := builder.NewLogger(nil)
+	if err != nil {
+		t.Error(err)
+	}
 
 	// Log a message
 	log.Info().Msg("Testing Logger")
@@ -30,11 +33,15 @@ func TestDefaultLogger(t *testing.T) {
 
 func TestCustomLogger(t *testing.T) {
 	// Create the logger
-	log := builder.NewLogger(&builder.LoggerConfig{
+	log, err := builder.NewLogger(&builder.LoggerConfig{
 		LogLevel:    "debug",
 		WriteToFile: true,
 		LogFilePath: "logs/test.log",
 	})
+
+	if err != nil {
+		t.Error(err)
+	}
 
 	// Log a message
 	log.Info().Msg("Testing Logger")

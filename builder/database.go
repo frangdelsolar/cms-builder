@@ -1,9 +1,16 @@
 package builder
 
 import (
+	"errors"
+
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+)
+
+var (
+	ErrDBNotInitialized    = errors.New("database not initialized")
+	ErrDBConfigNotProvided = errors.New("database config not provided")
 )
 
 // Database represents a database connection managed by GORM.

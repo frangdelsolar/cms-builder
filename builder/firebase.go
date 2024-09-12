@@ -3,11 +3,16 @@ package builder
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 
 	firebase "firebase.google.com/go"
 	"firebase.google.com/go/auth"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
+)
+
+var (
+	ErrFirebaseNotInitialized = errors.New("firebase not initialized")
 )
 
 type FirebaseConfig struct {

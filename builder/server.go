@@ -1,11 +1,20 @@
 package builder
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
+	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 )
+
+var (
+	ErrServerConfigNotProvided = errors.New("database config not provided")
+	ErrServerNotInitialized    = errors.New("server not initialized")
+)
+
+const PUBLIC_DIR = "./server/public"
 
 // RouteHandler defines a structure for storing route information.
 type RouteHandler struct {
@@ -24,8 +33,9 @@ type Server struct {
 
 // ServerConfig defines the configuration options for creating a new Server.
 type ServerConfig struct {
-	Host string // Host is the hostname or IP address to listen on.
-	Port string // Port is the port number to listen on.
+	Host      string // Host is the hostname or IP address to listen on.
+	Port      string // Port is the port number to listen on.
+	CSRFToken string // CSRFToken is the CSRF token to use for CSRF protection.
 }
 
 // NewServer creates a new Server instance with the provided configuration.
@@ -47,6 +57,10 @@ func NewServer(config *ServerConfig) (*Server, error) {
 		config.Port = "8080"
 	}
 
+	if config.CSRFToken == "" {
+		config.CSRFToken = "secret"
+	}
+
 	r := mux.NewRouter()
 
 	adminRoutes := r.PathPrefix("/admin").Subrouter()
@@ -62,6 +76,18 @@ func NewServer(config *ServerConfig) (*Server, error) {
 	}
 
 	svr.AddMiddleware(loggingMiddleware)
+
+	// CSRF
+	csrfKey := []byte(config.CSRFToken) // Replace with a real secret key
+	csrfMiddleware := csrf.Protect(csrfKey, csrf.CookieName("csrftoken"))
+
+	// Middlewares
+	r.Use(loggingMiddleware)
+	r.Use(mux.CORSMethodMiddleware(r))
+	r.Use(csrfMiddleware)
+
+	// Public Routes
+	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir(PUBLIC_DIR))))
 
 	svr.AddRoute("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Home")

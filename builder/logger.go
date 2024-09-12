@@ -11,7 +11,7 @@ import (
 
 const (
 	defaultLogFilePath = "logs/default.log"
-	defaultLogLevel    = zerolog.InfoLevel
+	defaultLogLevel    = zerolog.DebugLevel
 )
 
 type Logger struct {
@@ -26,7 +26,7 @@ type LoggerConfig struct {
 }
 
 // NewLogger creates a new zerolog.Logger instance based on the provided configuration.
-func NewLogger(config *LoggerConfig) *Logger {
+func NewLogger(config *LoggerConfig) (*Logger, error) {
 
 	// Handle nil config gracefully
 	if config == nil {
@@ -67,7 +67,7 @@ func NewLogger(config *LoggerConfig) *Logger {
 			Timestamp().
 			Logger()
 
-		return &Logger{&logger}
+		return &Logger{&logger}, nil
 	}
 
 	// FILE MODE
@@ -75,7 +75,7 @@ func NewLogger(config *LoggerConfig) *Logger {
 	// Create log directory if it doesn't exist
 	err = os.MkdirAll(filepath.Dir(config.LogFilePath), os.ModePerm)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	// Open log file
@@ -86,7 +86,7 @@ func NewLogger(config *LoggerConfig) *Logger {
 	)
 
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	// Create writer
@@ -101,5 +101,5 @@ func NewLogger(config *LoggerConfig) *Logger {
 		Timestamp().
 		Logger()
 
-	return &Logger{&logger}
+	return &Logger{&logger}, nil
 }
