@@ -12,79 +12,51 @@ type Example struct {
 }
 
 func main() {
-	var config *builder.BuilderConfig
-	var engine *builder.Builder
-	var log *builder.Logger
-
-	// Setup
-	config = &builder.BuilderConfig{
-		ConfigFile: &builder.ConfigFile{
-			UseConfigFile: true,
-			ConfigPath:    "config.yaml",
-		},
+	builderCfg := builder.NewBuilderInput{
+		ReadConfigFromFile: true,
+		ConfigFilePath:     "config.yaml",
+		InitializeLogger:   true,
+		InitiliazeDB:       true,
+		InitiliazeServer:   true,
+		InitiliazeAdmin:    true,
+		InitiliazeFirebase: true,
 	}
-
-	// Build
-	engine = builder.NewBuilder(config)
-
-	// Reading a config example
-	cfg, err := engine.GetConfigReader()
+	engine, err := builder.NewBuilder(&builderCfg)
 	if err != nil {
 		panic(err)
 	}
 
-	loggerConfig := builder.LoggerConfig{
-		LogLevel:    cfg.GetString("logLevel"),
-		LogFilePath: cfg.GetString("logFilePath"),
-		WriteToFile: cfg.GetBool("logWriteToFile"),
-	}
-	engine.SetLoggerConfig(loggerConfig)
-
-	// Logging example
-	log, err = engine.GetLogger()
+	log, err := engine.GetLogger()
 	if err != nil {
 		panic(err)
 	}
-	log.Info().Msg("Logger setup")
+	log.Info().Msg("Logger initialized correctly")
 
-	// DB setup
-	dbConfig := builder.DBConfig{
-		URL:  "",
-		Path: cfg.GetString("dbFile"),
-	}
-	engine.ConnectDB(&dbConfig)
-
-	log.Debug().Interface("DBConfig", dbConfig).Msg("DB setup")
-
-	// Server setup
-	serverConfig := builder.ServerConfig{
-		Host: cfg.GetString("host"),
-		Port: cfg.GetString("port"),
-	}
-	err = engine.SetServerConfig(serverConfig)
+	db, err := engine.GetDatabase()
 	if err != nil {
-		log.Error().Err(err).Msg("Error setting up server")
+		panic(err)
+	}
+	log.Info().Interface("Database", db).Msg("Database initialized correctly")
+
+	server, err := engine.GetServer()
+	if err != nil {
 		panic(err)
 	}
 
-	svr, err := engine.GetServer()
+	log.Info().Msg("Server initialized correctly")
+
+	admin, err := engine.GetAdmin()
 	if err != nil {
-		log.Error().Err(err).Msg("Error getting server")
 		panic(err)
 	}
-
-	// Admin setup
-	err = engine.SetupAdmin()
-	if err != nil {
-		log.Error().Err(err).Msg("Error setting up admin panel")
-		panic(err)
-	}
-
-	admin := engine.GetAdmin()
 	admin.Register(&Example{})
 
-	engine.SetupFirebase()
+	fb, err := engine.GetFirebase()
+	if err != nil {
+		panic(err)
+	}
+	log.Info().Interface("Firebase", fb).Msg("Firebase initialized correctly")
 
-	svr.Run()
+	server.Run()
 
 }
