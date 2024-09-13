@@ -1,10 +1,11 @@
 package builder_test
 
 import (
-	"builder"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/frangdelsolar/cms/builder"
 )
 
 func TestDefaultLogger(t *testing.T) {

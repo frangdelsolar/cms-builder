@@ -2,10 +2,10 @@ module implementation
 
 go 1.22.4
 
-replace cms/builder => /Users/frangdelsolar/Desktop/code/cms/builder
+replace github.com/frangdelsolar/cms/builder => /Users/frangdelsolar/Desktop/code/cms/builder
 
 require (
-	cms/builder v0.0.0-00010101000000-000000000000
+	github.com/frangdelsolar/cms/builder v0.0.0-00010101000000-000000000000
 	gorm.io/gorm v1.25.11
 )
 

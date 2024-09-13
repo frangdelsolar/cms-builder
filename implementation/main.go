@@ -1,7 +1,7 @@
 package main
 
 import (
-	builder "cms/builder"
+	builder "github.com/frangdelsolar/cms/builder"
 
 	"gorm.io/gorm"
 )
