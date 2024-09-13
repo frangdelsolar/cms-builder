@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/frangdelsolar/cms/builder"
+	"builder"
 )
 
 func TestDefaultLogger(t *testing.T) {

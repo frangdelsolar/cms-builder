@@ -1,4 +1,4 @@
-module github.com/frangdelsolar/cms/builder
+module builder
 
 go 1.22.4
 
