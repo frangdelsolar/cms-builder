@@ -115,8 +115,9 @@ func NewBuilder(input *NewBuilderInput) (*Builder, error) {
 		return builder, nil
 	}
 	builder.InitServer(&ServerConfig{
-		Host: config.GetString("serverHost"),
-		Port: config.GetString("serverPort"),
+		Host:      config.GetString("serverHost"),
+		Port:      config.GetString("serverPort"),
+		CSRFToken: config.GetString("csrfToken"),
 	})
 
 	// Admin
