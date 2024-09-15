@@ -103,5 +103,4 @@ func NewFirebaseAdmin(cfg *FirebaseConfig) (*FirebaseAdmin, error) {
 	log.Debug().Msg("Initialized Firebase Admin")
 
 	return &output, nil
-
 }

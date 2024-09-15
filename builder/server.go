@@ -14,13 +14,14 @@ var (
 	ErrServerNotInitialized    = errors.New("server not initialized")
 )
 
-const PUBLIC_DIR = "./server/public"
+// const PUBLIC_DIR = "./server/public"
 
 // RouteHandler defines a structure for storing route information.
 type RouteHandler struct {
-	route   string                                   // route is the path for the route. i.e. /users/{id}
-	handler func(http.ResponseWriter, *http.Request) // handler is the handler for the route
-	name    string                                   // name is the name of the route
+	route        string                                   // route is the path for the route. i.e. /users/{id}
+	handler      func(http.ResponseWriter, *http.Request) // handler is the handler for the route
+	name         string                                   // name is the name of the route
+	requiresAuth bool                                     // requiresAuth is a flag indicating if the route requires authentication
 }
 
 // Server defines a structure for managing an HTTP server with middleware and routing capabilities.
@@ -29,6 +30,7 @@ type Server struct {
 	middlewares  []func(http.Handler) http.Handler // middlewares is a slice of middleware functions
 	routes       []RouteHandler                    // routes is a slice of route handlers
 	root         *mux.Router                       // root is the root handler for the server
+	builder      *Builder
 }
 
 // ServerConfig defines the configuration options for creating a new Server.
@@ -36,6 +38,7 @@ type ServerConfig struct {
 	Host      string // Host is the hostname or IP address to listen on.
 	Port      string // Port is the port number to listen on.
 	CSRFToken string // CSRFToken is the CSRF token to use for CSRF protection.
+	Builder   *Builder
 }
 
 // NewServer creates a new Server instance with the provided configuration.
@@ -73,6 +76,7 @@ func NewServer(config *ServerConfig) (*Server, error) {
 		middlewares: []func(http.Handler) http.Handler{},
 		routes:      []RouteHandler{},
 		root:        adminRoutes,
+		builder:     config.Builder,
 	}
 
 	svr.AddMiddleware(loggingMiddleware)
@@ -87,11 +91,11 @@ func NewServer(config *ServerConfig) (*Server, error) {
 	// r.Use(csrfMiddleware)
 
 	// Public Routes
-	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir(PUBLIC_DIR))))
+	// r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir(PUBLIC_DIR))))
 
 	svr.AddRoute("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Home")
-	}, "home")
+	}, "home", false)
 
 	return svr, nil
 }
@@ -119,9 +123,22 @@ func (s *Server) Run() error {
 		s.Handler = middleware(s.Handler)
 	}
 
+	log.Debug().Msg("Registering unathenticated routes:")
 	for _, route := range s.routes {
-		log.Debug().Msgf("Adding route: %s", route.route)
-		s.root.HandleFunc(route.route, route.handler).Name(route.name)
+		if !route.requiresAuth {
+			log.Debug().Msg(route.route)
+			s.root.HandleFunc(route.route, route.handler).Name(route.name)
+		}
+	}
+
+	s.root.Use(s.builder.authMiddleware)
+
+	log.Debug().Msg("Registering authenticated routes:")
+	for _, route := range s.routes {
+		if route.requiresAuth {
+			log.Debug().Msg(route.route)
+			s.root.HandleFunc(route.route, route.handler).Name(route.name)
+		}
 	}
 
 	return s.ListenAndServe()
@@ -152,10 +169,11 @@ func (s *Server) AddMiddleware(middleware func(http.Handler) http.Handler) {
 //
 // url, err := r.Get("getUser").URL("id", "123") =>
 // "/users/123"
-func (s *Server) AddRoute(route string, handler func(w http.ResponseWriter, r *http.Request), name string) {
+func (s *Server) AddRoute(route string, handler func(w http.ResponseWriter, r *http.Request), name string, requiresAuth bool) {
 	s.routes = append(s.routes, RouteHandler{
-		route:   route,
-		handler: handler,
-		name:    name,
+		route:        route,
+		handler:      handler,
+		name:         name,
+		requiresAuth: requiresAuth,
 	})
 }

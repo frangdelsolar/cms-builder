@@ -30,7 +30,6 @@ type BuilderConfig struct {
 	loggerConfig   *LoggerConfig   // Embedded configuration for the logger (optional)
 	dbConfig       *DBConfig       // Embedded configuration for the database (optional)
 	serverConfig   *ServerConfig   // Embedded configuration for the server (optional)
-	adminConfig    *AdminConfig    // Embedded configuration for the admin (optional)
 	firebaseConfig *FirebaseConfig // Embedded configuration for firebase (optional)
 }
 
@@ -69,7 +68,6 @@ func NewBuilder(input *NewBuilderInput) (*Builder, error) {
 			loggerConfig:   &LoggerConfig{},
 			dbConfig:       &DBConfig{},
 			serverConfig:   &ServerConfig{},
-			adminConfig:    &AdminConfig{},
 			firebaseConfig: &FirebaseConfig{},
 		},
 	}
@@ -114,24 +112,25 @@ func NewBuilder(input *NewBuilderInput) (*Builder, error) {
 	if !input.InitiliazeServer {
 		return builder, nil
 	}
-	builder.InitServer(&ServerConfig{
+	builder.initServer(&ServerConfig{
 		Host:      config.GetString("serverHost"),
 		Port:      config.GetString("serverPort"),
 		CSRFToken: config.GetString("csrfToken"),
+		Builder:   builder,
 	})
 
 	// Admin
 	if input.InitiliazeAdmin {
-		builder.InitAdmin(nil)
+		builder.initAdmin()
 	}
 
 	// Firebase
 	if input.InitiliazeFirebase {
-		builder.InitFirebase(&FirebaseConfig{
+		builder.initFirebase(&FirebaseConfig{
 			Secret: config.GetString("firebaseSecret"),
 		})
 
-		builder.InitAuth()
+		builder.initAuth()
 	}
 
 	return builder, nil
@@ -198,8 +197,8 @@ func (b *Builder) GetDatabase() (*Database, error) {
 	return b.db, nil
 }
 
-// InitServer initializes the server based on the provided configuration.
-func (b *Builder) InitServer(config *ServerConfig) error {
+// initServer initializes the server based on the provided configuration.
+func (b *Builder) initServer(config *ServerConfig) error {
 	b.config.serverConfig = config
 	server, err := NewServer(config)
 	if err != nil {
@@ -219,10 +218,9 @@ func (b *Builder) GetServer() (*Server, error) {
 	return b.server, nil
 }
 
-// InitAdmin initializes the admin based on the provided configuration.
-func (b *Builder) InitAdmin(config *AdminConfig) {
-	b.config.adminConfig = config
-	admin := NewAdmin(config, b.db, b.server)
+// initAdmin initializes the admin based on the provided configuration.
+func (b *Builder) initAdmin() {
+	admin := NewAdmin(b.db, b.server)
 	b.admin = admin
 }
 
@@ -236,10 +234,10 @@ func (b *Builder) GetAdmin() (*Admin, error) {
 	return b.admin, nil
 }
 
-// InitFirebase initializes the Firebase Admin based on the provided configuration.
+// initFirebase initializes the Firebase Admin based on the provided configuration.
 //
 // It checks if the Firebase Admin is initialized and returns an error if not. Otherwise, it returns a pointer to the Firebase Admin instance.
-func (b *Builder) InitFirebase(config *FirebaseConfig) error {
+func (b *Builder) initFirebase(config *FirebaseConfig) error {
 	b.config.firebaseConfig = config
 	fb, err := NewFirebaseAdmin(config)
 	if err != nil {
@@ -260,11 +258,10 @@ func (b *Builder) GetFirebase() (*FirebaseAdmin, error) {
 	return b.firebase, nil
 }
 
-func (b *Builder) InitAuth() {
+func (b *Builder) initAuth() {
 	admin := b.admin
 	admin.Register(&User{})
 
 	svr := b.server
-	svr.AddRoute("/auth/register", b.RegisterUserController, "register")
-	svr.AddRoute("/auth/login", b.LoginController, "login")
+	svr.AddRoute("/auth/register", b.RegisterUserController, "register", false)
 }

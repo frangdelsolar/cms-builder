@@ -38,10 +38,14 @@ func (db *Database) Save() error {
 	return nil
 }
 
+// Find runs a query on the database using the provided query string and stores the
+// results in the provided entity.
+//
+// The query string should be a valid GORM query, such as "name = ?" or "id > ?".
+// The entity should be a pointer to a struct that matches the shape of the data
+// being queried.
 func (db *Database) Find(entity interface{}, query string) {
 	db.DB.Where(query).Find(entity)
-
-	log.Debug().Interface("Entity", entity).Msg("Found Entity")
 }
 
 // DBConfig defines the configuration options for connecting to a database.
