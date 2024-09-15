@@ -38,6 +38,12 @@ func (db *Database) Save() error {
 	return nil
 }
 
+func (db *Database) Find(entity interface{}, query string) {
+	db.DB.Where(query).Find(entity)
+
+	log.Debug().Interface("Entity", entity).Msg("Found Entity")
+}
+
 // DBConfig defines the configuration options for connecting to a database.
 type DBConfig struct {
 	// URL: Used for connecting to a PostgreSQL database.

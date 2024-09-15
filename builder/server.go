@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gorilla/csrf"
+	// "github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 )
 
@@ -78,13 +78,13 @@ func NewServer(config *ServerConfig) (*Server, error) {
 	svr.AddMiddleware(loggingMiddleware)
 
 	// CSRF
-	csrfKey := []byte(config.CSRFToken) // Replace with a real secret key
-	csrfMiddleware := csrf.Protect(csrfKey, csrf.CookieName("csrftoken"))
+	// csrfKey := []byte(config.CSRFToken) // Replace with a real secret key
+	// csrfMiddleware := csrf.Protect(csrfKey, csrf.CookieName("csrftoken"))
 
 	// Middlewares
 	r.Use(loggingMiddleware)
 	r.Use(mux.CORSMethodMiddleware(r))
-	r.Use(csrfMiddleware)
+	// r.Use(csrfMiddleware)
 
 	// Public Routes
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir(PUBLIC_DIR))))
@@ -120,6 +120,7 @@ func (s *Server) Run() error {
 	}
 
 	for _, route := range s.routes {
+		log.Debug().Msgf("Adding route: %s", route.route)
 		s.root.HandleFunc(route.route, route.handler).Name(route.name)
 	}
 

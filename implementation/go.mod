@@ -2,13 +2,6 @@ module implementation
 
 go 1.22.4
 
-replace github.com/frangdelsolar/cms/builder => /Users/frangdelsolar/Desktop/code/cms/builder
-
-require (
-	github.com/frangdelsolar/cms/builder v0.0.0-00010101000000-000000000000
-	gorm.io/gorm v1.25.11
-)
-
 require (
 	cloud.google.com/go v0.112.1 // indirect
 	cloud.google.com/go/compute v1.24.0 // indirect
@@ -19,6 +12,7 @@ require (
 	cloud.google.com/go/storage v1.38.0 // indirect
 	firebase.google.com/go v3.13.0+incompatible // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
+	github.com/frangdelsolar/cms/builder v0.0.0-20240913121704-f6fb75e4a5b8 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/gertd/go-pluralize v0.2.1 // indirect
 	github.com/go-logr/logr v1.4.1 // indirect
@@ -81,4 +75,5 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/driver/postgres v1.5.9 // indirect
 	gorm.io/driver/sqlite v1.5.6 // indirect
+	gorm.io/gorm v1.25.11 // indirect
 )

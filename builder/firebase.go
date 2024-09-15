@@ -7,7 +7,6 @@ import (
 
 	firebase "firebase.google.com/go"
 	"firebase.google.com/go/auth"
-	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
 )
 
@@ -35,9 +34,9 @@ type FirebaseAdmin struct {
 // - *auth.UserRecord: the user record of the newly created user.
 // - error: an error if the user creation fails.
 type RegisterUserInput struct {
-	Name     string
-	Email    string
-	Password string
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 func (fa *FirebaseAdmin) RegisterUser(ctx context.Context, input RegisterUserInput) (*auth.UserRecord, error) {
@@ -83,14 +82,9 @@ func NewFirebaseAdmin(cfg *FirebaseConfig) (*FirebaseAdmin, error) {
 		return nil, err
 	}
 
-	creds, err := google.CredentialsFromJSON(context.Background(), []byte(decoded))
-	if err != nil {
-		log.Err(err).Msg("error initializing firebase")
-		return &output, err
-	}
+	creds := option.WithCredentialsJSON(decoded)
 
-	opt := option.WithCredentials(creds)
-	app, err := firebase.NewApp(context.Background(), nil, opt)
+	app, err := firebase.NewApp(context.Background(), nil, creds)
 	if err != nil {
 		log.Err(err).Msg("error initializing firebase")
 		return &output, err

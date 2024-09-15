@@ -130,6 +130,8 @@ func NewBuilder(input *NewBuilderInput) (*Builder, error) {
 		builder.InitFirebase(&FirebaseConfig{
 			Secret: config.GetString("firebaseSecret"),
 		})
+
+		builder.InitAuth()
 	}
 
 	return builder, nil
@@ -244,6 +246,7 @@ func (b *Builder) InitFirebase(config *FirebaseConfig) error {
 		return err
 	}
 	b.firebase = fb
+
 	return nil
 }
 
@@ -255,4 +258,13 @@ func (b *Builder) GetFirebase() (*FirebaseAdmin, error) {
 		return nil, ErrFirebaseNotInitialized
 	}
 	return b.firebase, nil
+}
+
+func (b *Builder) InitAuth() {
+	admin := b.admin
+	admin.Register(&User{})
+
+	svr := b.server
+	svr.AddRoute("/auth/register", b.RegisterUserController, "register")
+	svr.AddRoute("/auth/login", b.LoginController, "login")
 }
