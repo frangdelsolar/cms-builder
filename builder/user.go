@@ -84,7 +84,7 @@ func (user *User) Update(name string, email string) error {
 // Returns:
 // - error: an error if the name is empty, otherwise nil.
 func NameValidator(name string) FieldValidationError {
-	output := NewFieldValidationError(name)
+	output := NewFieldValidationError("name")
 	if name == "" {
 		output.Error = "name cannot be empty"
 		return output
@@ -101,7 +101,7 @@ func NameValidator(name string) FieldValidationError {
 // Returns:
 // - error: an error if the email is empty or has an invalid format, otherwise nil.
 func EmailValidator(email string) FieldValidationError {
-	output := NewFieldValidationError(email)
+	output := NewFieldValidationError("email")
 
 	if email == "" {
 		output.Error = "email cannot be empty"

@@ -22,8 +22,7 @@ type FieldValidationError struct {
 	Error string
 }
 
-func NewFieldValidationError(field interface{}) FieldValidationError {
-	fieldName := reflect.ValueOf(field).Type().Name()
+func NewFieldValidationError(fieldName string) FieldValidationError {
 	return FieldValidationError{
 		Field: fieldName,
 		Error: "",
@@ -202,7 +201,7 @@ func apiList(app App, db *Database) HandlerFunc {
 			return
 		}
 
-		writeJsonResponse(w, response)
+		writeJsonResponse(w, response, http.StatusOK)
 	}
 }
 
@@ -245,7 +244,7 @@ func apiDetail(app App, db *Database) HandlerFunc {
 			return
 		}
 
-		writeJsonResponse(w, response)
+		writeJsonResponse(w, response, http.StatusOK)
 	}
 }
 
@@ -314,7 +313,7 @@ func apiNew(app App, db *Database) HandlerFunc {
 			return
 		}
 
-		writeJsonResponse(w, responseBytes)
+		writeJsonResponse(w, responseBytes, http.StatusOK)
 	}
 }
 
@@ -376,7 +375,13 @@ func apiUpdate(app App, db *Database) HandlerFunc {
 			return
 		}
 		if len(validationErrors.Errors) > 0 {
-			handleError(w, fmt.Errorf("validation errors: %v", validationErrors), "Validation failed")
+			response, err := json.Marshal(validationErrors)
+
+			if err != nil {
+				handleError(w, err, "Error marshalling response")
+				return
+			}
+			writeJsonResponse(w, response, http.StatusBadRequest)
 			return
 		}
 
@@ -394,7 +399,7 @@ func apiUpdate(app App, db *Database) HandlerFunc {
 			return
 		}
 
-		writeJsonResponse(w, response)
+		writeJsonResponse(w, response, http.StatusOK)
 	}
 }
 
@@ -522,10 +527,10 @@ func appendUserDataToRequestBody(bytes []byte, r *http.Request, isNewRecord bool
 // writeJsonResponse writes a JSON response to the given http.ResponseWriter.
 // It sets the Content-Type header to application/json, the status code to 200 OK,
 // and writes the provided data as the response body.
-func writeJsonResponse(w http.ResponseWriter, data []byte) {
+func writeJsonResponse(w http.ResponseWriter, data []byte, status int) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK) // 200 OK
-	w.Write(data)                // Send the JSON response
+	w.WriteHeader(status) // 200 OK
+	w.Write(data)         // Send the JSON response
 }
 
 /*
