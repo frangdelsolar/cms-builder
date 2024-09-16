@@ -207,8 +207,7 @@ func apiDetail(app App, db *Database) HandlerFunc {
 		instance := createInstanceForUndeterminedType(app.Model)
 
 		// Query the database to find the record by ID
-		result := getDBInstanceById(db, instanceId, instance, userId, app.SkipUserBinding)
-
+		result := db.FindById(instanceId, instance, userId, app.SkipUserBinding)
 		if result.Error != nil {
 			handleError(w, result.Error, result.Error.Error())
 			return
@@ -320,7 +319,7 @@ func apiUpdate(app App, db *Database) HandlerFunc {
 		instance := createInstanceForUndeterminedType(app.Model)
 
 		// Query the database to find the record by ID
-		result := getDBInstanceById(db, instanceId, app.Model, userId, app.SkipUserBinding)
+		result := db.FindById(instanceId, app.Model, userId, app.SkipUserBinding)
 		if result.Error != nil {
 			handleError(w, result.Error, result.Error.Error())
 			return
@@ -357,14 +356,13 @@ func apiUpdate(app App, db *Database) HandlerFunc {
 		}
 
 		// Update the record in the database
-		result = db.DB.Save(instance)
+		result = db.Save(instance)
 		if result.Error != nil {
 			handleError(w, result.Error, result.Error.Error())
 			return
 		}
 
 		// Convert the instance to JSON and send it
-
 		response, err := json.Marshal(instance)
 		if err != nil {
 			handleError(w, err, "Error marshalling response")
@@ -398,14 +396,14 @@ func apiDelete(app App, db *Database) HandlerFunc {
 		userId := r.Header.Get("user_id")
 
 		// Query the database to find the record by ID
-		dbInstance := getDBInstanceById(db, instanceId, app.Model, userId, app.SkipUserBinding)
+		dbInstance := db.FindById(instanceId, app.Model, userId, app.SkipUserBinding)
 		if dbInstance.Error != nil {
 			handleError(w, dbInstance.Error, dbInstance.Error.Error())
 			return
 		}
 
 		// Delete the record by ID
-		result := db.DB.Delete(dbInstance)
+		result := db.Delete(dbInstance)
 		if result.Error != nil {
 			handleError(w, result.Error, result.Error.Error())
 			return
@@ -543,21 +541,6 @@ func createSliceForUndeterminedType(model interface{}) (interface{}, error) {
 /*
 	OTHER HELPERS
 */
-
-// getDBInstanceById retrieves an entity by its ID from the database, taking into account user binding if applicable.
-//
-// If skipUserBinding is true, it will use the FindById method to find the record by ID.
-// Otherwise, it will use the FindByUserIdAndId method to find the record by ID and the associated user ID.
-func getDBInstanceById(db *Database, instanceId string, instance interface{}, userId string, skipUserBinding bool) *gorm.DB {
-	// Query the database to find the record by ID
-	var result *gorm.DB
-	if skipUserBinding {
-		result = db.FindById(instanceId, instance)
-	} else {
-		result = db.FindByUserIdAndId(instanceId, instance, userId)
-	}
-	return result
-}
 
 // validateInterface takes an interface and checks if it implements the Model interface.
 // If it does, it calls the Validate() method and returns the validation errors if any.

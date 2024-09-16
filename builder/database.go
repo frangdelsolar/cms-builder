@@ -19,16 +19,12 @@ type Database struct {
 }
 
 // FindById retrieves an entity by its ID from the database.
-func (db *Database) FindById(id string, entity interface{}) *gorm.DB {
-	return db.DB.Where("id = ?", id).First(entity)
-}
-
-// FindByUserIdAndId retrieves an entity by its ID and the associated user ID from the database.
-func (db *Database) FindByUserIdAndId(id string, entity interface{}, userId string) *gorm.DB {
-
-	log.Debug().Msg("FindByUserIdAndId")
-
-	return db.DB.Where("id = ? AND created_by_id = ?", id, userId).First(entity)
+func (db *Database) FindById(id string, entity interface{}, userId string, skipUserBinding bool) *gorm.DB {
+	if skipUserBinding {
+		return db.DB.Where("id = ?", id).First(entity)
+	} else {
+		return db.DB.Where("id = ? AND created_by_id = ?", id, userId).First(entity)
+	}
 }
 
 // FindAll retrieves all entities from the database.
@@ -45,11 +41,11 @@ func (db *Database) Create(entity interface{}) *gorm.DB {
 	return db.DB.Create(entity)
 }
 
-func (db *Database) Delete() error {
-	return nil
+func (db *Database) Delete(entity interface{}) *gorm.DB {
+	return db.DB.Delete(entity)
 }
-func (db *Database) Save() error {
-	return nil
+func (db *Database) Save(entity interface{}) *gorm.DB {
+	return db.DB.Save(entity)
 }
 
 // Find runs a query on the database using the provided query string and stores the
