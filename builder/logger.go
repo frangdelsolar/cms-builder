@@ -10,25 +10,31 @@ import (
 )
 
 const (
+	// defaultLogFilePath defines the default path for the log file
 	defaultLogFilePath = "logs/default.log"
-	defaultLogLevel    = zerolog.DebugLevel
+	// defaultLogLevel defines the default logging level
+	defaultLogLevel = zerolog.DebugLevel
 )
 
+// Logger wraps a zerolog.Logger instance with additional convenience methods
 type Logger struct {
 	*zerolog.Logger
 }
 
-// LoggerConfig defines the configuration options for the logger.
+// LoggerConfig defines the configuration options for the logger
 type LoggerConfig struct {
-	LogLevel    string `json:"logLevel"`
-	WriteToFile bool   `json:"writeToFile"`
+	// LogLevel defines the desired logging level (e.g., "debug", "info", "warn", "error")
+	LogLevel string `json:"logLevel"`
+	// WriteToFile specifies whether logs should be written to a file
+	WriteToFile bool `json:"writeToFile"`
+	// LogFilePath defines the path to the log file
 	LogFilePath string `json:"logFilePath"`
 }
 
 // NewLogger creates a new zerolog.Logger instance based on the provided configuration.
 func NewLogger(config *LoggerConfig) (*Logger, error) {
 
-	// Handle nil config gracefully
+	// Handle nil config by providing a default configuration
 	if config == nil {
 		config = &LoggerConfig{
 			LogLevel:    defaultLogLevel.String(),
@@ -41,13 +47,13 @@ func NewLogger(config *LoggerConfig) (*Logger, error) {
 	level, err := zerolog.ParseLevel(config.LogLevel)
 	if err != nil {
 		fmt.Printf("Invalid log level: %s\n", config.LogLevel)
-		level = defaultLogLevel
+		level = defaultLogLevel // Use default level if invalid
 	}
 
-	// Set global level
+	// Set global log level for zerolog
 	zerolog.SetGlobalLevel(level)
 
-	// Configure caller
+	// Configure caller information format
 	zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
 		path := filepath.Dir(file)
 		file = filepath.Base(path) + "/" + filepath.Base(file)
@@ -56,7 +62,7 @@ func NewLogger(config *LoggerConfig) (*Logger, error) {
 
 	var logger zerolog.Logger
 
-	// CONSOLE MODE
+	// CONSOLE MODE (if WriteToFile is false)
 	if !config.WriteToFile {
 		logger = zerolog.New(zerolog.ConsoleWriter{
 			Out:        os.Stdout,
@@ -70,7 +76,7 @@ func NewLogger(config *LoggerConfig) (*Logger, error) {
 		return &Logger{&logger}, nil
 	}
 
-	// FILE MODE
+	// FILE MODE (if WriteToFile is true)
 
 	// Create log directory if it doesn't exist
 	err = os.MkdirAll(filepath.Dir(config.LogFilePath), os.ModePerm)
@@ -78,7 +84,7 @@ func NewLogger(config *LoggerConfig) (*Logger, error) {
 		return nil, err
 	}
 
-	// Open log file
+	// Open log file for appending, creating if necessary
 	logFile, err := os.OpenFile(
 		config.LogFilePath,
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
@@ -89,7 +95,7 @@ func NewLogger(config *LoggerConfig) (*Logger, error) {
 		return nil, err
 	}
 
-	// Create writer
+	// Create a writer that logs to both console and file
 	writer := zerolog.MultiLevelWriter(zerolog.ConsoleWriter{
 		Out:        os.Stdout,
 		TimeFormat: "15:04:05",

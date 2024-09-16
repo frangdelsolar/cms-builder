@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"reflect"
+	"strconv"
 
 	"github.com/gorilla/mux"
 	"gorm.io/gorm"
@@ -16,10 +17,25 @@ var (
 	ErrAdminNotInitialized = errors.New("admin not initialized")
 )
 
-type App interface{}
+type Entity interface{}
+
+type App struct {
+	Model           Entity
+	SkipUserBinding bool // Means that theres a CreatedBy field in the model that will be used for filtering and shit
+}
+
+// Name returns the name of the model as a string, lowercased and without the package name.
+func (a *App) Name() string {
+	return GetStructName(a.Model)
+}
+
+// PluralName returns the plural form of the name of the model as a string.
+func (a *App) PluralName() string {
+	return Pluralize(a.Name())
+}
 
 type Admin struct {
-	Apps   []App
+	Models []Entity
 	db     *Database
 	server *Server
 }
@@ -35,7 +51,7 @@ type Admin struct {
 // - *Admin: A pointer to the new Admin instance.
 func NewAdmin(db *Database, server *Server) *Admin {
 	return &Admin{
-		Apps:   make([]App, 0),
+		Models: make([]Entity, 0),
 		db:     db,
 		server: server,
 	}
@@ -43,16 +59,18 @@ func NewAdmin(db *Database, server *Server) *Admin {
 
 // Register adds a new App to the Admin instance, applies database migration, and
 // registers API routes for CRUD operations.
-func (a *Admin) Register(app App) {
-	log.Debug().Interface("App", app).Msg("Registering app")
+func (a *Admin) Register(model interface{}, skipUserBinding bool) {
+	log.Debug().Interface("App", model).Msg("Registering app")
 
-	a.Apps = append(a.Apps, app)
+	app := App{
+		Model:           model,
+		SkipUserBinding: skipUserBinding,
+	}
 
-	// Apply database migration
-	a.db.Migrate(app)
+	a.Models = append(a.Models, app.Model)
+	a.db.Migrate(app.Model)
 
-	appName := GetStructName(app)
-	a.registerAPIRoutes(Pluralize(appName), app)
+	a.registerAPIRoutes(app)
 }
 
 // registerAPIRoutes registers API routes for the given App.
@@ -67,44 +85,48 @@ func (a *Admin) Register(app App) {
 //   - GET /{appName}/{id}: Returns the App instance with the given ID.
 //   - DELETE /{appName}/{id}/delete: Deletes the App instance with the given ID.
 //   - PUT /{appName}/{id}/update: Updates the App instance with the given ID.
-func (a *Admin) registerAPIRoutes(appName string, app interface{}) {
-	baseRoute := "/api/" + appName
+func (a *Admin) registerAPIRoutes(app App) {
+	baseRoute := "/api/" + app.PluralName()
 
 	a.server.AddRoute(
 		baseRoute,
 		apiList(app, a.db),
-		appName+"-list",
+		app.Name()+"-list",
 		true,
 	)
 
 	a.server.AddRoute(
 		baseRoute+"/new",
 		apiNew(app, a.db),
-		appName+"-new",
+		app.Name()+"-new",
 		true,
 	)
 
 	a.server.AddRoute(
 		baseRoute+"/{id}",
-		apiGet(app, a.db),
-		appName+"-get",
+		apiDetail(app, a.db),
+		app.Name()+"-get",
 		true,
 	)
 
 	a.server.AddRoute(
 		baseRoute+"/{id}/delete",
 		apiDelete(app, a.db),
-		appName+"-delete",
+		app.Name()+"-delete",
 		true,
 	)
 
 	a.server.AddRoute(
 		baseRoute+"/{id}/update",
 		apiUpdate(app, a.db),
-		appName+"-update",
+		app.Name()+"-update",
 		true,
 	)
 }
+
+/*
+	API HANDLERS
+*/
 
 // apiList returns a handler function that responds to GET requests on the
 // list endpoint, e.g. /api/users.
@@ -114,48 +136,88 @@ func (a *Admin) registerAPIRoutes(appName string, app interface{}) {
 //
 // It will also handle errors and return a 500 Internal Server Error if the
 // error is not a gorm.ErrRecordNotFound.
-func apiList(model App, db *Database) func(w http.ResponseWriter, r *http.Request) {
+func apiList(app App, db *Database) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// get out if not GET
-		method := r.Method
-		if method != "GET" {
-			fmt.Fprintf(w, "Method not implemented")
+
+		err := validateRequestMethod(r, http.MethodGet)
+		if err != nil {
+			handleError(w, err, err.Error())
 			return
 		}
 
-		// Get the type of the model
-		modelType := reflect.TypeOf(model)
+		// Get the user ID from the request.
+		userId := r.Header.Get("user_id")
 
-		if modelType.Kind() == reflect.Ptr {
-			modelType = modelType.Elem()
-		}
-		if modelType.Kind() != reflect.Struct {
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		// Create slice to store the model instances.
+		instances, err := createSliceForUndeterminedType(app.Model)
+		if err != nil {
+			handleError(w, err, err.Error())
 			return
 		}
 
-		// Create a slice to hold the results
-		sliceType := reflect.SliceOf(modelType)
-		entities := reflect.New(sliceType).Interface()
+		var result *gorm.DB
+		if app.SkipUserBinding {
+			result = db.FindAll(instances)
+		} else {
+			result = db.FindAllByUserId(instances, userId)
+		}
 
-		result := db.GetAll(entities)
 		if result.Error != nil {
-			log.Error().Err(result.Error).Msgf("Error fetching %s records", model)
+			handleError(w, result.Error, result.Error.Error())
+			return
+		}
+
+		response, err := marshalInstancesToJSON(instances)
+		if err != nil {
+			handleError(w, err, err.Error())
+			return
+		}
+
+		writeJsonResponse(w, response)
+	}
+}
+
+// apiDetail returns a handler function that responds to GET requests on the
+// details endpoint, e.g. /api/users/{id}.
+//
+// The handler function will return a JSON response containing the requested
+// record.
+//
+// It will also handle errors and return a 404 Not Found if the error is a
+// gorm.ErrRecordNotFound, or a 500 Internal Server Error if the error is
+// not a gorm.ErrRecordNotFound.
+func apiDetail(app App, db *Database) HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		err := validateRequestMethod(r, http.MethodGet)
+		if err != nil {
+			handleError(w, err, err.Error())
+			return
+		}
+
+		// Retrieve parameters from the request
+		instanceId := mux.Vars(r)["id"]
+		userId := r.Header.Get("user_id")
+
+		// Create a new instance of the model
+		instance := createInstanceForUndeterminedType(app.Model)
+
+		// Query the database to find the record by ID
+		result := getDBInstanceById(db, instanceId, instance, userId, app.SkipUserBinding)
+
+		if result.Error != nil {
+			handleError(w, result.Error, result.Error.Error())
 			return
 		}
 
 		// Marshal the results into JSON
-		entitiesValue := reflect.ValueOf(entities).Elem()
-		response, err := json.Marshal(entitiesValue.Interface())
+		response, err := json.Marshal(instance)
 		if err != nil {
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			handleError(w, err, err.Error())
 			return
 		}
 
-		// Set the content type to application/json
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK) // 200 OK
-		w.Write(response)            // Send the JSON response
+		writeJsonResponse(w, response)
 	}
 }
 
@@ -167,115 +229,53 @@ func apiList(model App, db *Database) func(w http.ResponseWriter, r *http.Reques
 //
 // It will also handle errors and return a 500 Internal Server Error if the
 // error is not a gorm.ErrRecordNotFound.
-func apiNew(model App, db *Database) func(w http.ResponseWriter, r *http.Request) {
+func apiNew(app App, db *Database) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		// get out if not GET
-		method := r.Method
-		if method != "POST" {
-			fmt.Fprintf(w, "Not implemented")
-			return
-		}
-
-		defer r.Body.Close()
-
-		bodyBytes, err := io.ReadAll(r.Body)
+		err := validateRequestMethod(r, http.MethodPost)
 		if err != nil {
-			log.Error().Err(err).Msgf("Error reading request body for creation")
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			handleError(w, err, err.Error())
 			return
 		}
 
-		log.Debug().Interface("bodyBytes", string(bodyBytes)).Msg("Request")
-
-		// Create a new instance of the model
-		instanceType := reflect.TypeOf(model)
-		instance := reflect.New(instanceType).Interface()
-
-		// Unmarshal the bodyBytes into the instance
-		err = json.Unmarshal(bodyBytes, instance)
+		// Will read bytes, append user data and pack the bytes again to be processed
+		bodyBytes, err := readRequestBody(r)
 		if err != nil {
-			log.Error().Err(err).Msgf("Error unmarshalling request body for creation")
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			handleError(w, err, err.Error())
 			return
 		}
 
-		log.Debug().Interface("instance", instance).Msgf("Creating new")
+		updatedBytes, err := appendUserDataToRequestBody(bodyBytes, r, true)
+		if err != nil {
+			handleError(w, err, err.Error())
+			return
+		}
 
-		// Use reflection to get a pointer to the instance
-		instancePtr := reflect.ValueOf(instance).Elem().Interface()
+		// Create an instance of the model to store the data sent in the request
+		instance := createInstanceForUndeterminedType(app.Model)
 
-		// Perform database operations
-		result := db.Create(instancePtr)
+		// Unmarshal the updated bytes into the instance
+		err = json.Unmarshal(updatedBytes, instance)
+		if err != nil {
+			handleError(w, err, "Error unmarshalling instance")
+			return
+		}
+
+		// Perform database operation
+		result := db.Create(instance)
 		if result.Error != nil {
-			log.Error().Err(result.Error).Msgf("Error creating in database")
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			handleError(w, result.Error, result.Error.Error())
 			return
 		}
 
-		// Marshal instance into JSON
-		response, err := json.Marshal(instance)
+		// Convert the instance to JSON and send it
+		responseBytes, err := json.Marshal(instance)
 		if err != nil {
-			log.Error().Err(err).Msgf("Error marshalling response for creation")
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			handleError(w, err, "Error marshalling response")
 			return
 		}
 
-		// Set the content type to application/json
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated) // 201 Created
-		w.Write(response)                 // Send the JSON response
-	}
-}
-
-// apiGet returns a handler function that responds to GET requests on the
-// details endpoint, e.g. /api/users/{id}.
-//
-// The handler function will return a JSON response containing the requested
-// record.
-//
-// It will also handle errors and return a 404 Not Found if the error is a
-// gorm.ErrRecordNotFound, or a 500 Internal Server Error if the error is
-// not a gorm.ErrRecordNotFound.
-func apiGet(model App, db *Database) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		id := mux.Vars(r)["id"]
-
-		// get out if not GET
-		method := r.Method
-		if method != "GET" {
-			fmt.Fprintf(w, "Not implemented")
-			return
-		}
-
-		// Create a new instance of the model
-		instanceType := reflect.TypeOf(model)
-		instance := reflect.New(instanceType.Elem()).Interface()
-
-		// Query the database to find the record by ID
-		result := db.GetById(id, instance)
-		if result.Error != nil {
-			if result.Error == gorm.ErrRecordNotFound {
-				http.Error(w, "Not found", http.StatusNotFound)
-			} else {
-				log.Error().Err(result.Error).Msgf("Error fetching record")
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
-			}
-			return
-		}
-
-		// Marshal the results into JSON
-		response, err := json.Marshal(instance)
-		if err != nil {
-			log.Error().Err(err).Msgf("Error marshalling record to JSON")
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-
-		// Set the content type to application/json
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK) // 200 OK
-		w.Write(response)            // Send the JSON response
+		writeJsonResponse(w, responseBytes)
 	}
 }
 
@@ -288,52 +288,45 @@ func apiGet(model App, db *Database) func(w http.ResponseWriter, r *http.Request
 // It will also handle errors and return a 404 Not Found if the error is a
 // gorm.ErrRecordNotFound, or a 500 Internal Server Error if the error is
 // not a gorm.ErrRecordNotFound.
-func apiUpdate(model App, db *Database) func(w http.ResponseWriter, r *http.Request) {
+func apiUpdate(app App, db *Database) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id := mux.Vars(r)["id"]
 
-		// get out if not PUT
-		method := r.Method
-		if method != "PUT" {
-			fmt.Fprintf(w, "Not implemented")
+		err := validateRequestMethod(r, http.MethodPut)
+		if err != nil {
+			handleError(w, err, err.Error())
 			return
 		}
 
-		log.Info().Msgf("Update %s", id)
+		// Retrieve parameters from the request
+		instanceId := mux.Vars(r)["id"]
+		userId := r.Header.Get("user_id")
 
-		// Create a new instance of the model to hold the updated data
-		instanceType := reflect.TypeOf(model)
-		if instanceType.Kind() == reflect.Ptr {
-			instanceType = instanceType.Elem()
-		}
-		instance := reflect.New(instanceType).Interface()
+		// Create a new instance of the model
+		instance := createInstanceForUndeterminedType(app.Model)
 
-		// Retrieve the existing record from the database
-		result := db.GetById(id, instance)
+		// Query the database to find the record by ID
+		result := getDBInstanceById(db, instanceId, app.Model, userId, app.SkipUserBinding)
 		if result.Error != nil {
-			if result.Error == gorm.ErrRecordNotFound {
-				http.Error(w, "Not found", http.StatusNotFound)
-			} else {
-				log.Error().Err(result.Error).Msgf("Error fetching record")
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
-			}
+			handleError(w, result.Error, result.Error.Error())
 			return
 		}
 
-		// Read the request body
-		defer r.Body.Close()
-		bodyBytes, err := io.ReadAll(r.Body)
+		bodyBytes, err := readRequestBody(r)
 		if err != nil {
-			log.Error().Err(err).Msgf("Error reading request body for update")
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			handleError(w, err, "Error reading request body")
 			return
 		}
 
-		// Unmarshal the request body into the instance
-		err = json.Unmarshal(bodyBytes, instance)
+		updatedBytes, err := appendUserDataToRequestBody(bodyBytes, r, false)
 		if err != nil {
-			log.Error().Err(err).Msgf("Error unmarshalling request body for update")
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			handleError(w, err, "Error appending user data to request body")
+			return
+		}
+
+		// Unmarshal the updated bytes into the instance
+		err = json.Unmarshal(updatedBytes, instance)
+		if err != nil {
+			handleError(w, err, "Error unmarshalling instance")
 			return
 		}
 
@@ -341,23 +334,19 @@ func apiUpdate(model App, db *Database) func(w http.ResponseWriter, r *http.Requ
 
 		result = db.DB.Save(instance)
 		if result.Error != nil {
-			log.Error().Err(result.Error).Msgf("Error updating record")
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			handleError(w, result.Error, result.Error.Error())
 			return
 		}
 
-		// Marshal the updated instance into JSON
+		// Convert the instance to JSON and send it
+
 		response, err := json.Marshal(instance)
 		if err != nil {
-			log.Error().Err(err).Msg("error marshalling record to JSON")
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			handleError(w, err, "Error marshalling response")
 			return
 		}
 
-		// Set the content type to application/json
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK) // 200 OK
-		w.Write(response)            // Send the JSON response
+		writeJsonResponse(w, response)
 	}
 }
 
@@ -370,36 +359,30 @@ func apiUpdate(model App, db *Database) func(w http.ResponseWriter, r *http.Requ
 // It will also handle errors and return a 404 Not Found if the error is a
 // gorm.ErrRecordNotFound, or a 500 Internal Server Error if the error is
 // not a gorm.ErrRecordNotFound.
-func apiDelete(model App, db *Database) func(w http.ResponseWriter, r *http.Request) {
+func apiDelete(app App, db *Database) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id := mux.Vars(r)["id"]
 
-		// get out if not DELETE
-		method := r.Method
-		if method != "DELETE" {
-			fmt.Fprintf(w, "Not implemented")
+		err := validateRequestMethod(r, http.MethodDelete)
+		if err != nil {
+			handleError(w, err, err.Error())
 			return
 		}
 
-		log.Info().Msgf("Destroy %s", id)
+		// Retrieve parameters from the request
+		instanceId := mux.Vars(r)["id"]
+		userId := r.Header.Get("user_id")
 
-		// Create a new instance of the model
-		instanceType := reflect.TypeOf(model)
-		if instanceType.Kind() == reflect.Ptr {
-			instanceType = instanceType.Elem()
+		// Query the database to find the record by ID
+		dbInstance := getDBInstanceById(db, instanceId, app.Model, userId, app.SkipUserBinding)
+		if dbInstance.Error != nil {
+			handleError(w, dbInstance.Error, dbInstance.Error.Error())
+			return
 		}
-		instance := reflect.New(instanceType).Interface()
 
 		// Delete the record by ID
-		item := db.GetById(id, instance)
-		result := db.DB.Delete(item)
+		result := db.DB.Delete(dbInstance)
 		if result.Error != nil {
-			if result.RowsAffected == 0 {
-				http.Error(w, "Not found", http.StatusNotFound)
-			} else {
-				log.Error().Err(result.Error).Msgf("Error deleting record")
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
-			}
+			handleError(w, result.Error, result.Error.Error())
 			return
 		}
 
@@ -407,4 +390,159 @@ func apiDelete(model App, db *Database) func(w http.ResponseWriter, r *http.Requ
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNoContent) // 204 No Content
 	}
+}
+
+/*
+	REQUEST HELPERS
+*/
+
+// validateRequestMethod returns an error if the request method does not match the given
+// method string. The error message will include the actual request method.
+func validateRequestMethod(r *http.Request, method string) error {
+	if r.Method != method {
+		return fmt.Errorf("invalid request method: %s", r.Method)
+	}
+	return nil
+}
+
+// readRequestBody reads the entire request body and returns the contents as a byte slice.
+// It defers closing the request body until the function returns.
+// It returns an error if there is a problem reading the request body.
+func readRequestBody(r *http.Request) ([]byte, error) {
+	defer r.Body.Close()
+	return io.ReadAll(r.Body)
+}
+
+// unmarshalRequestBody unmarshals the given byte slice into a map[string]interface{}.
+// It returns the unmarshalled map and an error if the unmarshalling fails.
+func unmarshalRequestBody(data []byte) (map[string]interface{}, error) {
+	var jsonData map[string]interface{}
+	err := json.Unmarshal(data, &jsonData)
+	return jsonData, err
+}
+
+// handleError logs the given error and writes an internal server error to the
+// response writer.
+func handleError(w http.ResponseWriter, err error, msg string) {
+	log.Error().Err(err).Msg(msg)
+	http.Error(w, "Internal server error", http.StatusInternalServerError)
+}
+
+// appendUserDataToRequestBody appends the user_id from the request header to the request body for create and update operations.
+// For create operations, the user_id is added to the CreatedById field.
+// For update operations, the user_id is added to the UpdatedById field.
+// The function returns the updated request body as a byte array, or an error if the request body cannot be unmarshalled or marshalled.
+func appendUserDataToRequestBody(bytes []byte, r *http.Request, isNewRecord bool) ([]byte, error) {
+	jsonData, err := unmarshalRequestBody(bytes)
+	if err != nil {
+		log.Error().Err(err).Msgf("Error unmarshalling request body for creation")
+		return nil, err
+	}
+
+	// Retrieve user_id from request header
+	userId := r.Header.Get("user_id")
+	convertedUserId, err := strconv.ParseUint(userId, 10, 64)
+	if err != nil {
+		log.Error().Err(err).Msgf("Error converting user_id")
+		return nil, err
+	}
+
+	if isNewRecord {
+		jsonData["CreatedById"] = convertedUserId
+	}
+
+	jsonData["UpdatedById"] = convertedUserId
+
+	log.Debug().Interface("jsonData", jsonData).Msg("Request")
+
+	bodyBytes, err := json.Marshal(jsonData)
+	if err != nil {
+		log.Error().Err(err).Msgf("Error marshalling request body for creation")
+		return nil, err
+	}
+
+	return bodyBytes, err
+}
+
+// writeJsonResponse writes a JSON response to the given http.ResponseWriter.
+// It sets the Content-Type header to application/json, the status code to 200 OK,
+// and writes the provided data as the response body.
+func writeJsonResponse(w http.ResponseWriter, data []byte) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK) // 200 OK
+	w.Write(data)                // Send the JSON response
+}
+
+/*
+	REFLECT HELPERS
+*/
+
+// createInstanceForUndeterminedType creates a new instance of the given model type.
+//
+// It takes a single argument, which can be a struct, a pointer to a struct, or
+// a slice of a struct. It returns a new instance of the given type and does not
+// report any errors.
+func createInstanceForUndeterminedType(model interface{}) any {
+	instanceType := reflect.TypeOf(model)
+	return reflect.New(instanceType).Interface()
+}
+
+// createSliceForUndeterminedType creates a new slice for the given model type.
+//
+// It takes a single argument, which can be a struct, a pointer to a struct, or
+// a slice of a struct. It returns a new slice of the given type and an error if
+// the input is not a valid model type.
+//
+// The function is used by the admin API to create slices for the different
+// models that are registered with the admin.
+func createSliceForUndeterminedType(model interface{}) (interface{}, error) {
+	modelType := reflect.TypeOf(model)
+
+	if modelType.Kind() == reflect.Ptr {
+		modelType = modelType.Elem()
+	}
+
+	if modelType.Kind() != reflect.Struct {
+		return nil, fmt.Errorf("model must be a struct or a pointer to a struct")
+	}
+
+	sliceType := reflect.SliceOf(modelType)
+	entities := reflect.New(sliceType).Interface()
+
+	return entities, nil
+}
+
+// marshalInstancesToJSON takes a slice of entities and marshals them into a JSON byte slice.
+//
+// It first checks that the input is a slice, and if not, returns an error.
+// Then it marshals the slice into JSON and returns the result, or an error if the marshalling fails.
+func marshalInstancesToJSON(instances interface{}) ([]byte, error) {
+	// Ensure entities is a slice
+	instancesValue := reflect.ValueOf(instances)
+	if instancesValue.Kind() != reflect.Slice {
+		return nil, fmt.Errorf("entities must be a slice")
+	}
+
+	// Marshal the entities into JSON
+	response, err := json.Marshal(instancesValue.Interface())
+	if err != nil {
+		return nil, fmt.Errorf("error marshalling entities to JSON: %w", err)
+	}
+
+	return response, nil
+}
+
+/*
+	OTHER HELPERS
+*/
+
+func getDBInstanceById(db *Database, instanceId string, instance interface{}, userId string, skipUserBinding bool) *gorm.DB {
+	// Query the database to find the record by ID
+	var result *gorm.DB
+	if skipUserBinding {
+		result = db.FindById(instanceId, instance)
+	} else {
+		result = db.FindByUserIdAndId(instanceId, instance, userId)
+	}
+	return result
 }

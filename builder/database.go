@@ -18,13 +18,27 @@ type Database struct {
 	DB *gorm.DB // Embedded GORM DB instance for database access
 }
 
-func (db *Database) GetById(id string, entity interface{}) *gorm.DB {
-	log.Debug().Msg("looking for something")
+// FindById retrieves an entity by its ID from the database.
+func (db *Database) FindById(id string, entity interface{}) *gorm.DB {
 	return db.DB.Where("id = ?", id).First(entity)
 }
 
-func (db *Database) GetAll(entity interface{}) *gorm.DB {
+// FindByUserIdAndId retrieves an entity by its ID and the associated user ID from the database.
+func (db *Database) FindByUserIdAndId(id string, entity interface{}, userId string) *gorm.DB {
+
+	log.Debug().Msg("FindByUserIdAndId")
+
+	return db.DB.Where("id = ? AND created_by_id = ?", id, userId).First(entity)
+}
+
+// FindAll retrieves all entities from the database.
+func (db *Database) FindAll(entity interface{}) *gorm.DB {
 	return db.DB.Find(entity)
+}
+
+// FindAllByUserId retrieves all entities associated with a specific user ID from the database.
+func (db *Database) FindAllByUserId(entity interface{}, userId string) *gorm.DB {
+	return db.DB.Where("created_by_id = ?", userId).Find(entity)
 }
 
 func (db *Database) Create(entity interface{}) *gorm.DB {

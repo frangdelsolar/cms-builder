@@ -154,22 +154,27 @@ func (s *Server) AddMiddleware(middleware func(http.Handler) http.Handler) {
 	s.middlewares = append(s.middlewares, middleware)
 }
 
+// HandlerFunc is the type of the function that can be used as an http.HandlerFunc.
+// It takes an http.ResponseWriter and an *http.Request as input and returns nothing.
+type HandlerFunc func(w http.ResponseWriter, r *http.Request)
+
 // AddRoute adds a new route to the server's routing table.
 //
 // It takes three arguments:
 //   - route: The path for the route (e.g., "/", "/users/{id}").
 //   - handler: The function to be called when the route is matched.
 //   - name: An optional name for the route (useful for generating URLs)
+//   - requiresAuth: A boolean flag indicating whether the route requires authentication
 //
 // Example:
 //
 //	AddRoute("/users/{id}", func(w http.ResponseWriter, r *http.Request) {
 //	  // Handle user with ID
-//	}, "getUser")
+//	}, "getUser", false)
 //
 // url, err := r.Get("getUser").URL("id", "123") =>
 // "/users/123"
-func (s *Server) AddRoute(route string, handler func(w http.ResponseWriter, r *http.Request), name string, requiresAuth bool) {
+func (s *Server) AddRoute(route string, handler HandlerFunc, name string, requiresAuth bool) {
 	s.routes = append(s.routes, RouteHandler{
 		route:        route,
 		handler:      handler,
