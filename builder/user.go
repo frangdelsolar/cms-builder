@@ -14,6 +14,20 @@ type User struct {
 	FirebaseId string `json:"firebase_id"`
 }
 
+func (user *User) Validate() []error {
+
+	errors := make([]error, 0)
+
+	if err := NameValidator(user.Name); err != nil {
+		errors = append(errors, err)
+	}
+	if err := EmailValidator(user.Email); err != nil {
+		errors = append(errors, err)
+	}
+
+	return errors
+}
+
 // ID returns the ID of the user as a string.
 //
 // No parameters.

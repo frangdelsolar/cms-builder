@@ -17,10 +17,12 @@ var (
 	ErrAdminNotInitialized = errors.New("admin not initialized")
 )
 
-type Entity interface{}
+type Model interface {
+	Validate() []error
+}
 
 type App struct {
-	Model           Entity
+	Model           Model
 	SkipUserBinding bool // Means that theres a CreatedBy field in the model that will be used for filtering and shit
 }
 
@@ -35,7 +37,7 @@ func (a *App) PluralName() string {
 }
 
 type Admin struct {
-	Models []Entity
+	Models []Model
 	db     *Database
 	server *Server
 }
@@ -51,7 +53,7 @@ type Admin struct {
 // - *Admin: A pointer to the new Admin instance.
 func NewAdmin(db *Database, server *Server) *Admin {
 	return &Admin{
-		Models: make([]Entity, 0),
+		Models: make([]Model, 0),
 		db:     db,
 		server: server,
 	}
@@ -59,7 +61,7 @@ func NewAdmin(db *Database, server *Server) *Admin {
 
 // Register adds a new App to the Admin instance, applies database migration, and
 // registers API routes for CRUD operations.
-func (a *Admin) Register(model interface{}, skipUserBinding bool) {
+func (a *Admin) Register(model Model, skipUserBinding bool) {
 	log.Debug().Interface("App", model).Msg("Registering app")
 
 	app := App{
@@ -141,7 +143,7 @@ func apiList(app App, db *Database) HandlerFunc {
 
 		err := validateRequestMethod(r, http.MethodGet)
 		if err != nil {
-			handleError(w, err, err.Error())
+			handleError(w, err, "Invalid request method")
 			return
 		}
 
@@ -151,7 +153,7 @@ func apiList(app App, db *Database) HandlerFunc {
 		// Create slice to store the model instances.
 		instances, err := createSliceForUndeterminedType(app.Model)
 		if err != nil {
-			handleError(w, err, err.Error())
+			handleError(w, err, "Error creating slice for model")
 			return
 		}
 
@@ -162,14 +164,16 @@ func apiList(app App, db *Database) HandlerFunc {
 			result = db.FindAllByUserId(instances, userId)
 		}
 
+		log.Debug().Interface("instances", instances).Msg("instances")
+
 		if result.Error != nil {
-			handleError(w, result.Error, result.Error.Error())
+			handleError(w, result.Error, "Error finding instances")
 			return
 		}
 
-		response, err := marshalInstancesToJSON(instances)
+		response, err := json.Marshal(instances)
 		if err != nil {
-			handleError(w, err, err.Error())
+			handleError(w, err, "Error marshaling instances to JSON")
 			return
 		}
 
@@ -234,24 +238,24 @@ func apiNew(app App, db *Database) HandlerFunc {
 
 		err := validateRequestMethod(r, http.MethodPost)
 		if err != nil {
-			handleError(w, err, err.Error())
+			handleError(w, err, "Invalid request method")
 			return
 		}
 
 		// Will read bytes, append user data and pack the bytes again to be processed
 		bodyBytes, err := readRequestBody(r)
 		if err != nil {
-			handleError(w, err, err.Error())
+			handleError(w, err, "Error reading request body")
 			return
 		}
 
 		updatedBytes, err := appendUserDataToRequestBody(bodyBytes, r, true)
 		if err != nil {
-			handleError(w, err, err.Error())
+			handleError(w, err, "Error appending user data to request body")
 			return
 		}
 
-		// Create an instance of the model to store the data sent in the request
+		// Create a new instance of the model
 		instance := createInstanceForUndeterminedType(app.Model)
 
 		// Unmarshal the updated bytes into the instance
@@ -261,10 +265,21 @@ func apiNew(app App, db *Database) HandlerFunc {
 			return
 		}
 
+		// Run validations
+		validationErrors, err := validateInterface(instance)
+		if err != nil {
+			handleError(w, err, "Error validating instance")
+			return
+		}
+		if len(validationErrors) > 0 {
+			handleError(w, fmt.Errorf("validation errors: %v", validationErrors), "Validation failed")
+			return
+		}
+
 		// Perform database operation
 		result := db.Create(instance)
 		if result.Error != nil {
-			handleError(w, result.Error, result.Error.Error())
+			handleError(w, result.Error, "DB error")
 			return
 		}
 
@@ -293,7 +308,7 @@ func apiUpdate(app App, db *Database) HandlerFunc {
 
 		err := validateRequestMethod(r, http.MethodPut)
 		if err != nil {
-			handleError(w, err, err.Error())
+			handleError(w, err, "Invalid request method")
 			return
 		}
 
@@ -330,8 +345,18 @@ func apiUpdate(app App, db *Database) HandlerFunc {
 			return
 		}
 
-		// Update the record in the database
+		// Run validations
+		validationErrors, err := validateInterface(instance)
+		if err != nil {
+			handleError(w, err, "Error validating instance")
+			return
+		}
+		if len(validationErrors) > 0 {
+			handleError(w, fmt.Errorf("validation errors: %v", validationErrors), "Validation failed")
+			return
+		}
 
+		// Update the record in the database
 		result = db.DB.Save(instance)
 		if result.Error != nil {
 			handleError(w, result.Error, result.Error.Error())
@@ -482,8 +507,11 @@ func writeJsonResponse(w http.ResponseWriter, data []byte) {
 // It takes a single argument, which can be a struct, a pointer to a struct, or
 // a slice of a struct. It returns a new instance of the given type and does not
 // report any errors.
-func createInstanceForUndeterminedType(model interface{}) any {
+func createInstanceForUndeterminedType(model interface{}) interface{} {
 	instanceType := reflect.TypeOf(model)
+	if instanceType.Kind() == reflect.Ptr {
+		instanceType = instanceType.Elem()
+	}
 	return reflect.New(instanceType).Interface()
 }
 
@@ -512,30 +540,14 @@ func createSliceForUndeterminedType(model interface{}) (interface{}, error) {
 	return entities, nil
 }
 
-// marshalInstancesToJSON takes a slice of entities and marshals them into a JSON byte slice.
-//
-// It first checks that the input is a slice, and if not, returns an error.
-// Then it marshals the slice into JSON and returns the result, or an error if the marshalling fails.
-func marshalInstancesToJSON(instances interface{}) ([]byte, error) {
-	// Ensure entities is a slice
-	instancesValue := reflect.ValueOf(instances)
-	if instancesValue.Kind() != reflect.Slice {
-		return nil, fmt.Errorf("entities must be a slice")
-	}
-
-	// Marshal the entities into JSON
-	response, err := json.Marshal(instancesValue.Interface())
-	if err != nil {
-		return nil, fmt.Errorf("error marshalling entities to JSON: %w", err)
-	}
-
-	return response, nil
-}
-
 /*
 	OTHER HELPERS
 */
 
+// getDBInstanceById retrieves an entity by its ID from the database, taking into account user binding if applicable.
+//
+// If skipUserBinding is true, it will use the FindById method to find the record by ID.
+// Otherwise, it will use the FindByUserIdAndId method to find the record by ID and the associated user ID.
 func getDBInstanceById(db *Database, instanceId string, instance interface{}, userId string, skipUserBinding bool) *gorm.DB {
 	// Query the database to find the record by ID
 	var result *gorm.DB
@@ -545,4 +557,17 @@ func getDBInstanceById(db *Database, instanceId string, instance interface{}, us
 		result = db.FindByUserIdAndId(instanceId, instance, userId)
 	}
 	return result
+}
+
+// validateInterface takes an interface and checks if it implements the Model interface.
+// If it does, it calls the Validate() method and returns the validation errors if any.
+// If it does not, it returns an error.
+// If the instance is valid, it returns nil, nil.
+func validateInterface(instance interface{}) ([]error, error) {
+	validator, ok := instance.(Model)
+
+	if !ok {
+		return nil, fmt.Errorf("invalid model type")
+	}
+	return validator.Validate(), nil
 }
