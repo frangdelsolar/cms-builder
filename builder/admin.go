@@ -17,8 +17,33 @@ var (
 	ErrAdminNotInitialized = errors.New("admin not initialized")
 )
 
+type FieldValidationError struct {
+	Field string
+	Error string
+}
+
+func NewFieldValidationError(field interface{}) FieldValidationError {
+	fieldName := reflect.ValueOf(field).Type().Name()
+	return FieldValidationError{
+		Field: fieldName,
+		Error: "",
+	}
+}
+
+type FieldValidationFunc func(string) FieldValidationError
+
+type ValidationResult struct {
+	Errors []FieldValidationError
+}
+
+func (r *ValidationResult) Execute(validationFunc FieldValidationFunc, field string) {
+	if err := validationFunc(field); err != (FieldValidationError{}) {
+		r.Errors = append(r.Errors, err)
+	}
+}
+
 type Model interface {
-	Validate() []error
+	Validate() ValidationResult
 }
 
 type App struct {
@@ -270,7 +295,7 @@ func apiNew(app App, db *Database) HandlerFunc {
 			handleError(w, err, "Error validating instance")
 			return
 		}
-		if len(validationErrors) > 0 {
+		if len(validationErrors.Errors) > 0 {
 			handleError(w, fmt.Errorf("validation errors: %v", validationErrors), "Validation failed")
 			return
 		}
@@ -350,7 +375,7 @@ func apiUpdate(app App, db *Database) HandlerFunc {
 			handleError(w, err, "Error validating instance")
 			return
 		}
-		if len(validationErrors) > 0 {
+		if len(validationErrors.Errors) > 0 {
 			handleError(w, fmt.Errorf("validation errors: %v", validationErrors), "Validation failed")
 			return
 		}
@@ -448,7 +473,14 @@ func unmarshalRequestBody(data []byte) (map[string]interface{}, error) {
 // response writer.
 func handleError(w http.ResponseWriter, err error, msg string) {
 	log.Error().Err(err).Msg(msg)
-	http.Error(w, "Internal server error", http.StatusInternalServerError)
+
+	// write the error to the response writer
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusInternalServerError) // 500 Internal Server Error
+
+	// write the error to the response writer
+	response, _ := json.Marshal(map[string]string{"error": err.Error()})
+	w.Write(response)
 }
 
 // appendUserDataToRequestBody appends the user_id from the request header to the request body for create and update operations.
@@ -546,11 +578,11 @@ func createSliceForUndeterminedType(model interface{}) (interface{}, error) {
 // If it does, it calls the Validate() method and returns the validation errors if any.
 // If it does not, it returns an error.
 // If the instance is valid, it returns nil, nil.
-func validateInterface(instance interface{}) ([]error, error) {
+func validateInterface(instance interface{}) (ValidationResult, error) {
 	validator, ok := instance.(Model)
 
 	if !ok {
-		return nil, fmt.Errorf("invalid model type")
+		return ValidationResult{}, fmt.Errorf("invalid model type")
 	}
 	return validator.Validate(), nil
 }

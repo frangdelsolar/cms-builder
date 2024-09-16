@@ -14,16 +14,12 @@ type User struct {
 	FirebaseId string `json:"firebase_id"`
 }
 
-func (user *User) Validate() []error {
+func (user *User) Validate() ValidationResult {
 
-	errors := make([]error, 0)
+	var errors ValidationResult
 
-	if err := NameValidator(user.Name); err != nil {
-		errors = append(errors, err)
-	}
-	if err := EmailValidator(user.Email); err != nil {
-		errors = append(errors, err)
-	}
+	errors.Execute(NameValidator, user.Name)
+	errors.Execute(EmailValidator, user.Email)
 
 	return errors
 }
@@ -46,14 +42,15 @@ func (user *User) GetIDString() string {
 // - error: an error if the user creation fails.
 func NewUser(name string, email string) (*User, error) {
 
-	if err := NameValidator(name); err != nil {
-		return nil, err
-	}
-	if err := EmailValidator(email); err != nil {
+	user := &User{Name: name, Email: email}
+
+	validationErrors := user.Validate()
+	if len(validationErrors.Errors) > 0 {
+		err := fmt.Errorf("validation errors: %v", validationErrors)
 		return nil, err
 	}
 
-	return &User{Name: name, Email: email}, nil
+	return user, nil
 }
 
 // Update updates the name and email of a user.
@@ -64,14 +61,18 @@ func NewUser(name string, email string) (*User, error) {
 // Returns:
 // - error: an error if the update fails.
 func (user *User) Update(name string, email string) error {
-	if err := NameValidator(name); err != nil {
-		return err
+
+	if err := NameValidator(name); err != (FieldValidationError{}) {
+		return fmt.Errorf("validation errors: %v", err)
 	}
-	if err := EmailValidator(email); err != nil {
-		return err
+
+	if err := EmailValidator(email); err != (FieldValidationError{}) {
+		return fmt.Errorf("validation errors: %v", err)
 	}
+
 	user.Name = name
 	user.Email = email
+
 	return nil
 }
 
@@ -82,11 +83,14 @@ func (user *User) Update(name string, email string) error {
 //
 // Returns:
 // - error: an error if the name is empty, otherwise nil.
-func NameValidator(name string) error {
+func NameValidator(name string) FieldValidationError {
+	output := NewFieldValidationError(name)
 	if name == "" {
-		return fmt.Errorf("name cannot be empty")
+		output.Error = "name cannot be empty"
+		return output
 	}
-	return nil
+
+	return FieldValidationError{}
 }
 
 // EmailValidator validates the given email.
@@ -96,21 +100,26 @@ func NameValidator(name string) error {
 //
 // Returns:
 // - error: an error if the email is empty or has an invalid format, otherwise nil.
-func EmailValidator(email string) error {
+func EmailValidator(email string) FieldValidationError {
+	output := NewFieldValidationError(email)
+
 	if email == "" {
-		return fmt.Errorf("email cannot be empty")
+		output.Error = "email cannot be empty"
+		return output
 	}
 
 	emailRegex := `^[a-zA-Z0-9.!#$%&'*+/=?^_` + `{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$`
 
 	match, err := regexp.MatchString(emailRegex, email)
 	if err != nil {
-		return fmt.Errorf("error compiling email regex: %w", err)
+		output.Error = err.Error()
+		return output
 	}
 
 	if !match {
-		return fmt.Errorf("invalid email format")
+		output.Error = "email has an invalid format"
+		return output
 	}
 
-	return nil
+	return FieldValidationError{}
 }
