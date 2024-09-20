@@ -260,7 +260,10 @@ func (b *Builder) GetFirebase() (*FirebaseAdmin, error) {
 
 func (b *Builder) initAuth() {
 	admin := b.admin
-	admin.Register(&User{}, true)
+	userApp := admin.Register(&User{}, true)
+
+	userApp.RegisterValidator("email", EmailValidator)
+	userApp.RegisterValidator("name", NameValidator)
 
 	svr := b.server
 	svr.AddRoute("/auth/register", b.RegisterUserController, "register", false)

@@ -14,68 +14,6 @@ type User struct {
 	FirebaseId string `json:"firebase_id"`
 }
 
-func (user *User) Validate() ValidationResult {
-
-	var errors ValidationResult
-
-	errors.Execute(NameValidator, user.Name)
-	errors.Execute(EmailValidator, user.Email)
-
-	return errors
-}
-
-// ID returns the ID of the user as a string.
-//
-// No parameters.
-// Returns a string.
-func (user *User) GetIDString() string {
-	return fmt.Sprint(user.ID)
-}
-
-// NewUser creates a new user with the given name and email.
-//
-// Parameters:
-// - name: the name of the user.
-// - email: the email of the user.
-// Returns:
-// - *User: the newly created user.
-// - error: an error if the user creation fails.
-func NewUser(name string, email string) (*User, error) {
-
-	user := &User{Name: name, Email: email}
-
-	validationErrors := user.Validate()
-	if len(validationErrors.Errors) > 0 {
-		err := fmt.Errorf("validation errors: %v", validationErrors)
-		return nil, err
-	}
-
-	return user, nil
-}
-
-// Update updates the name and email of a user.
-//
-// Parameters:
-// - name: the new name of the user.
-// - email: the new email of the user.
-// Returns:
-// - error: an error if the update fails.
-func (user *User) Update(name string, email string) error {
-
-	if err := NameValidator(name); err != (FieldValidationError{}) {
-		return fmt.Errorf("validation errors: %v", err)
-	}
-
-	if err := EmailValidator(email); err != (FieldValidationError{}) {
-		return fmt.Errorf("validation errors: %v", err)
-	}
-
-	user.Name = name
-	user.Email = email
-
-	return nil
-}
-
 // NameValidator validates the given name.
 //
 // Parameters:
@@ -83,7 +21,8 @@ func (user *User) Update(name string, email string) error {
 //
 // Returns:
 // - error: an error if the name is empty, otherwise nil.
-func NameValidator(name string) FieldValidationError {
+func NameValidator(inName interface{}) FieldValidationError {
+	name := fmt.Sprint(inName)
 	output := NewFieldValidationError("name")
 	if name == "" {
 		output.Error = "name cannot be empty"
@@ -100,9 +39,9 @@ func NameValidator(name string) FieldValidationError {
 //
 // Returns:
 // - error: an error if the email is empty or has an invalid format, otherwise nil.
-func EmailValidator(email string) FieldValidationError {
+func EmailValidator(inEmail interface{}) FieldValidationError {
+	email := fmt.Sprint(inEmail)
 	output := NewFieldValidationError("email")
-
 	if email == "" {
 		output.Error = "email cannot be empty"
 		return output

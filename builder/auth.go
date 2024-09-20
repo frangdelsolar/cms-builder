@@ -1,6 +1,7 @@
 package builder
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -28,7 +29,6 @@ func (b *Builder) VerifyUser(userIdToken string) (*User, error) {
 	var localUser User
 
 	q := "firebase_id = '" + accessToken.UID + "'"
-
 	b.db.Find(&localUser, q)
 
 	log.Debug().Interface("LocalUser", localUser).Msg("LocalUser")
@@ -55,7 +55,7 @@ func (b *Builder) authMiddleware(next http.Handler) http.Handler {
 					log.Error().Err(err).Msg("Error verifying user")
 				}
 				if localUser != nil {
-					r.Header.Set("user_id", fmt.Sprint(localUser.ID))
+					r.Header.Set("requested_by", fmt.Sprint(localUser.ID))
 				}
 			}
 		}
@@ -99,17 +99,37 @@ func (b *Builder) RegisterUserController(w http.ResponseWriter, r *http.Request)
 
 	log.Debug().Interface("Firebase User", fbUser).Msg("LocalUser")
 
-	localUser, err := NewUser(input.Name, input.Email)
+	userApp, err := b.admin.GetApp("user")
 	if err != nil {
-		log.Error().Err(err).Msg("Error creating local user")
-		http.Error(w, "Error creating local user", http.StatusInternalServerError)
+		log.Error().Err(err).Msg("Error getting user app")
+		http.Error(w, "Error getting user app", http.StatusInternalServerError)
 		return
 	}
 
-	localUser.FirebaseId = fbUser.UID
+	// set body
+	userRequestBody := map[string]string{
+		"name":        input.Name,
+		"email":       input.Email,
+		"firebase_id": fbUser.UID,
+	}
 
-	b.db.Create(localUser)
+	log.Debug().Interface("UserRequestBody", userRequestBody).Msg("UserRequestBody")
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(localUser)
+	bodyBytes, err := json.Marshal(userRequestBody)
+	if err != nil {
+		log.Error().Err(err).Msg("Error marshalling user request body")
+		http.Error(w, "Error marshalling user request body", http.StatusInternalServerError)
+		return
+	}
+
+	userRequest := &http.Request{
+		Method: http.MethodPost,
+		Header: r.Header,
+		Body:   io.NopCloser(bytes.NewBuffer(bodyBytes)),
+	}
+
+	userApp.apiNew(b.db)(w, userRequest)
+
+	// TODO: Should rollback firebase if unsuccessful
+
 }

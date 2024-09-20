@@ -1,0 +1,44 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest 
+
+    steps:
+      - uses: actions/checkout@v3 
+
+      - name: Tidy
+        run: go mod tidy
+
+      - name: Install dependencies
+        run: go mod download
+    
+      - name: Create config.yaml file
+        run: |
+          echo "APP_ENV: cicd" > config.yaml
+          echo "FIREBASE_SECRET: ${{ secrets.FIREBASE_SECRET }}" >> config.yaml
+          echo "DB_PATH: ${{ github.workspace }}/cicd.db" >> config.yaml
+          echo "LOG_LEVEL: debug" >> config.yaml
+
+      - name: Run tests
+        run: go test ./...
+        if: always()
+
+      - name: Upload test artifacts (optional)
+        uses: actions/upload-artifact@v3
+        if: failure() 
+        with:
+          name: test-results
+          path: ${{ github.workspace }}/
+
+      - name: Fail workflow on test failures (optional)
+        uses: styfle/cancel-workflow-action@0.8.0 
+        if: failure()  
+        with:
+          message: 'Tests failed. Fix the errors before merging...'
