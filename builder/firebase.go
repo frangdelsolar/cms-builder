@@ -120,8 +120,5 @@ func NewFirebaseAdmin(cfg *FirebaseConfig) (*FirebaseAdmin, error) {
 	output.App = app
 	output.Client = cli
 
-	log.Trace().Interface("Output", output).Msg("Firebase Admin")
-	log.Debug().Msg("Initialized Firebase Admin")
-
 	return &output, nil
 }

@@ -39,7 +39,7 @@ func TestRegisterUserController(t *testing.T) {
 		Body:   io.NopCloser(bytes.NewBuffer(bodyBytes)),
 	}
 
-	t.Log("Registering user", newUserData)
+	t.Log("Registering user")
 	engine.RegisterUserController(&responseWriter, registerUserRequest)
 
 	t.Log("Testing Response")

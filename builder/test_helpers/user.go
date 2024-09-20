@@ -85,7 +85,11 @@ func LoginUser(userData *builder.RegisterUserInput) (string, error) {
 	}
 
 	// Extract the token from the response
-	userToken = response["idToken"].(string)
+	userToken, ok := response["idToken"].(string)
+	if !ok {
+		err := fmt.Errorf("idToken not found in response")
+		return userToken, err
+	}
 
 	// Process the response (e.g., check status code, parse the body)
 	if resp.StatusCode != http.StatusOK {
@@ -95,4 +99,14 @@ func LoginUser(userData *builder.RegisterUserInput) (string, error) {
 
 	// Handle successful login based on your needs (e.g., store token, use for further requests)
 	return userToken, nil
+}
+
+// RandomUserData returns a pointer to a builder.RegisterUserInput containing
+// random data suitable for testing user registration.
+func RandomUserData() *builder.RegisterUserInput {
+	return &builder.RegisterUserInput{
+		Name:     RandomName(),
+		Email:    RandomEmail(),
+		Password: RandomPassword(),
+	}
 }

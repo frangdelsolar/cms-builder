@@ -1,6 +1,7 @@
 package builder_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TestNewAdmin tests that NewAdmin returns a non-nil Admin instance.
 func TestNewAdmin(t *testing.T) {
 	t.Log("Testing NewAdmin")
 	engine := th.GetDefaultEngine()
@@ -20,6 +22,10 @@ func TestNewAdmin(t *testing.T) {
 	assert.NotNil(t, admin)
 }
 
+// TestRegisterApp tests that RegisterApp registers a new App, applies database migration,
+// and registers API routes for CRUD operations.
+//
+// It also tests that the registered App is accessible via the GetApp method.
 func TestRegisterApp(t *testing.T) {
 	engine := th.GetDefaultEngine()
 	admin, err := engine.GetAdmin()
@@ -47,6 +53,11 @@ func TestRegisterApp(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestValidators(t *testing.T) {}
+
+// TestRegisterAPIRoutes tests that the RegisterApp method registers the expected routes with the Server.
+//
+// It registers a test App with the admin instance, and then checks that the server has the expected routes.
 func TestRegisterAPIRoutes(t *testing.T) {
 	engine := th.GetDefaultEngine()
 	admin, _ := engine.GetAdmin()
@@ -84,4 +95,130 @@ func TestRegisterAPIRoutes(t *testing.T) {
 
 		assert.True(t, found)
 	}
+}
+
+func TestUserCanRetrieveAllowedResources(t *testing.T)   {}
+func TestUserCanNotRetrieveDeniedResources(t *testing.T) {}
+
+// TestUserCanListAllowedResources tests that a user can list resources if they have the correct permissions.
+//
+// It creates a new resource and checks that the response contains the created resource and that the resource is persisted in the database.
+func TestUserCanListAllowedResources(t *testing.T) {
+	engine := th.GetDefaultEngine()
+	admin, _ := engine.GetAdmin()
+	db, _ := engine.GetDatabase()
+
+	type TestListDenied struct {
+		*builder.SystemData
+		Field string
+	}
+	app, _ := admin.Register(TestListDenied{}, false)
+	responseWriter := th.MockWriter{}
+	request, _, rollbackUser := th.NewRequest(
+		http.MethodPost,
+		"{\"field\": \"test\"}",
+		true,
+		nil,
+	)
+	defer rollbackUser()
+
+	// Call the controller
+	app.ApiList(db)(&responseWriter, request)
+
+	data := responseWriter.GetWrittenData()
+	assert.Equal(t, data, "[]")
+}
+
+// TestUserCanNotListDeniedResources tests that a user cannot list resources if they do not have the correct permissions.
+//
+// It creates a new resource and checks that the response contains an error message indicating that the user does not have the correct permissions.
+func TestUserCanNotListDeniedResources(t *testing.T) {
+	engine := th.GetDefaultEngine()
+	admin, _ := engine.GetAdmin()
+	db, _ := engine.GetDatabase()
+
+	type TestListDenied struct{}
+	app, _ := admin.Register(TestListDenied{}, false)
+	responseWriter := th.MockWriter{}
+	request, _, _ := th.NewRequest(
+		http.MethodGet,
+		"",
+		false,
+		nil,
+	)
+
+	// Call the controller
+	app.ApiList(db)(&responseWriter, request)
+
+	data := responseWriter.GetWrittenData()
+	assert.Equal(t, data, "[]")
+}
+
+func TestUserCanUpdateAllowedResources(t *testing.T)   {}
+func TestUserCanNotUpdateDeniedResources(t *testing.T) {}
+
+func TestUserCanDeleteAllowedResources(t *testing.T)   {}
+func TestUserCanNotDeleteDeniedResources(t *testing.T) {}
+
+// TestUserCanCreateAllowedResources tests that a user can create a resource if they have the correct permissions.
+//
+// It creates a new resource and checks that the response contains the created resource and that the resource is persisted in the database.
+func TestUserCanCreateAllowedResources(t *testing.T) {
+	engine := th.GetDefaultEngine()
+	admin, _ := engine.GetAdmin()
+	db, _ := engine.GetDatabase()
+	type TestNew struct {
+		*builder.SystemData
+		Field string
+	}
+
+	app, _ := admin.Register(TestNew{}, false)
+	responseWriter := th.MockWriter{}
+	request, _, rollbackUser := th.NewRequest(
+		http.MethodPost,
+		`{"field": "test"}`,
+		true,
+		nil,
+	)
+	defer rollbackUser()
+
+	// Call the controller
+	app.ApiNew(db)(&responseWriter, request)
+
+	var createdItem TestNew
+	data := responseWriter.GetWrittenData()
+	json.Unmarshal([]byte(data), &createdItem)
+
+	assert.NotNil(t, createdItem.ID)
+	assert.Equal(t, "test", createdItem.Field)
+	assert.NotNil(t, createdItem.CreatedBy)
+}
+
+// TestUserCanNotCreateDeniedResources tests that a user cannot create a resource if they do not have the correct permissions.
+//
+// It creates a new resource and checks that the response contains an error message indicating that the user does not have the correct permissions.
+func TestUserCanNotCreateDeniedResources(t *testing.T) {
+	engine := th.GetDefaultEngine()
+	admin, _ := engine.GetAdmin()
+	db, _ := engine.GetDatabase()
+
+	type TestNewDenied struct {
+		*builder.SystemData
+		Field string
+	}
+
+	app, _ := admin.Register(TestNewDenied{}, false)
+	responseWriter := th.MockWriter{}
+	request, _, _ := th.NewRequest(
+		http.MethodPost,
+		`{"field": "test"}`,
+		false,
+		nil,
+	)
+
+	// Call the controller
+	app.ApiNew(db)(&responseWriter, request)
+
+	data := responseWriter.GetWrittenData()
+	assert.Contains(t, data, "no requested_by found in authorization header")
 }

@@ -64,7 +64,6 @@ func (a *Admin) Register(model interface{}, skipUserBinding bool) (App, error) {
 		admin:           a,
 		validators:      make(map[string]FieldValidationFunc),
 	}
-	log.Debug().Msgf("Registering app %s", app.Name())
 
 	// check the app is not already registered
 	_, err := a.GetApp(app.Name())

@@ -112,6 +112,5 @@ func (db *Database) Migrate(model interface{}) error {
 		return ErrDBNotInitialized
 	}
 	db.DB.AutoMigrate(model)
-	log.Debug().Interface("Model", model).Msg("Database migration complete")
 	return nil
 }

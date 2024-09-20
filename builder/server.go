@@ -27,10 +27,10 @@ type RouteHandler struct {
 // Server defines a structure for managing an HTTP server with middleware and routing capabilities.
 type Server struct {
 	*http.Server                                   // Server is the underlying HTTP server
-	middlewares  []func(http.Handler) http.Handler // middlewares is a slice of middleware functions
-	routes       []RouteHandler                    // routes is a slice of route handlers
-	root         *mux.Router                       // root is the root handler for the server
-	builder      *Builder
+	Middlewares  []func(http.Handler) http.Handler // middlewares is a slice of middleware functions
+	Routes       []RouteHandler                    // routes is a slice of route handlers
+	Root         *mux.Router                       // root is the root handler for the server
+	Builder      *Builder
 }
 
 // ServerConfig defines the configuration options for creating a new Server.
@@ -73,20 +73,20 @@ func NewServer(config *ServerConfig) (*Server, error) {
 			Addr:    config.Host + ":" + config.Port,
 			Handler: r,
 		},
-		middlewares: []func(http.Handler) http.Handler{},
-		routes:      []RouteHandler{},
-		root:        adminRoutes,
-		builder:     config.Builder,
+		Middlewares: []func(http.Handler) http.Handler{},
+		Routes:      []RouteHandler{},
+		Root:        adminRoutes,
+		Builder:     config.Builder,
 	}
 
-	svr.AddMiddleware(loggingMiddleware)
+	svr.AddMiddleware(LoggingMiddleware)
 
 	// CSRF
 	// csrfKey := []byte(config.CSRFToken) // Replace with a real secret key
 	// csrfMiddleware := csrf.Protect(csrfKey, csrf.CookieName("csrftoken"))
 
 	// Middlewares
-	r.Use(loggingMiddleware)
+	r.Use(LoggingMiddleware)
 	r.Use(mux.CORSMethodMiddleware(r))
 	// r.Use(csrfMiddleware)
 
@@ -100,11 +100,11 @@ func NewServer(config *ServerConfig) (*Server, error) {
 	return svr, nil
 }
 
-// loggingMiddleware is a sample middleware function that logs the request URI.
+// LoggingMiddleware is a sample middleware function that logs the request URI.
 //
 // It takes an http.Handler as input and returns a new http.Handler that wraps the original
 // handler and logs the request URI before calling the original handler.
-func loggingMiddleware(next http.Handler) http.Handler {
+func LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Info().Msg(r.RequestURI)
 		next.ServeHTTP(w, r)
@@ -119,25 +119,25 @@ func loggingMiddleware(next http.Handler) http.Handler {
 func (s *Server) Run() error {
 	log.Info().Msgf("Running server on port %s", s.Addr)
 
-	for _, middleware := range s.middlewares {
+	for _, middleware := range s.Middlewares {
 		s.Handler = middleware(s.Handler)
 	}
 
 	log.Debug().Msg("Registering unathenticated routes:")
-	for _, route := range s.routes {
+	for _, route := range s.Routes {
 		if !route.RequiresAuth {
 			log.Debug().Msg(route.Route)
-			s.root.HandleFunc(route.Route, route.Handler).Name(route.Name)
+			s.Root.HandleFunc(route.Route, route.Handler).Name(route.Name)
 		}
 	}
 
-	s.root.Use(s.builder.authMiddleware)
+	s.Root.Use(s.Builder.authMiddleware)
 
 	log.Debug().Msg("Registering authenticated routes:")
-	for _, route := range s.routes {
+	for _, route := range s.Routes {
 		if route.RequiresAuth {
 			log.Debug().Msg(route.Route)
-			s.root.HandleFunc(route.Route, route.Handler).Name(route.Name)
+			s.Root.HandleFunc(route.Route, route.Handler).Name(route.Name)
 		}
 	}
 
@@ -151,7 +151,7 @@ func (s *Server) Run() error {
 // that can wrap the original handler and perform additional logic before or after
 // the original handler is called.
 func (s *Server) AddMiddleware(middleware func(http.Handler) http.Handler) {
-	s.middlewares = append(s.middlewares, middleware)
+	s.Middlewares = append(s.Middlewares, middleware)
 }
 
 // HandlerFunc is the type of the function that can be used as an http.HandlerFunc.
@@ -175,7 +175,7 @@ type HandlerFunc func(w http.ResponseWriter, r *http.Request)
 // url, err := r.Get("getUser").URL("id", "123") =>
 // "/users/123"
 func (s *Server) AddRoute(route string, handler HandlerFunc, name string, requiresAuth bool) {
-	s.routes = append(s.routes, RouteHandler{
+	s.Routes = append(s.Routes, RouteHandler{
 		Route:        route,
 		Handler:      handler,
 		Name:         name,
@@ -193,5 +193,5 @@ func NewRouteHandler(route string, handler HandlerFunc, name string, requiresAut
 }
 
 func (s *Server) GetRoutes() []RouteHandler {
-	return s.routes
+	return s.Routes
 }
