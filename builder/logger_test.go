@@ -3,6 +3,7 @@ package builder_test
 import (
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/frangdelsolar/cms/builder"
@@ -113,8 +114,9 @@ func TestNewLogger_WriteToFile_Error(t *testing.T) {
 	assert.Nil(t, logger)
 
 	// The expected error message might vary depending on the OS and library implementation
-	expectedErrMsg := "mkdir /invalid: read-only file system" // Adjust based on your OS
-	if err.Error() != expectedErrMsg {
+	expectedErrMsg := "mkdir /invalid" // Adjust based on your OS
+
+	if strings.Contains(err.Error(), expectedErrMsg) {
 		t.Errorf("Expected error message: %s, got: %s", expectedErrMsg, err.Error())
 	}
 }
