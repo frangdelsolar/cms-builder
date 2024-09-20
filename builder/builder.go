@@ -84,7 +84,7 @@ func NewBuilder(input *NewBuilderInput) (*Builder, error) {
 	}
 
 	settings := config.AllSettings()
-	log.Info().Interface("Config", settings).Msg("Loaded Config")
+	log.Trace().Interface("Config", settings).Msg("Loaded Config")
 
 	// Logger
 	if input.InitializeLogger {
