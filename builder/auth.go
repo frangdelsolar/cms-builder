@@ -24,14 +24,10 @@ func (b *Builder) VerifyUser(userIdToken string) (*User, error) {
 		return nil, err
 	}
 
-	log.Debug().Interface("AccessToken", accessToken).Msg("AccessToken")
-
 	var localUser User
 
 	q := "firebase_id = '" + accessToken.UID + "'"
 	b.db.Find(&localUser, q)
-
-	log.Debug().Interface("LocalUser", localUser).Msg("LocalUser")
 
 	return &localUser, nil
 }
@@ -59,8 +55,6 @@ func (b *Builder) authMiddleware(next http.Handler) http.Handler {
 				}
 			}
 		}
-
-		log.Debug().Interface("Request", r.Header).Msg("Request")
 
 		next.ServeHTTP(w, r)
 	})
@@ -97,8 +91,6 @@ func (b *Builder) RegisterUserController(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	log.Debug().Interface("Firebase User", fbUser).Msg("LocalUser")
-
 	userApp, err := b.admin.GetApp("user")
 	if err != nil {
 		log.Error().Err(err).Msg("Error getting user app")
@@ -112,8 +104,6 @@ func (b *Builder) RegisterUserController(w http.ResponseWriter, r *http.Request)
 		"email":       input.Email,
 		"firebase_id": fbUser.UID,
 	}
-
-	log.Debug().Interface("UserRequestBody", userRequestBody).Msg("UserRequestBody")
 
 	bodyBytes, err := json.Marshal(userRequestBody)
 	if err != nil {
