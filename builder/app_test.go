@@ -183,8 +183,8 @@ func TestUserCanNotListDeniedResources(t *testing.T) {
 	admin, _ := engine.GetAdmin()
 	db, _ := engine.GetDatabase()
 
-	type TestListDenied struct{}
-	app, _ := admin.Register(TestListDenied{}, false)
+	type TestListD struct{}
+	app, _ := admin.Register(TestListD{}, false)
 	responseWriter := th.MockWriter{}
 	request, _, _ := th.NewRequest(
 		http.MethodGet,
