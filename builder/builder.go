@@ -7,6 +7,11 @@ import (
 
 var log *Logger // Global variable for the logger instance
 
+// Initializes the global logger instance with a default configuration.
+//
+// This function is automatically invoked when the package is imported.
+//
+// If an error occurs while initializing the logger, the program will panic.
 func init() {
 	// Make sure the logger is initialized
 	var err error
@@ -258,9 +263,22 @@ func (b *Builder) GetFirebase() (*FirebaseAdmin, error) {
 	return b.firebase, nil
 }
 
+// initAuth initializes the auth system of the builder by registering the User app, and
+// adding a route for user registration.
+//
+// It also registers two validators for the User model, EmailValidator and NameValidator.
+//
+// The route for user registration is added to the server with the name "register" and
+// the path "/auth/register".
+//
+// If an error occurs while registering the User app, it logs the error and panics.
 func (b *Builder) initAuth() {
 	admin := b.admin
-	userApp := admin.Register(&User{}, true)
+	userApp, err := admin.Register(&User{}, true)
+	if err != nil {
+		log.Error().Err(err).Msg("Error registering user app")
+		panic(err)
+	}
 
 	userApp.RegisterValidator("email", EmailValidator)
 	userApp.RegisterValidator("name", NameValidator)

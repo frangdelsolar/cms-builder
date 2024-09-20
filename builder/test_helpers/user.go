@@ -12,9 +12,21 @@ import (
 
 var firebaseLoginUrl = "https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key="
 
+// LoginUser logs in a user with the given email and password in Firebase.
+//
+// The function sends a request to the Firebase authentication endpoint with the email and password.
+// If the request is successful, it extracts the idToken from the response and returns it. Otherwise, it
+// returns an error.
+//
+// Parameters:
+// - userData: The RegisterUserInput containing the email and password of the user to log in.
+//
+// Returns:
+// - string: The idToken of the logged-in user.
+// - error: An error if the login fails.
 func LoginUser(userData *builder.RegisterUserInput) (string, error) {
 	userToken := ""
-	engine := GetEngineReadyForTests()
+	engine := GetDefaultEngine()
 	log, _ := engine.GetLogger()
 	configReader, _ := engine.GetConfigReader()
 

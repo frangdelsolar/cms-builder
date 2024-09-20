@@ -18,10 +18,10 @@ var (
 
 // RouteHandler defines a structure for storing route information.
 type RouteHandler struct {
-	route        string                                   // route is the path for the route. i.e. /users/{id}
-	handler      func(http.ResponseWriter, *http.Request) // handler is the handler for the route
-	name         string                                   // name is the name of the route
-	requiresAuth bool                                     // requiresAuth is a flag indicating if the route requires authentication
+	Route        string      // route is the path for the route. i.e. /users/{id}
+	Handler      HandlerFunc // handler is the handler for the route
+	Name         string      // name is the name of the route
+	RequiresAuth bool        // requiresAuth is a flag indicating if the route requires authentication
 }
 
 // Server defines a structure for managing an HTTP server with middleware and routing capabilities.
@@ -125,9 +125,9 @@ func (s *Server) Run() error {
 
 	log.Debug().Msg("Registering unathenticated routes:")
 	for _, route := range s.routes {
-		if !route.requiresAuth {
-			log.Debug().Msg(route.route)
-			s.root.HandleFunc(route.route, route.handler).Name(route.name)
+		if !route.RequiresAuth {
+			log.Debug().Msg(route.Route)
+			s.root.HandleFunc(route.Route, route.Handler).Name(route.Name)
 		}
 	}
 
@@ -135,9 +135,9 @@ func (s *Server) Run() error {
 
 	log.Debug().Msg("Registering authenticated routes:")
 	for _, route := range s.routes {
-		if route.requiresAuth {
-			log.Debug().Msg(route.route)
-			s.root.HandleFunc(route.route, route.handler).Name(route.name)
+		if route.RequiresAuth {
+			log.Debug().Msg(route.Route)
+			s.root.HandleFunc(route.Route, route.Handler).Name(route.Name)
 		}
 	}
 
@@ -176,9 +176,22 @@ type HandlerFunc func(w http.ResponseWriter, r *http.Request)
 // "/users/123"
 func (s *Server) AddRoute(route string, handler HandlerFunc, name string, requiresAuth bool) {
 	s.routes = append(s.routes, RouteHandler{
-		route:        route,
-		handler:      handler,
-		name:         name,
-		requiresAuth: requiresAuth,
+		Route:        route,
+		Handler:      handler,
+		Name:         name,
+		RequiresAuth: requiresAuth,
 	})
+}
+
+func NewRouteHandler(route string, handler HandlerFunc, name string, requiresAuth bool) RouteHandler {
+	return RouteHandler{
+		Route:        route,
+		Handler:      handler,
+		Name:         name,
+		RequiresAuth: requiresAuth,
+	}
+}
+
+func (s *Server) GetRoutes() []RouteHandler {
+	return s.routes
 }

@@ -128,7 +128,7 @@ func (b *Builder) RegisterUserController(w http.ResponseWriter, r *http.Request)
 		Body:   io.NopCloser(bytes.NewBuffer(bodyBytes)),
 	}
 
-	userApp.apiNew(b.db)(w, userRequest)
+	userApp.ApiNew(b.db)(w, userRequest)
 
 	// TODO: Should rollback firebase if unsuccessful
 

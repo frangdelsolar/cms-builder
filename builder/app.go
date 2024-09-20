@@ -190,7 +190,7 @@ func (a *App) NewIdValidator(otherAppName string, fieldName string, id string, r
 	API HANDLERS
 */
 
-// apiList returns a handler function that responds to GET requests on the
+// ApiList returns a handler function that responds to GET requests on the
 // list endpoint, e.g. /api/users.
 //
 // The handler function will return a JSON response containing all the records
@@ -198,7 +198,7 @@ func (a *App) NewIdValidator(otherAppName string, fieldName string, id string, r
 //
 // It will also handle errors and return a 500 Internal Server Error if the
 // error is not a gorm.ErrRecordNotFound.
-func (a *App) apiList(db *Database) HandlerFunc {
+func (a *App) ApiList(db *Database) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		err := validateRequestMethod(r, http.MethodGet)
@@ -239,7 +239,7 @@ func (a *App) apiList(db *Database) HandlerFunc {
 	}
 }
 
-// apiDetail returns a handler function that responds to GET requests on the
+// ApiDetail returns a handler function that responds to GET requests on the
 // details endpoint, e.g. /api/users/{id}.
 //
 // The handler function will return a JSON response containing the requested
@@ -248,7 +248,7 @@ func (a *App) apiList(db *Database) HandlerFunc {
 // It will also handle errors and return a 404 Not Found if the error is a
 // gorm.ErrRecordNotFound, or a 500 Internal Server Error if the error is
 // not a gorm.ErrRecordNotFound.
-func (a *App) apiDetail(db *Database) HandlerFunc {
+func (a *App) ApiDetail(db *Database) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		err := validateRequestMethod(r, http.MethodGet)
@@ -290,7 +290,7 @@ func (a *App) apiDetail(db *Database) HandlerFunc {
 //
 // It will also handle errors and return a 500 Internal Server Error if the
 // error is not a gorm.ErrRecordNotFound.
-func (a *App) apiNew(db *Database) HandlerFunc {
+func (a *App) ApiNew(db *Database) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		err := validateRequestMethod(r, http.MethodPost)
@@ -306,17 +306,19 @@ func (a *App) apiNew(db *Database) HandlerFunc {
 			return
 		}
 
-		updatedBytes, err := appendUserDataToRequestBody(bodyBytes, r, true)
-		if err != nil {
-			handleError(w, err, "Error appending user data to request body")
-			return
+		if !a.skipUserBinding {
+			bodyBytes, err = appendUserDataToRequestBody(bodyBytes, r, true)
+			if err != nil {
+				handleError(w, err, "Error appending user data to request body")
+				return
+			}
 		}
 
 		// Create a new instance of the model
 		instance := createInstanceForUndeterminedType(a.model)
 
 		// Unmarshal the updated bytes into the instance
-		err = json.Unmarshal(updatedBytes, instance)
+		err = json.Unmarshal(bodyBytes, instance)
 		if err != nil {
 			handleError(w, err, "Error unmarshalling instance")
 			return
@@ -347,7 +349,7 @@ func (a *App) apiNew(db *Database) HandlerFunc {
 	}
 }
 
-// apiUpdate returns a handler function that responds to PUT requests on the
+// ApiUpdate returns a handler function that responds to PUT requests on the
 // details endpoint, e.g. /api/users/{id}.
 //
 // The handler function will update the record in the database and return a
@@ -356,7 +358,7 @@ func (a *App) apiNew(db *Database) HandlerFunc {
 // It will also handle errors and return a 404 Not Found if the error is a
 // gorm.ErrRecordNotFound, or a 500 Internal Server Error if the error is
 // not a gorm.ErrRecordNotFound.
-func (a *App) apiUpdate(db *Database) HandlerFunc {
+func (a *App) ApiUpdate(db *Database) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		err := validateRequestMethod(r, http.MethodPut)
@@ -385,14 +387,16 @@ func (a *App) apiUpdate(db *Database) HandlerFunc {
 			return
 		}
 
-		updatedBytes, err := appendUserDataToRequestBody(bodyBytes, r, false)
-		if err != nil {
-			handleError(w, err, "Error appending user data to request body")
-			return
+		if !a.skipUserBinding {
+			bodyBytes, err = appendUserDataToRequestBody(bodyBytes, r, false)
+			if err != nil {
+				handleError(w, err, "Error appending user data to request body")
+				return
+			}
 		}
 
 		// Unmarshal the updated bytes into the instance
-		err = json.Unmarshal(updatedBytes, instance)
+		err = json.Unmarshal(bodyBytes, instance)
 		if err != nil {
 			handleError(w, err, "Error unmarshalling instance")
 			return
@@ -429,7 +433,7 @@ func (a *App) apiUpdate(db *Database) HandlerFunc {
 	}
 }
 
-// apiDelete returns a handler function that responds to DELETE requests on the
+// ApiDelete returns a handler function that responds to DELETE requests on the
 // details endpoint, e.g. /api/users/{id}.
 //
 // The handler function will delete the record in the database and return a
@@ -438,7 +442,7 @@ func (a *App) apiUpdate(db *Database) HandlerFunc {
 // It will also handle errors and return a 404 Not Found if the error is a
 // gorm.ErrRecordNotFound, or a 500 Internal Server Error if the error is
 // not a gorm.ErrRecordNotFound.
-func (a *App) apiDelete(db *Database) HandlerFunc {
+func (a *App) ApiDelete(db *Database) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		err := validateRequestMethod(r, http.MethodDelete)

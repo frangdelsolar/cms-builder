@@ -3,6 +3,7 @@ package builder
 import (
 	"errors"
 	"fmt"
+	"strings"
 )
 
 var (
@@ -41,7 +42,8 @@ func NewAdmin(db *Database, server *Server) *Admin {
 // - App: The App instance associated with the given name if found.
 // - error: An error if the App is not found.
 func (a *Admin) GetApp(appName string) (App, error) {
-	if app, ok := a.apps[appName]; ok {
+	lowerAppName := strings.ToLower(appName)
+	if app, ok := a.apps[lowerAppName]; ok {
 		return app, nil
 	}
 
@@ -54,8 +56,7 @@ func (a *Admin) GetApp(appName string) (App, error) {
 // Parameters:
 // - model: The model to register.
 // - skipUserBinding: Whether to skip user binding which is used for filtering db queries by userId
-func (a *Admin) Register(model interface{}, skipUserBinding bool) App {
-	log.Debug().Interface("App", model).Msg("Registering app")
+func (a *Admin) Register(model interface{}, skipUserBinding bool) (App, error) {
 
 	app := App{
 		model:           model,
@@ -63,13 +64,26 @@ func (a *Admin) Register(model interface{}, skipUserBinding bool) App {
 		admin:           a,
 		validators:      make(map[string]FieldValidationFunc),
 	}
+	log.Debug().Msgf("Registering app %s", app.Name())
 
+	// check the app is not already registered
+	_, err := a.GetApp(app.Name())
+	if err == nil {
+		// If app isn't found it will return an error, which means it doesn't exist
+		// In other words. We are expecting an error here. Error means slot is free for the new app
+		return App{}, fmt.Errorf("app already registered: %s", app.Name())
+	}
+
+	// register the app
 	a.apps[app.Name()] = app
+
+	// apply migrations
 	a.db.Migrate(app.model)
 
+	// register CRUD routes
 	a.registerAPIRoutes(app)
 
-	return app
+	return app, nil
 }
 
 // registerAPIRoutes registers API routes for the given App.
@@ -84,41 +98,44 @@ func (a *Admin) Register(model interface{}, skipUserBinding bool) App {
 //   - GET /{appName}/{id}: Returns the App instance with the given ID.
 //   - DELETE /{appName}/{id}/delete: Deletes the App instance with the given ID.
 //   - PUT /{appName}/{id}/update: Updates the App instance with the given ID.
+//
+// All CRUD routes are protected by authentication middleware.
 func (a *Admin) registerAPIRoutes(app App) {
 	baseRoute := "/api/" + app.PluralName()
+	protectedRoute := true
 
 	a.server.AddRoute(
 		baseRoute,
-		app.apiList(a.db),
+		app.ApiList(a.db),
 		app.Name()+"-list",
-		true,
+		protectedRoute,
 	)
 
 	a.server.AddRoute(
 		baseRoute+"/new",
-		app.apiNew(a.db),
+		app.ApiNew(a.db),
 		app.Name()+"-new",
-		true,
+		protectedRoute,
 	)
 
 	a.server.AddRoute(
 		baseRoute+"/{id}",
-		app.apiDetail(a.db),
+		app.ApiDetail(a.db),
 		app.Name()+"-get",
-		true,
+		protectedRoute,
 	)
 
 	a.server.AddRoute(
 		baseRoute+"/{id}/delete",
-		app.apiDelete(a.db),
+		app.ApiDelete(a.db),
 		app.Name()+"-delete",
-		true,
+		protectedRoute,
 	)
 
 	a.server.AddRoute(
 		baseRoute+"/{id}/update",
-		app.apiUpdate(a.db),
+		app.ApiUpdate(a.db),
 		app.Name()+"-update",
-		true,
+		protectedRoute,
 	)
 }
