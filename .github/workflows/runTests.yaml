@@ -21,13 +21,16 @@ jobs:
     
       - name: Create config.yaml file
         run: |
-          echo "APP_ENV: cicd" > config.yaml
-          echo "FIREBASE_SECRET: ${{ secrets.FIREBASE_SECRET }}" >> config.yaml
-          echo "DB_PATH: ${{ github.workspace }}/cicd.db" >> config.yaml
-          echo "LOG_LEVEL: debug" >> config.yaml
+          echo "environment: cicd" > config.yaml
+          echo "logLevel: debug" >> config.yaml
+          echo "logWriteToFile: false" >> config.yaml
+          echo "dbFile: ${{ github.workspace }}/cicd.db" >> config.yaml
+          echo "firebaseSecret: ${{ secrets.FIREBASE_SECRET }}" >> config.yaml
+
 
       - name: Run tests
-        run: go test ./...
+        working-directory: builder
+        run: go test -v ./...
         if: always()
 
       - name: Upload test artifacts (optional)
