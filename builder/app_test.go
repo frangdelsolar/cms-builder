@@ -102,19 +102,36 @@ func TestUserCanNotRetrieveDeniedResources(t *testing.T) {}
 
 // TestUserCanListAllowedResources tests that a user can list resources if they have the correct permissions.
 //
-// It creates a new resource and checks that the response contains the created resource and that the resource is persisted in the database.
+// It creates three resources, one for some random user and two for the logged in user,
+// and checks that the response contains the created resources and that the resource is persisted in the database.
 func TestUserCanListAllowedResources(t *testing.T) {
 	engine := th.GetDefaultEngine()
 	admin, _ := engine.GetAdmin()
 	db, _ := engine.GetDatabase()
 
-	type TestListDenied struct {
+	type TestList struct {
 		*builder.SystemData
 		Field string
 	}
-	app, _ := admin.Register(TestListDenied{}, false)
+	app, _ := admin.Register(TestList{}, false)
 	responseWriter := th.MockWriter{}
-	request, _, rollbackUser := th.NewRequest(
+	var createdItem TestList
+
+	// Create a new resource for some random user
+	// this item should not be retrieved by the list endpoint
+	requestR, _, rollbackUserR := th.NewRequest(
+		http.MethodPost,
+		"{\"field\": \"test\"}",
+		true,
+		nil,
+	)
+	defer rollbackUserR()
+
+	app.ApiNew(db)(&responseWriter, requestR)
+
+	// Create two resources for the logged in user
+	responseWriter = th.MockWriter{}
+	request, user, rollbackUser := th.NewRequest(
 		http.MethodPost,
 		"{\"field\": \"test\"}",
 		true,
@@ -122,11 +139,40 @@ func TestUserCanListAllowedResources(t *testing.T) {
 	)
 	defer rollbackUser()
 
-	// Call the controller
-	app.ApiList(db)(&responseWriter, request)
-
+	app.ApiNew(db)(&responseWriter, request)
 	data := responseWriter.GetWrittenData()
-	assert.Equal(t, data, "[]")
+	json.Unmarshal([]byte(data), &createdItem)
+
+	t.Log("createdItem: ", createdItem)
+	assert.NotNil(t, createdItem.ID)
+
+	request, user, _ = th.NewRequest(
+		http.MethodPost,
+		"{\"field\": \"test\"}",
+		true,
+		user,
+	)
+
+	app.ApiNew(db)(&responseWriter, request)
+
+	// Get the list for the logged in user
+	request, _, _ = th.NewRequest(
+		http.MethodGet,
+		"",
+		true,
+		user,
+	)
+	w := th.MockWriter{}
+	app.ApiList(db)(&w, request)
+
+	listData := w.GetWrittenData()
+
+	var items []TestList
+	json.Unmarshal([]byte(listData), &items)
+
+	// Verify the list contains two items
+	assert.Equal(t, 2, len(items))
+	assert.Equal(t, createdItem.Field, items[0].Field)
 }
 
 // TestUserCanNotListDeniedResources tests that a user cannot list resources if they do not have the correct permissions.
@@ -191,7 +237,7 @@ func TestUserCanCreateAllowedResources(t *testing.T) {
 
 	assert.NotNil(t, createdItem.ID)
 	assert.Equal(t, "test", createdItem.Field)
-	assert.NotNil(t, createdItem.CreatedBy)
+	assert.NotNil(t, createdItem.CreatedByID)
 }
 
 // TestUserCanNotCreateDeniedResources tests that a user cannot create a resource if they do not have the correct permissions.

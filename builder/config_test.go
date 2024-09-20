@@ -7,6 +7,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TestNewConfigReader_Success tests the NewConfigReader function with a valid configuration file.
+//
+// It tests the following:
+//   - The returned ConfigReader is not nil.
+//   - The returned error is nil.
+//   - The ConfigReader can successfully retrieve values from the configuration file.
 func TestNewConfigReader_Success(t *testing.T) {
 	// Define a test config path with valid data (replace with your actual data)
 	testConfigPath := "config.yaml"
@@ -34,6 +40,11 @@ func TestNewConfigReader_EmptyConfigPath(t *testing.T) {
 	assert.Nil(t, reader)
 }
 
+// TestNewConfigReader_InvalidConfigPath tests the NewConfigReader function with a non-existent configuration file.
+//
+// It tests the following:
+//   - The returned ConfigReader is nil.
+//   - The returned error is not nil.
 func TestNewConfigReader_InvalidConfigPath(t *testing.T) {
 	// Define a non-existent config path
 	invalidPath := "invalid/path/config.yaml"

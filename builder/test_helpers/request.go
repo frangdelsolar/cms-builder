@@ -22,23 +22,27 @@ func NewRequest(method string, body string, authenticate bool, user *builder.Use
 	header := http.Header{
 		"Content-Type": []string{"application/json"},
 	}
-	if authenticate {
+
+	if user == nil && authenticate {
 		userData := RandomUserData()
-		user, rollback := RegisterTestUser(userData)
-		token, err := LoginUser(userData)
-		if err != nil {
-			fmt.Printf("Error: %+v\n", err)
-			panic(err)
-		}
-		header.Add("Authorization", "Bearer "+token)
-		header.Set("requested_by", fmt.Sprint(user.ID))
+		newUser, rollback := RegisterTestUser(userData)
 		callback = rollback
+		user = newUser
 	}
-	return &http.Request{
+
+	if authenticate {
+		header.Set("requested_by", fmt.Sprint(user.ID))
+	}
+
+	r := &http.Request{
 		Method: method,
 		Header: header,
-		Body:   io.NopCloser(bytes.NewBuffer([]byte(body))),
-	}, user, callback
+	}
+
+	if body != "" {
+		r.Body = io.NopCloser(bytes.NewBuffer([]byte(body)))
+	}
+	return r, user, callback
 }
 
 // RegisterTestUser registers a new user in the default engine, and returns a pointer to the created user
