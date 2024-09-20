@@ -183,8 +183,10 @@ func TestUserCanNotListDeniedResources(t *testing.T) {
 	admin, _ := engine.GetAdmin()
 	db, _ := engine.GetDatabase()
 
-	type TestListD struct{}
-	app, _ := admin.Register(TestListD{}, false)
+	type DeniedList struct {
+		*builder.SystemData
+	}
+	app, _ := admin.Register(DeniedList{}, false)
 	responseWriter := th.MockWriter{}
 	request, _, _ := th.NewRequest(
 		http.MethodGet,
@@ -197,7 +199,11 @@ func TestUserCanNotListDeniedResources(t *testing.T) {
 	app.ApiList(db)(&responseWriter, request)
 
 	data := responseWriter.GetWrittenData()
-	assert.Equal(t, data, "[]")
+	var items []DeniedList
+	json.Unmarshal([]byte(data), &items)
+
+	// Verify the list contains two items
+	assert.Equal(t, 0, len(items))
 }
 
 func TestUserCanUpdateAllowedResources(t *testing.T)   {}
