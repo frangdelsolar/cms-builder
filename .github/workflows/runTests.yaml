@@ -29,6 +29,7 @@ jobs:
           echo "logWriteToFile: false" >> config.yaml
           echo "dbFile: ${{ github.workspace }}/cicd.db" >> config.yaml
           echo "firebaseSecret: ${{ secrets.FIREBASE_SECRET }}" >> config.yaml
+          echo "firebaseApiKey: ${{ secrets.FIREBASE_API_KEY }}" >> config.yaml
 
       - name: Run tests
         working-directory: builder
