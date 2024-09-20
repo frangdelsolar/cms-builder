@@ -14,19 +14,21 @@ jobs:
       - uses: actions/checkout@v3 
 
       - name: Tidy
+        working-directory: builder
         run: go mod tidy
 
       - name: Install dependencies
+        working-directory: builder
         run: go mod download
     
       - name: Create config.yaml file
+        working-directory: builder
         run: |
           echo "environment: cicd" > config.yaml
           echo "logLevel: debug" >> config.yaml
           echo "logWriteToFile: false" >> config.yaml
           echo "dbFile: ${{ github.workspace }}/cicd.db" >> config.yaml
           echo "firebaseSecret: ${{ secrets.FIREBASE_SECRET }}" >> config.yaml
-
 
       - name: Run tests
         working-directory: builder
