@@ -39,6 +39,15 @@ type RegisterUserInput struct {
 	Password string `json:"password"`
 }
 
+// RegisterUser registers a new user in Firebase with the given name, email, and password.
+//
+// Parameters:
+// - ctx: The context to use for the operation.
+// - input: The input data for the user to create, containing the display name, email and password.
+//
+// Returns:
+// - *auth.UserRecord: The user record of the newly created user.
+// - error: An error if the user creation fails.
 func (fa *FirebaseAdmin) RegisterUser(ctx context.Context, input RegisterUserInput) (*auth.UserRecord, error) {
 	userToCreate := &auth.UserToCreate{}
 	userToCreate.DisplayName(input.Name)
@@ -48,6 +57,18 @@ func (fa *FirebaseAdmin) RegisterUser(ctx context.Context, input RegisterUserInp
 	log.Trace().Interface("UserToCreate", userToCreate).Msg("UserToCreate")
 
 	return fa.CreateUser(ctx, userToCreate)
+}
+
+// RollbackUserRegistration rolls back a user registration by deleting the user with the given UID in Firebase.
+//
+// Parameters:
+// - ctx: The context to use for the operation.
+// - uid: The UID of the user to delete.
+//
+// Returns:
+// - error: An error if the user deletion fails.
+func (fa *FirebaseAdmin) RollbackUserRegistration(ctx context.Context, uid string) error {
+	return fa.DeleteUser(ctx, uid)
 }
 
 // VerifyIDToken verifies the Firebase ID token provided by the user.
