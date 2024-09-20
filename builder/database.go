@@ -75,7 +75,7 @@ type DBConfig struct {
 // Otherwise, it returns an error indicating the connection failure.
 func LoadDB(config *DBConfig) (*Database, error) {
 
-	if config.URL == "" && config.Path == "" {
+	if config == nil || (config.URL == "" && config.Path == "") {
 		return nil, ErrDBConfigNotProvided
 	}
 

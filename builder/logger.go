@@ -13,7 +13,7 @@ const (
 	// defaultLogFilePath defines the default path for the log file
 	defaultLogFilePath = "logs/default.log"
 	// defaultLogLevel defines the default logging level
-	defaultLogLevel = zerolog.DebugLevel
+	DefaultLogLevel = zerolog.DebugLevel
 )
 
 // Logger wraps a zerolog.Logger instance with additional convenience methods
@@ -37,7 +37,7 @@ func NewLogger(config *LoggerConfig) (*Logger, error) {
 	// Handle nil config by providing a default configuration
 	if config == nil {
 		config = &LoggerConfig{
-			LogLevel:    defaultLogLevel.String(),
+			LogLevel:    DefaultLogLevel.String(),
 			WriteToFile: true,
 			LogFilePath: defaultLogFilePath,
 		}
@@ -47,7 +47,7 @@ func NewLogger(config *LoggerConfig) (*Logger, error) {
 	level, err := zerolog.ParseLevel(config.LogLevel)
 	if err != nil {
 		fmt.Printf("Invalid log level: %s\n", config.LogLevel)
-		level = defaultLogLevel // Use default level if invalid
+		level = DefaultLogLevel // Use default level if invalid
 	}
 
 	// Set global log level for zerolog
