@@ -12,7 +12,6 @@ import (
 func TestNewFirebaseAdmin_Success(t *testing.T) {
 	t.Log("Testing Firebase Admin initialization")
 	engine := th.GetEngineReadyForTests()
-
 	admin, err := engine.GetFirebase()
 
 	assert.NoError(t, err)
@@ -22,30 +21,26 @@ func TestNewFirebaseAdmin_Success(t *testing.T) {
 func TestRegisterUser(t *testing.T) {
 	t.Log("Testing Firebase User registration and rollback")
 	engine := th.GetEngineReadyForTests()
-
 	admin, _ := engine.GetFirebase()
-
 	newUserData := builder.RegisterUserInput{
 		Name:     th.RandomName(),
 		Email:    th.RandomEmail(),
 		Password: th.RandomPassword(),
 	}
-	t.Log("Registering user", newUserData)
 
+	t.Log("Registering user", newUserData)
 	user, err := admin.RegisterUser(context.Background(), newUserData)
 	assert.NoError(t, err)
 	assert.NotNil(t, user)
 
 	// Perform rollback
 	t.Log("Rolling back user registration", user.UID)
-
 	err = admin.RollbackUserRegistration(context.Background(), user.UID)
 	assert.NoError(t, err)
 }
 
 func TestLoginUser(t *testing.T) {
 	t.Log("Testing Firebase User login")
-
 	engine := th.GetEngineReadyForTests()
 	admin, _ := engine.GetFirebase()
 	newUserData := builder.RegisterUserInput{
@@ -54,12 +49,18 @@ func TestLoginUser(t *testing.T) {
 		Password: th.RandomPassword(),
 	}
 
+	t.Log("Registering user", newUserData)
 	fbUser, err := admin.RegisterUser(context.Background(), newUserData)
 	assert.NoError(t, err)
 
-	err = th.LoginUser(&newUserData)
 	t.Log("Logging in user", fbUser.UID)
+	token, err := th.LoginUser(&newUserData)
 	assert.NoError(t, err)
+
+	t.Log("Testing Verification token")
+	tkn, err := admin.VerifyIDToken(context.Background(), token)
+	assert.NoError(t, err)
+	assert.Equal(t, fbUser.UID, tkn.UID)
 
 	// Perform rollback
 	t.Log("Rolling back user registration", fbUser.UID)

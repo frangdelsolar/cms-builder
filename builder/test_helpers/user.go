@@ -12,7 +12,8 @@ import (
 
 var firebaseLoginUrl = "https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key="
 
-func LoginUser(userData *builder.RegisterUserInput) error {
+func LoginUser(userData *builder.RegisterUserInput) (string, error) {
+	userToken := ""
 	engine := GetEngineReadyForTests()
 	log, _ := engine.GetLogger()
 	configReader, _ := engine.GetConfigReader()
@@ -32,7 +33,7 @@ func LoginUser(userData *builder.RegisterUserInput) error {
 	bodyBytes, err := json.Marshal(requestBody)
 	if err != nil {
 		log.Error().Err(err).Msg("Error marshalling request body")
-		return err
+		return userToken, err
 	}
 
 	// Create a new HTTP client
@@ -43,7 +44,7 @@ func LoginUser(userData *builder.RegisterUserInput) error {
 	if err != nil {
 		// Handle error creating the request
 		log.Error().Err(err).Msg("Error creating request")
-		return err
+		return userToken, err
 	}
 
 	// Set the Content-Type header to application/json
@@ -53,23 +54,33 @@ func LoginUser(userData *builder.RegisterUserInput) error {
 	resp, err := client.Do(r)
 	if err != nil {
 		log.Error().Err(err).Msg("Error sending request")
-		return err
+		return userToken, err
 	}
 	defer resp.Body.Close() // Close the response body after use
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Error().Err(err).Msg("Error reading response body")
-		return err
+		return userToken, err
 	}
-	log.Debug().Msg(string(data))
+
+	// Unmarshal the response body
+	var response map[string]interface{}
+	err = json.Unmarshal(data, &response)
+	if err != nil {
+		log.Error().Err(err).Msg("Error unmarshalling response body")
+		return userToken, err
+	}
+
+	// Extract the token from the response
+	userToken = response["idToken"].(string)
 
 	// Process the response (e.g., check status code, parse the body)
 	if resp.StatusCode != http.StatusOK {
 		err := fmt.Errorf("login failed. Status code: %d", resp.StatusCode)
-		return err
+		return userToken, err
 	}
 
 	// Handle successful login based on your needs (e.g., store token, use for further requests)
-	return nil
+	return userToken, nil
 }
