@@ -3,7 +3,6 @@ package builder_test
 import (
 	"io/ioutil"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/frangdelsolar/cms/builder"
@@ -112,11 +111,4 @@ func TestNewLogger_WriteToFile_Error(t *testing.T) {
 	// Assert that an error occurred
 	assert.Error(t, err)
 	assert.Nil(t, logger)
-
-	// The expected error message might vary depending on the OS and library implementation
-	expectedErrMsg := "mkdir /invalid" // Adjust based on your OS
-
-	if strings.Contains(err.Error(), expectedErrMsg) {
-		t.Errorf("Expected error message: %s, got: %s", expectedErrMsg, err.Error())
-	}
 }
