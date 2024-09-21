@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Copy findlogs.sh
-        run: cp ../bin/findlogs.sh $GITHUB_WORKSPACE  # Copy to workspace
+        run: cp bin/findlogs.sh $GITHUB_WORKSPACE  # Copy to workspace
       - name: Tidy
         working-directory: bin
         run: sh findlogs.sh
