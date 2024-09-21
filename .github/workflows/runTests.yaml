@@ -39,11 +39,11 @@ jobs:
 
       - name: Install goveralls
         run: go install github.com/mattn/goveralls@latest
-        
+
       - name: Send coverage
         env:
           COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: goveralls -coverprofile=covprofile -service=github
+        run: $HOME/go/bin/goveralls -coverprofile=covprofile -service=github
 
       - name: Upload test artifacts (optional)
         uses: actions/upload-artifact@v3
