@@ -11,9 +11,10 @@ var (
 )
 
 type Admin struct {
-	apps   map[string]App
-	db     *Database
-	server *Server
+	apps    map[string]App
+	db      *Database
+	server  *Server
+	builder *Builder
 }
 
 // NewAdmin creates a new instance of the Admin, which is a central
@@ -25,11 +26,12 @@ type Admin struct {
 //
 // Returns:
 // - *Admin: A pointer to the new Admin instance.
-func NewAdmin(db *Database, server *Server) *Admin {
+func NewAdmin(db *Database, server *Server, builder *Builder) *Admin {
 	return &Admin{
-		apps:   make(map[string]App),
-		db:     db,
-		server: server,
+		apps:    make(map[string]App),
+		db:      db,
+		server:  server,
+		builder: builder,
 	}
 }
 

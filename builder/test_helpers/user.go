@@ -107,6 +107,6 @@ func RandomUserData() *builder.RegisterUserInput {
 	return &builder.RegisterUserInput{
 		Name:     RandomName(),
 		Email:    RandomEmail(),
-		Password: RandomPassword(),
+		Password: "password123", // Leave all test users with the same password
 	}
 }

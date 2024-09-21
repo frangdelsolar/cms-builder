@@ -32,7 +32,14 @@ func NewRequest(method string, body string, authenticate bool, user *builder.Use
 	}
 
 	if authenticate {
-		header.Set("requested_by", fmt.Sprint(user.ID))
+		accessToken, err := LoginUser(&builder.RegisterUserInput{
+			Email:    user.Email,
+			Password: "password123",
+		})
+		if err != nil {
+			panic(err)
+		}
+		header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
 	}
 
 	r := &http.Request{

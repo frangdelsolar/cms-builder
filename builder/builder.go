@@ -18,7 +18,6 @@ func init() {
 	log, err = NewLogger(nil)
 	if err != nil {
 		fmt.Println("Error initializing logger:", err)
-		// TODO: handle error gracefully
 		panic(err)
 	}
 }
@@ -222,7 +221,7 @@ func (b *Builder) GetServer() (*Server, error) {
 
 // initAdmin initializes the admin based on the provided configuration.
 func (b *Builder) initAdmin() {
-	admin := NewAdmin(b.db, b.server)
+	admin := NewAdmin(b.db, b.server, b)
 	b.admin = admin
 }
 

@@ -4,12 +4,16 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
 )
 
+// VerifyUser verifies the user based on the access token provided in the userIdToken parameter.
+//
+// The method verifies the token by calling VerifyIDToken on the Firebase Admin instance.
+// If the token is valid, it retrieves the user record from the database and returns it.
+// If the token is invalid, it returns an error.
 func (b *Builder) VerifyUser(userIdToken string) (*User, error) {
 	// verify token
 	firebase, err := b.GetFirebase()
@@ -32,30 +36,42 @@ func (b *Builder) VerifyUser(userIdToken string) (*User, error) {
 	return &localUser, nil
 }
 
+// authMiddleware is a middleware function that verifies the user based on the
+// access token provided in the Authorization header of the request. If the
+// verification fails, it will return a 401 error. If the verification is
+// successful, it will continue to the next handler in the chain, setting a
+// "requested_by" header in the request with the ID of the verified user.
 func (b *Builder) authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		header := r.Header.Get("Authorization")
-		if header != "" {
-			// get token from header
-			token := strings.Split(header, " ")[1]
-			if token != "" {
-				localUser, err := b.VerifyUser(token)
-				if err != nil {
-					log.Error().Err(err).Msg("Error verifying user")
-				}
-				if localUser != nil {
-					r.Header.Set("requested_by", fmt.Sprint(localUser.ID))
-				}
-			}
-		} else {
-			r.Header.Set("requested_by", "")
+		accessToken := GetAccessTokenFromRequest(r)
+		localUser, err := b.VerifyUser(accessToken)
+		if err != nil {
+			log.Error().Err(err).Msg("Error verifying user")
+			http.Error(w, "Error verifying user", http.StatusUnauthorized)
+			return
+		}
+
+		if *localUser == (User{}) {
+			log.Error().Msg("User not found")
+			http.Error(w, "User not found", http.StatusUnauthorized)
+			return
 		}
 
 		next.ServeHTTP(w, r)
 	})
 }
 
+// RegisterUserController handles the endpoint to register a new user. The endpoint
+// expects a POST request with a JSON body containing the name, email and password
+// of the user to register. The function will return a 400 error if the request body
+// is not valid JSON, or if the request method is not POST.
+//
+// The function will also return a 500 error if there is an error registering the user
+// in Firebase, or if there is an error creating the user in the local database.
+//
+// The function will also set the requested_by header to the ID of the newly created
+// user.
 func (b *Builder) RegisterUserController(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -118,4 +134,19 @@ func (b *Builder) RegisterUserController(w http.ResponseWriter, r *http.Request)
 
 	// TODO: Should rollback firebase if unsuccessful
 
+}
+
+// GetAccessTokenFromRequest extracts the access token from the Authorization header of the given request.
+// The header should be in the format "Bearer <token>".
+// If the token is not found, it returns an empty string.
+func GetAccessTokenFromRequest(r *http.Request) string {
+	header := r.Header.Get("Authorization")
+	if header != "" {
+		// get token from header
+		token := strings.Split(header, " ")[1]
+		if token != "" {
+			return token
+		}
+	}
+	return ""
 }

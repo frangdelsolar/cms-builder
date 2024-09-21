@@ -197,8 +197,7 @@ func (a *App) ApiList(db *Database) HandlerFunc {
 			return
 		}
 
-		// Get the user ID from the request.
-		userId := r.Header.Get("requested_by")
+		userId := getRequestUserId(r, a)
 
 		// Create slice to store the model instances.
 		instances, err := createSliceForUndeterminedType(a.model)
@@ -249,7 +248,7 @@ func (a *App) ApiDetail(db *Database) HandlerFunc {
 
 		// Retrieve parameters from the request
 		instanceId := mux.Vars(r)["id"]
-		userId := r.Header.Get("requested_by")
+		userId := getRequestUserId(r, a)
 
 		// Create a new instance of the model
 		instance := createInstanceForUndeterminedType(a.model)
@@ -297,7 +296,7 @@ func (a *App) ApiNew(db *Database) HandlerFunc {
 		}
 
 		if !a.skipUserBinding {
-			bodyBytes, err = appendUserDataToRequestBody(bodyBytes, r, true)
+			bodyBytes, err = appendUserDataToRequestBody(bodyBytes, r, true, a)
 			if err != nil {
 				handleError(w, err, "Error appending user data to request body")
 				return
@@ -320,8 +319,6 @@ func (a *App) ApiNew(db *Database) HandlerFunc {
 			handleError(w, fmt.Errorf("validation errors: %v", validationErrors), "Validation failed")
 			return
 		}
-
-		// TODO: Validate user has access to referenced objects
 
 		// Perform database operation
 		result := db.Create(instance)
@@ -361,7 +358,7 @@ func (a *App) ApiUpdate(db *Database) HandlerFunc {
 
 		// Retrieve parameters from the request
 		instanceId := mux.Vars(r)["id"]
-		userId := r.Header.Get("requested_by")
+		userId := getRequestUserId(r, a)
 
 		// Create a new instance of the model
 		instance := createInstanceForUndeterminedType(a.model)
@@ -380,7 +377,7 @@ func (a *App) ApiUpdate(db *Database) HandlerFunc {
 		}
 
 		if !a.skipUserBinding {
-			bodyBytes, err = appendUserDataToRequestBody(bodyBytes, r, false)
+			bodyBytes, err = appendUserDataToRequestBody(bodyBytes, r, false, a)
 			if err != nil {
 				handleError(w, err, "Error appending user data to request body")
 				return
@@ -407,8 +404,6 @@ func (a *App) ApiUpdate(db *Database) HandlerFunc {
 			return
 		}
 
-		// TODO: Validate user has access to referenced objects
-		// FIXME: This should be done in the Validate function
 		// Update the record in the database
 		result = db.Save(instance)
 		if result.Error != nil {
@@ -447,7 +442,7 @@ func (a *App) ApiDelete(db *Database) HandlerFunc {
 
 		// Retrieve parameters from the request
 		instanceId := mux.Vars(r)["id"]
-		userId := r.Header.Get("requested_by")
+		userId := getRequestUserId(r, a)
 
 		// Create a new instance of the model
 		instance := createInstanceForUndeterminedType(a.model)
@@ -485,6 +480,20 @@ func validateRequestMethod(r *http.Request, method string) error {
 	return nil
 }
 
+// getRequestUserId validates the access token in the Authorization header of the request.
+//
+// The function first retrieves the access token from the request header, then verifies it
+// by calling VerifyUser on the App's admin instance. If the verification fails, it returns
+// an empty string. Otherwise, it returns the ID of the verified user as a string.
+func getRequestUserId(r *http.Request, a *App) string {
+	accessToken := GetAccessTokenFromRequest(r)
+	user, err := a.admin.builder.VerifyUser(accessToken)
+	if err != nil {
+		return ""
+	}
+	return user.GetIDString()
+}
+
 // readRequestBody reads the entire request body and returns the contents as a byte slice.
 // It defers closing the request body until the function returns.
 // It returns an error if there is a problem reading the request body.
@@ -519,7 +528,7 @@ func handleError(w http.ResponseWriter, err error, msg string) {
 // For create operations, the requested_by is added to the CreatedById field.
 // For update operations, the requested_by is added to the UpdatedById field.
 // The function returns the updated request body as a byte array, or an error if the request body cannot be unmarshalled or marshalled.
-func appendUserDataToRequestBody(bytes []byte, r *http.Request, isNewRecord bool) ([]byte, error) {
+func appendUserDataToRequestBody(bytes []byte, r *http.Request, isNewRecord bool, a *App) ([]byte, error) {
 	jsonData, err := unmarshalRequestBody(bytes)
 	if err != nil {
 		log.Error().Err(err).Msgf("Error unmarshalling request body for creation")
@@ -527,10 +536,12 @@ func appendUserDataToRequestBody(bytes []byte, r *http.Request, isNewRecord bool
 	}
 
 	// Retrieve requested_by from request header
-	userId := r.Header.Get("requested_by")
+	userId := getRequestUserId(r, a)
+	// userId := r.Header.Get("requested_by")
+
 	if userId == "" {
 		log.Error().Msgf("No requested_by found in authorization header")
-		return bytes, fmt.Errorf("no requested_by found in authorization header")
+		return bytes, fmt.Errorf("user not authenticated")
 	}
 
 	convertedUserId, err := strconv.ParseUint(userId, 10, 64)

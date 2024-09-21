@@ -58,16 +58,15 @@ func setupTest(t *testing.T) (engine *builder.Builder, admin *builder.Admin, db 
 //
 // It creates a new request with a random string as the value for the "field" key, then calls the app's ApiNew method to create a new resource. It then unmarshalls the response into the createdItem variable and returns it along with the user and the rollback function.
 func createTestResource(t *testing.T, db *builder.Database, app *builder.App, user *builder.User) (*MockStruct, *builder.User, func()) {
-	responseWriter := th.MockWriter{}
 
 	data := "{\"field\": \"" + th.RandomString(10) + "\"}"
 	request, user, rollback := th.NewRequest(http.MethodPost, data, true, user, nil)
 
 	t.Logf("Creating new resource for user: %v", user.ID)
-	app.ApiNew(db)(&responseWriter, request)
+	response := executeApiCall(t, app.ApiNew(db), request)
 
 	var createdItem MockStruct
-	err := json.Unmarshal([]byte(responseWriter.GetWrittenData()), &createdItem)
+	err := json.Unmarshal([]byte(response), &createdItem)
 	assert.NoError(t, err, "Unmarshal should not return an error")
 
 	return &createdItem, user, rollback
@@ -81,7 +80,7 @@ func createTestResource(t *testing.T, db *builder.Database, app *builder.App, us
 //
 // This function is meant to be used in tests.
 func executeApiCall(t *testing.T, apiCall builder.HandlerFunc, request *http.Request) string {
-	t.Log("Executing API call", request.Method, request.Body, request.Header)
+	t.Log("Executing API call", request.Method, request.Body)
 	writer := th.MockWriter{}
 	apiCall(&writer, request)
 	return writer.GetWrittenData()
@@ -94,7 +93,7 @@ func TestNewAdmin(t *testing.T) {
 	db, _ := engine.GetDatabase()
 	server, _ := engine.GetServer()
 
-	admin := builder.NewAdmin(db, server)
+	admin := builder.NewAdmin(db, server, engine)
 
 	assert.NotNil(t, admin, "NewAdmin should return a non-nil Admin instance")
 }
@@ -361,7 +360,7 @@ func TestUserCanNotCreateDeniedResources(t *testing.T) {
 	app.ApiNew(db)(&responseWriter, request)
 
 	data := responseWriter.GetWrittenData()
-	assert.Contains(t, data, "no requested_by found in authorization header")
+	assert.Contains(t, data, "user not authenticated")
 }
 
 // TestUserCanUpdateAllowedResources tests that a user can update a resource if they have the correct permissions.

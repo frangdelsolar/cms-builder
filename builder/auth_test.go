@@ -44,8 +44,8 @@ func TestRegisterUserController(t *testing.T) {
 
 	t.Log("Testing Response")
 	userStr := responseWriter.GetWrittenData()
-	createdUser := builder.User{}
-	json.Unmarshal([]byte(userStr), &createdUser)
+	createdUser := &builder.User{}
+	json.Unmarshal([]byte(userStr), createdUser)
 	assert.Equal(t, createdUser.Name, newUserData.Name)
 
 	t.Log("Testing Verification token")
@@ -59,12 +59,4 @@ func TestRegisterUserController(t *testing.T) {
 
 	t.Log("Rolling back user registration")
 	firebase.RollbackUserRegistration(context.Background(), createdUser.FirebaseId)
-}
-
-func TestAuthMiddleware(t *testing.T) {
-	t.Log("Testing AuthMiddleware")
-
-	// TODO: Complete
-	// FIXME: Want to create a request wiht a request id but no token and try to perform some operations
-	// I should not get be able to perform any operations
 }

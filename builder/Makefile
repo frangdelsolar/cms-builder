@@ -1,6 +1,7 @@
-test:
+test: 
 	$(MAKE) logs
 	go test -coverprofile=coverage.out -covermode=set $(go list ./...) -v ./...
+	$(MAKE) fix coverage
 
 coverage:
 	go tool cover -html=coverage.out
