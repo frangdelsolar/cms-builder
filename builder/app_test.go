@@ -536,6 +536,10 @@ func TestCreateCallsValidators(t *testing.T) {
 	assert.Contains(t, data, "field cannot be empty", "The response should be an error")
 }
 
+// TestUpdateCallsValidators tests that a user cannot update a resource with
+// invalid values. It creates a resource, tries to update it with invalid values,
+// and checks that the response contains an error message indicating that the
+// validation failed.
 func TestUpdateCallsValidators(t *testing.T) {
 	_, _, db, _, app, deregisterApp := setupTest(t)
 	defer deregisterApp()

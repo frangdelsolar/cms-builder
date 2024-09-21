@@ -48,6 +48,8 @@ func (b *Builder) authMiddleware(next http.Handler) http.Handler {
 					r.Header.Set("requested_by", fmt.Sprint(localUser.ID))
 				}
 			}
+		} else {
+			r.Header.Set("requested_by", "")
 		}
 
 		next.ServeHTTP(w, r)

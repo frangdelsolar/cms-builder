@@ -176,16 +176,6 @@ func (a *App) NewIdValidator(otherAppName string, fieldName string, id string, r
 	}
 }
 
-// func (r *ValidationResult) String() string {
-// 	output := ""
-
-// 	for _, err := range r.Errors {
-// 		output += fmt.Sprintf("%s: %s\n", err.Field, err.Error)
-// 	}
-
-// 	return output
-// }
-
 /*
 	API HANDLERS
 */
@@ -331,6 +321,8 @@ func (a *App) ApiNew(db *Database) HandlerFunc {
 			return
 		}
 
+		// TODO: Validate user has access to referenced objects
+
 		// Perform database operation
 		result := db.Create(instance)
 		if result.Error != nil {
@@ -415,6 +407,8 @@ func (a *App) ApiUpdate(db *Database) HandlerFunc {
 			return
 		}
 
+		// TODO: Validate user has access to referenced objects
+		// FIXME: This should be done in the Validate function
 		// Update the record in the database
 		result = db.Save(instance)
 		if result.Error != nil {

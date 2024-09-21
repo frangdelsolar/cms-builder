@@ -14,3 +14,7 @@ clean:
 .PHONY: logs
 logs:
 	cd ../scripts && python3 find_logs.py
+
+.PHONY: fix
+fix:
+	cd ../scripts && python3 find_todos.py
