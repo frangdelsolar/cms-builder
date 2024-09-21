@@ -22,6 +22,9 @@ print_log() {
     "Info")
       color="\033[0;36m"  # Cyan
       ;;
+    "Warn")
+      color="\033[0;33m"  # Yellow
+      ;;
     *)
       color="\033[0m"  # Default
       ;;
@@ -34,7 +37,7 @@ print_log() {
 # Function to find logs in a file and return the count
 find_logs() {
   local file="$1"
-  local log_pattern="log\.(Debug|Error|Trace|Info)\(\)"  
+  local log_pattern="log\.(Debug|Error|Trace|Info|Warn)\(\)"  
   local line_number=0
   local log_count=0
 
@@ -42,7 +45,8 @@ find_logs() {
     line_number=$((line_number + 1))
     if [[ $line =~ $log_pattern ]]; then
       log_level="${BASH_REMATCH[1]}"
-      print_log "$file" "$line_number" "$line" "$log_level"
+      # print_log "$file" "$line_number" "$line" "$log_level"
+      echo "$file:$line_number: $log_level"
       log_count=$((log_count + 1))
     fi
   done < "$file"
