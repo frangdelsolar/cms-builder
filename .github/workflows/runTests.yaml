@@ -25,7 +25,7 @@ jobs:
         working-directory: builder
         run: |
           echo "environment: cicd" > config.yaml
-          echo "logLevel: debug" >> config.yaml
+          echo "logLevel: info" >> config.yaml
           echo "logWriteToFile: false" >> config.yaml
           echo "dbFile: ${{ github.workspace }}/cicd.db" >> config.yaml
           echo "firebaseSecret: ${{ secrets.FIREBASE_SECRET }}" >> config.yaml

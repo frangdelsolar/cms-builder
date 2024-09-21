@@ -28,7 +28,7 @@ func TestNewConfigReader_Success(t *testing.T) {
 
 	// Test getting values using the reader (replace with your actual keys)
 	value := reader.GetString("logLevel")
-	assert.Equal(t, "debug", value)
+	assert.Equal(t, "info", value)
 }
 
 func TestNewConfigReader_EmptyConfigPath(t *testing.T) {
