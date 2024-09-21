@@ -2,6 +2,7 @@ package builder_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -13,6 +14,17 @@ import (
 type MockStruct struct {
 	*builder.SystemData
 	Field string
+}
+
+func FieldValidator(inName interface{}) builder.FieldValidationError {
+	fieldValue := fmt.Sprint(inName)
+	output := builder.NewFieldValidationError("field")
+	if fieldValue == "" {
+		output.Error = "field cannot be empty"
+		return output
+	}
+
+	return builder.FieldValidationError{}
 }
 
 func setupTest(t *testing.T) (engine *builder.Builder, admin *builder.Admin, db *builder.Database, server *builder.Server, app *builder.App, deregisterApp func()) {
@@ -33,6 +45,8 @@ func setupTest(t *testing.T) (engine *builder.Builder, admin *builder.Admin, db 
 	mockApp, err := admin.Register(MockStruct{}, false)
 	assert.NoError(t, err, "Register should not return an error")
 
+	mockApp.RegisterValidator("field", FieldValidator)
+
 	callback := func() {
 		admin.Unregister(app.Name())
 	}
@@ -40,6 +54,9 @@ func setupTest(t *testing.T) (engine *builder.Builder, admin *builder.Admin, db 
 	return engine, admin, db, server, &mockApp, callback
 }
 
+// createTestResource creates a new resource for the given user and returns the created resource, the user, and a function to roll back the resource creation.
+//
+// It creates a new request with a random string as the value for the "field" key, then calls the app's ApiNew method to create a new resource. It then unmarshalls the response into the createdItem variable and returns it along with the user and the rollback function.
 func createTestResource(t *testing.T, db *builder.Database, app *builder.App, user *builder.User) (*MockStruct, *builder.User, func()) {
 	responseWriter := th.MockWriter{}
 
@@ -149,6 +166,9 @@ func TestRegisterAPIRoutes(t *testing.T) {
 	}
 }
 
+// TestUserCanRetrieveAllowedResources tests that a user can retrieve a resource if they have the correct permissions.
+//
+// It creates a resource for the logged-in user, and then checks that the response contains the same record.
 func TestUserCanRetrieveAllowedResources(t *testing.T) {
 	_, _, db, _, app, deregisterApp := setupTest(t)
 	defer deregisterApp()
@@ -181,6 +201,9 @@ func TestUserCanRetrieveAllowedResources(t *testing.T) {
 	assert.Equal(t, instance.CreatedByID, result.CreatedByID, "CreatedBy should be the same")
 }
 
+// TestUserCanNotRetrieveDeniedResources tests that a user can not retrieve a resource if they don't have the correct permissions.
+//
+// It creates two resources for two different users, and then checks that each user can not retrieve the resource of the other user.
 func TestUserCanNotRetrieveDeniedResources(t *testing.T) {
 	_, _, db, _, app, deregisterApp := setupTest(t)
 	defer deregisterApp()
@@ -264,6 +287,9 @@ func TestUserCanListAllowedResources(t *testing.T) {
 	assert.Equal(t, instanceB.CreatedByID, resultB.CreatedByID, "CreatedBy should be the same")
 }
 
+// TestUserCanNotListDeniedResources tests that a user can not list resources if they don't have the correct permissions.
+//
+// It creates two resources for some user, and then checks that the response contains an empty list.
 func TestUserCanNotListDeniedResources(t *testing.T) {
 	_, _, db, _, app, deregisterApp := setupTest(t)
 	defer deregisterApp()
@@ -394,6 +420,9 @@ func TestUserCanNotUpdateDeniedResources(t *testing.T) {
 	assert.Contains(t, response, "record not found", "The response should be an error")
 }
 
+// TestUserCanDeleteAllowedResources tests that a user can delete a resource if they have the correct permissions.
+//
+// It creates a resource for the logged-in user, and then checks that the response contains an error message indicating that the user does not have the correct permissions.
 func TestUserCanDeleteAllowedResources(t *testing.T) {
 	_, _, db, _, app, deregisterApp := setupTest(t)
 	defer deregisterApp()
@@ -433,6 +462,9 @@ func TestUserCanDeleteAllowedResources(t *testing.T) {
 	assert.Contains(t, response, "record not found", "The response should be an error")
 }
 
+// TestUserCanNotDeleteDeniedResources tests that a user cannot delete a resource if they don't have the correct permissions.
+//
+// It creates a resource for the logged-in user, and then checks that the response contains an error message indicating that the user does not have the correct permissions.
 func TestUserCanNotDeleteDeniedResources(t *testing.T) {
 	_, _, db, _, app, deregisterApp := setupTest(t)
 	defer deregisterApp()
@@ -479,6 +511,53 @@ func TestUserCanNotDeleteDeniedResources(t *testing.T) {
 	assert.Equal(t, instance.CreatedByID, result.CreatedByID, "CreatedBy should be the same")
 }
 
-func TestValidators(t *testing.T) {
+// TestValidators tests that a user cannot create a resource with invalid
+// values. It creates a new resource and checks that the response contains an
+// error message indicating that the validation failed.
+func TestCreateCallsValidators(t *testing.T) {
+	_, _, db, _, app, deregisterApp := setupTest(t)
+	defer deregisterApp()
 
+	// Create a resource
+	responseWriter := th.MockWriter{}
+	request, _, rollback := th.NewRequest(
+		http.MethodPost,
+		`{"field": ""}`,
+		true,
+		nil,
+		nil,
+	)
+	defer rollback()
+
+	t.Log("Creating a resource")
+	app.ApiNew(db)(&responseWriter, request)
+
+	data := responseWriter.GetWrittenData()
+	assert.Contains(t, data, "field cannot be empty", "The response should be an error")
+}
+
+func TestUpdateCallsValidators(t *testing.T) {
+	_, _, db, _, app, deregisterApp := setupTest(t)
+	defer deregisterApp()
+
+	// Create a resource
+	instance, user, rollback := createTestResource(t, db, app, nil)
+	defer rollback()
+
+	// Update the resource
+	responseWriter := th.MockWriter{}
+	request, _, _ := th.NewRequest(
+		http.MethodPut,
+		`{"field": ""}`,
+		true,
+		user,
+		map[string]string{"id": instance.GetIDString()},
+	)
+	defer rollback()
+
+	t.Log("Trying to update the resource")
+	app.ApiUpdate(db)(&responseWriter, request)
+
+	data := responseWriter.GetWrittenData()
+	assert.Contains(t, data, "field cannot be empty", "The response should be an error")
 }
