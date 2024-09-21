@@ -123,20 +123,15 @@ func (s *Server) Run() error {
 		s.Handler = middleware(s.Handler)
 	}
 
-	log.Debug().Msg("Registering unathenticated routes:")
 	for _, route := range s.Routes {
 		if !route.RequiresAuth {
-			log.Debug().Msg(route.Route)
 			s.Root.HandleFunc(route.Route, route.Handler).Name(route.Name)
 		}
 	}
 
 	s.Root.Use(s.Builder.authMiddleware)
-
-	log.Debug().Msg("Registering authenticated routes:")
 	for _, route := range s.Routes {
 		if route.RequiresAuth {
-			log.Debug().Msg(route.Route)
 			s.Root.HandleFunc(route.Route, route.Handler).Name(route.Name)
 		}
 	}

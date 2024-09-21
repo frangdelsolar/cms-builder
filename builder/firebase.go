@@ -54,8 +54,6 @@ func (fa *FirebaseAdmin) RegisterUser(ctx context.Context, input RegisterUserInp
 	userToCreate.Email(input.Email)
 	userToCreate.Password(input.Password)
 
-	log.Trace().Interface("UserToCreate", userToCreate).Msg("UserToCreate")
-
 	return fa.CreateUser(ctx, userToCreate)
 }
 

@@ -34,18 +34,12 @@ func (b *Builder) VerifyUser(userIdToken string) (*User, error) {
 
 func (b *Builder) authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Debug().Msg("AuthMiddleware")
 
-		// get authentication header
 		header := r.Header.Get("Authorization")
-		if header == "" {
-			log.Debug().Msg("No authorization header found")
-		} else {
+		if header != "" {
 			// get token from header
 			token := strings.Split(header, " ")[1]
-			if token == "" {
-				log.Debug().Msg("No token found in authorization header")
-			} else {
+			if token != "" {
 				localUser, err := b.VerifyUser(token)
 				if err != nil {
 					log.Error().Err(err).Msg("Error verifying user")
