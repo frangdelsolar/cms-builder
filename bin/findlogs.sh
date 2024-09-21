@@ -39,6 +39,7 @@ find_logs() {
   local log_count=0
 
   while read line; do
+    echo "$line"
     line_number=$((line_number + 1))
     if [[ $line =~ $log_pattern ]]; then
       log_level="${BASH_REMATCH[1]}"
