@@ -58,7 +58,8 @@ files=$(find ../builder -type f)
 # Counter for logs found
 # Iterate through each file and find logs
 for file in $files; do
-  echo "\033[0;17mChecking file: $file\033[0m"
+  # echo "\033[0;17mChecking file: $file\033[0m"
+  echo "Checking file: $file"
   find_logs "$file"
 done
 # Print the total number of logs found
