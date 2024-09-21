@@ -10,6 +10,8 @@ class Colors:
     YELLOW = "\033[0;33m"
     WHITE = "\033[0m"
     BLACK = "\033[0;30m"
+    BOLD = "\033[1m"
+    ITALIC = "\033[3m"
 
 log_colors = {
     "Debug": Colors.GREEN,
@@ -84,12 +86,12 @@ def present_results():
     print("\n\nResults:")
     for level, count in results_count.items():
         color = log_colors.get(level, Colors.WHITE)  # Default
-        italic = "\033[3m" if count > 0 else ""
-        print(f"{color}{italic}{level}: {count}")
+        italic = Colors.ITALIC if count > 0 else ""
+        print(f"{color}{Colors.BOLD}{italic}{level}: {count}")
     
     # Have a nice banner saying please review the logs and keep them to a minimum
     print(f"{Colors.WHITE}\n**************************************************")
-    print(f"{Colors.CYAN}Please review the logs and keep them to a minimum.")
+    print(f"{Colors.CYAN}{Colors.BOLD}Please review the logs and keep them to a minimum.")
     print(f"{Colors.WHITE}**************************************************")
 
 
