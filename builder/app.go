@@ -487,29 +487,32 @@ func (a *App) ApiDelete(db *Database) HandlerFunc {
 	REQUEST HELPERS
 */
 
+// removeSystemDataFieldsFromRequest takes a JSON request body as a byte slice and returns a new byte slice with the system data fields removed.
+//
+// It takes a JSON request body, unmarshals it into a map[string]interface{}, removes the system data fields from the map, marshals the modified map back into JSON, and returns it as a byte slice.
+//
+// If the unmarshaling or marshaling fails, it returns an error.
+//
+// Parameters:
+// - bodyBytes: the JSON request body as a byte slice
+//
+// Returns:
+// - []byte: the modified JSON request body as a byte slice
+// - error: an error if the unmarshaling or marshaling failed
 func removeSystemDataFieldsFromRequest(bodyBytes []byte) ([]byte, error) {
-	keysToRemove := map[string]bool{
-		"createdById": true,
-		"updatedById": true,
-		"createdAt":   true,
-		"updatedAt":   true,
-		"id":          true,
-	}
 
 	var data map[string]interface{}
 	err := json.Unmarshal(bodyBytes, &data)
-
-	log.Debug().Interface("original data", data).Msg("original data")
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal request body: %w", err)
 	}
 
-	for key := range keysToRemove {
+	systemDataInstance := SystemData{}
+
+	for _, key := range systemDataInstance.Keys() {
 		delete(data, key)
 	}
-
-	log.Debug().Interface("modified data", data).Msg("modified data")
 
 	modifiedBytes, err := json.Marshal(data)
 	if err != nil {

@@ -2,6 +2,8 @@ package builder
 
 import (
 	"fmt"
+	"reflect"
+	"strings"
 
 	"gorm.io/gorm"
 )
@@ -15,6 +17,42 @@ type SystemData struct {
 	UpdatedByID uint  `gorm:"not null" json:"updatedById"`
 	UpdatedBy   *User `gorm:"foreignKey:UpdatedByID" json:"updatedBy"`
 }
+
+// Returns a map with the json representation of the fields
+func (s *SystemData) Keys() []string {
+
+	var keys = []string{
+		"id",
+	}
+	rt := reflect.TypeOf(SystemData{})
+	if rt.Kind() != reflect.Struct {
+		panic("bad type")
+	}
+	for i := 0; i < rt.NumField(); i++ {
+		f := rt.Field(i)
+		v := strings.Split(f.Tag.Get("json"), ",")[0] // use split to ignore tag "options" like omitempty, etc.
+		if v != "" {
+			keys = append(keys, v)
+		}
+	}
+
+	return keys
+}
+
+// func getFieldName(tag, key string, s interface{}) (fieldname string) {
+// 	rt := reflect.TypeOf(s)
+// 	if rt.Kind() != reflect.Struct {
+// 		panic("bad type")
+// 	}
+// 	for i := 0; i < rt.NumField(); i++ {
+// 		f := rt.Field(i)
+// 		v := strings.Split(f.Tag.Get(key), ",")[0] // use split to ignore tag "options" like omitempty, etc.
+// 		if v == tag {
+// 			return f.Name
+// 		}
+// 	}
+// 	return ""
+// }
 
 // ID returns the ID of the SystemData as a string.
 //
