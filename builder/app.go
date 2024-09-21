@@ -375,7 +375,7 @@ func (a *App) ApiUpdate(db *Database) HandlerFunc {
 		instance := createInstanceForUndeterminedType(a.model)
 
 		// Query the database to find the record by ID
-		result := db.FindById(instanceId, a.model, userId, a.skipUserBinding)
+		result := db.FindById(instanceId, instance, userId, a.skipUserBinding)
 		if result.Error != nil {
 			handleError(w, result.Error, result.Error.Error())
 			return
@@ -455,15 +455,18 @@ func (a *App) ApiDelete(db *Database) HandlerFunc {
 		instanceId := mux.Vars(r)["id"]
 		userId := r.Header.Get("requested_by")
 
+		// Create a new instance of the model
+		instance := createInstanceForUndeterminedType(a.model)
+
 		// Query the database to find the record by ID
-		dbInstance := db.FindById(instanceId, a.model, userId, a.skipUserBinding)
-		if dbInstance.Error != nil {
-			handleError(w, dbInstance.Error, dbInstance.Error.Error())
+		dbResponse := db.FindById(instanceId, instance, userId, a.skipUserBinding)
+		if dbResponse.Error != nil {
+			handleError(w, dbResponse.Error, dbResponse.Error.Error())
 			return
 		}
 
 		// Delete the record by ID
-		result := db.Delete(dbInstance)
+		result := db.Delete(instance)
 		if result.Error != nil {
 			handleError(w, result.Error, result.Error.Error())
 			return

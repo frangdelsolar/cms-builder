@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/frangdelsolar/cms/builder"
+	"github.com/gorilla/mux"
 )
 
 // NewRequest creates a new HTTP request with the given method and body.
@@ -16,7 +17,7 @@ import (
 // and add the authentication token and the user ID to the request headers.
 // The function returns a pointer to the created request and a function that
 // can be used to undo the user registration.
-func NewRequest(method string, body string, authenticate bool, user *builder.User) (*http.Request, *builder.User, func()) {
+func NewRequest(method string, body string, authenticate bool, user *builder.User, vars map[string]string) (*http.Request, *builder.User, func()) {
 	callback := func() {}
 
 	header := http.Header{
@@ -37,6 +38,10 @@ func NewRequest(method string, body string, authenticate bool, user *builder.Use
 	r := &http.Request{
 		Method: method,
 		Header: header,
+	}
+
+	for k, v := range vars {
+		r = mux.SetURLVars(r, map[string]string{k: v})
 	}
 
 	if body != "" {

@@ -85,6 +85,26 @@ func (a *Admin) Register(model interface{}, skipUserBinding bool) (App, error) {
 	return app, nil
 }
 
+// Unregister removes the given app from the Admin instance.
+//
+// If the app is not found, it returns an error.
+//
+// Parameters:
+// - appName: The name of the app to be unregistered.
+//
+// Returns:
+// - error: An error if the app is not found.
+func (a *Admin) Unregister(appName string) error {
+
+	lowerAppName := strings.ToLower(appName)
+	if _, ok := a.apps[lowerAppName]; !ok {
+		return fmt.Errorf("app not found: %s", appName)
+	}
+
+	delete(a.apps, lowerAppName)
+	return nil
+}
+
 // registerAPIRoutes registers API routes for the given App.
 //
 // It takes two arguments:
