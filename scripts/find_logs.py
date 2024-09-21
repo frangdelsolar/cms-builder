@@ -88,9 +88,9 @@ def present_results():
         print(f"{color}{italic}{level}: {count}")
     
     # Have a nice banner saying please review the logs and keep them to a minimum
-    print(f"{Colors.BLACK}\n******************")
+    print(f"{Colors.WHITE}\n******************")
     print(f"{Colors.CYAN}Please review the logs and keep them to a minimum.")
-    print(f"{Colors.BLACK}******************")
+    print(f"{Colors.WHITE}******************")
 
 
 def main():
