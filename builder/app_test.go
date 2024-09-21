@@ -564,3 +564,88 @@ func TestUpdateCallsValidators(t *testing.T) {
 	data := responseWriter.GetWrittenData()
 	assert.Contains(t, data, "field cannot be empty", "The response should be an error")
 }
+
+// TestUserCanNotReplaceCreatedByIDOnCreate tests that a user cannot create a resource with a createdById or updatedById that is not their own user ID.
+func TestUserCanNotReplaceCreatedByIDOnCreate(t *testing.T) {
+	_, _, db, _, app, deregisterApp := setupTest(t)
+	defer deregisterApp()
+
+	// Create a resource for the logged-in user
+	responseWriter := th.MockWriter{}
+	request, user, rollback := th.NewRequest(
+		http.MethodPost,
+		`{"field": "some value", "createdById": 9999991, "updatedById": 9999991}`,
+		true,
+		nil,
+		nil,
+	)
+	defer rollback()
+
+	t.Log("Creating a resource")
+	app.ApiNew(db)(&responseWriter, request)
+
+	response := responseWriter.GetWrittenData()
+
+	// Verify the update was successful
+	var instance MockStruct
+	json.Unmarshal([]byte(response), &instance)
+	assert.Equal(t, user.GetIDString(), fmt.Sprintf("%d", instance.CreatedByID), "CreatedByID should be the logged in user")
+	assert.Equal(t, user.GetIDString(), fmt.Sprintf("%d", instance.UpdatedByID), "UpdatedByID should be the logged in user")
+}
+
+// TestUserCanNotReplaceCreatedByIDOnUpdate tests that a user cannot update a resource with a createdById or updatedById that is not their own user ID.
+func TestUserCanNotReplaceCreatedByIDOnUpdate(t *testing.T) {
+	_, _, db, _, app, deregisterApp := setupTest(t)
+	defer deregisterApp()
+
+	// Create a resource for the logged-in user
+	instance, user, userRollback := createTestResource(t, db, app, nil)
+	defer userRollback()
+
+	// Update the resource
+	request, _, _ := th.NewRequest(
+		http.MethodPut,
+		`{"createdById": 9999999, "updatedById": 9999999}`,
+		true,
+		user,
+		map[string]string{"id": instance.GetIDString()},
+	)
+
+	t.Log("Updating the resource systemData")
+	response := executeApiCall(t, app.ApiUpdate(db), request)
+
+	// Verify the update was successful
+	var updatedInstance MockStruct
+	json.Unmarshal([]byte(response), &updatedInstance)
+	assert.Equal(t, instance.ID, updatedInstance.ID, "ID should be the same")
+	assert.Equal(t, user.GetIDString(), fmt.Sprintf("%d", updatedInstance.CreatedByID), "CreatedByID should be the logged in user")
+	assert.Equal(t, user.GetIDString(), fmt.Sprintf("%d", updatedInstance.UpdatedByID), "UpdatedByID should be the logged in user")
+}
+
+// TestUserCanNotReplaceInstanceIDOnUpdate tests that a user cannot update a resource with an instance ID that is not the same as the one in the request.
+func TestUserCanNotReplaceInstanceIDOnUpdate(t *testing.T) {
+	_, _, db, _, app, deregisterApp := setupTest(t)
+	defer deregisterApp()
+
+	// Create a resource for the logged-in user
+	instance, user, userRollback := createTestResource(t, db, app, nil)
+	defer userRollback()
+
+	// Update the resource
+	request, _, _ := th.NewRequest(
+		http.MethodPut,
+		`{"id": 79999999}`,
+		true,
+		user,
+		map[string]string{"id": instance.GetIDString()},
+	)
+	t.Log("Updating the resource with an some ID")
+	response := executeApiCall(t, app.ApiUpdate(db), request)
+
+	// Verify the update was successful
+	var updatedInstance MockStruct
+	json.Unmarshal([]byte(response), &updatedInstance)
+	assert.Equal(t, instance.GetIDString(), updatedInstance.GetIDString(), "ID should remain the same")
+	assert.Equal(t, user.GetIDString(), fmt.Sprintf("%d", updatedInstance.CreatedByID), "CreatedByID should be the logged in user")
+	assert.Equal(t, user.GetIDString(), fmt.Sprintf("%d", updatedInstance.UpdatedByID), "UpdatedByID should be the logged in user")
+}

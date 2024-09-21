@@ -295,6 +295,14 @@ func (a *App) ApiNew(db *Database) HandlerFunc {
 			return
 		}
 
+		// Make sure user is not attempting to modify system data fields
+		bodyBytes, err = removeSystemDataFieldsFromRequest(bodyBytes)
+		if err != nil {
+			handleError(w, err, "Error making sure user is not modifying system data fields")
+			return
+		}
+
+		// Update SystemData fields
 		if !a.skipUserBinding {
 			bodyBytes, err = appendUserDataToRequestBody(bodyBytes, r, true, a)
 			if err != nil {
@@ -376,6 +384,14 @@ func (a *App) ApiUpdate(db *Database) HandlerFunc {
 			return
 		}
 
+		// Make sure user is not attempting to modify system data fields
+		bodyBytes, err = removeSystemDataFieldsFromRequest(bodyBytes)
+		if err != nil {
+			handleError(w, err, "Error making sure user is not modifying system data fields")
+			return
+		}
+
+		// Update SystemData fields
 		if !a.skipUserBinding {
 			bodyBytes, err = appendUserDataToRequestBody(bodyBytes, r, false, a)
 			if err != nil {
@@ -470,6 +486,38 @@ func (a *App) ApiDelete(db *Database) HandlerFunc {
 /*
 	REQUEST HELPERS
 */
+
+func removeSystemDataFieldsFromRequest(bodyBytes []byte) ([]byte, error) {
+	keysToRemove := map[string]bool{
+		"createdById": true,
+		"updatedById": true,
+		"createdAt":   true,
+		"updatedAt":   true,
+		"id":          true,
+	}
+
+	var data map[string]interface{}
+	err := json.Unmarshal(bodyBytes, &data)
+
+	log.Debug().Interface("original data", data).Msg("original data")
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal request body: %w", err)
+	}
+
+	for key := range keysToRemove {
+		delete(data, key)
+	}
+
+	log.Debug().Interface("modified data", data).Msg("modified data")
+
+	modifiedBytes, err := json.Marshal(data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal modified data: %w", err)
+	}
+
+	return modifiedBytes, nil
+}
 
 // validateRequestMethod returns an error if the request method does not match the given
 // method string. The error message will include the actual request method.

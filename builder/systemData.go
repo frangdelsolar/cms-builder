@@ -6,6 +6,8 @@ import (
 	"gorm.io/gorm"
 )
 
+// IMPORTANT: If you ever modify this struct you must also modify
+// removeSystemDataFieldsFromRequest from app.go
 type SystemData struct {
 	gorm.Model
 	CreatedByID uint  `gorm:"not null" json:"createdById"`

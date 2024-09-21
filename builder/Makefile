@@ -11,6 +11,8 @@ clean:
 	find . -name "*.out" -delete
 	find . -name "*.db" -delete
 	find . -name "logs" -type d -empty -delete
+	find . -name "coverage.out" -delete
+	find . -name "covprofile" -delete
 
 .PHONY: logs
 logs:
