@@ -34,12 +34,11 @@ print_log() {
 # Function to find logs in a file and return the count
 find_logs() {
   local file="$1"
-  local log_pattern="log\.(Debug|Error|Trace|Info)\(\)"
+  local log_pattern="log\.(Debug|Error|Trace|Info)\(\)"  
   local line_number=0
   local log_count=0
 
   while read line; do
-    echo "$line"
     line_number=$((line_number + 1))
     if [[ $line =~ $log_pattern ]]; then
       log_level="${BASH_REMATCH[1]}"
