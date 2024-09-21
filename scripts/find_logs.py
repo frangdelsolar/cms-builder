@@ -90,7 +90,7 @@ def present_results():
     # Have a nice banner saying please review the logs and keep them to a minimum
     print(f"{Colors.WHITE}\n******************************************************")
     print(f"{Colors.CYAN}Please review the logs and keep them to a minimum.")
-    print(f"{Colors.WHITE}******************************************************")")
+    print(f"{Colors.WHITE}******************************************************")
 
 
 def main():
