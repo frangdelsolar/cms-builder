@@ -136,46 +136,6 @@ func NewFieldValidationError(fieldName string) FieldValidationError {
 	}
 }
 
-// NewIdValidator returns a FieldValidationFunc that checks if the given ID is valid and belongs to the entity
-// with the given name. It also checks if the ID is not empty and if it exists in the database.
-// If the ID is valid, it returns an empty FieldValidationError. Otherwise, it returns a FieldValidationError with a
-// descriptive error message.
-func (a *App) NewIdValidator(otherAppName string, fieldName string, id string, requestedBy string) FieldValidationFunc {
-	return func(id interface{}) FieldValidationError {
-		validationError := NewFieldValidationError(fieldName)
-
-		if id == "" {
-			validationError.Error = fieldName + " cannot be empty"
-			return validationError
-		}
-
-		otherApp, err := a.admin.GetApp(otherAppName)
-		if err != nil {
-			validationError.Error = fmt.Sprintf("error getting %s: %s", otherAppName, err)
-			return validationError
-		}
-
-		// Create a new instance of the model
-		instance := createInstanceForUndeterminedType(otherApp.model)
-
-		// Query the database to find the record by ID
-		result := a.admin.db.FindById(fmt.Sprint(id), instance, requestedBy, otherApp.skipUserBinding)
-		if result.Error != nil {
-			return FieldValidationError{
-				Field: fieldName,
-				Error: fmt.Sprintf("error finding %s: %s", otherAppName, result.Error),
-			}
-		}
-
-		if result.RowsAffected == 0 {
-			validationError.Error = fmt.Sprintf("%s with id %s not found", otherAppName, id)
-			return validationError
-		}
-
-		return FieldValidationError{}
-	}
-}
-
 /*
 	API HANDLERS
 */
