@@ -29,15 +29,13 @@ func (u *User) GetIDString() string {
 //
 // Returns:
 // - error: an error if the name is empty, otherwise nil.
-func NameValidator(fieldName string, instance map[string]interface{}) FieldValidationError {
+func NameValidator(fieldName string, instance map[string]interface{}, output *FieldValidationError) *FieldValidationError {
 	name := fmt.Sprint(instance[fieldName])
-	output := NewFieldValidationError(fieldName)
 	if name == "" {
 		output.Error = fieldName + " cannot be empty"
-		return output
 	}
 
-	return FieldValidationError{}
+	return output
 }
 
 // EmailValidator validates the given email.
@@ -47,12 +45,10 @@ func NameValidator(fieldName string, instance map[string]interface{}) FieldValid
 //
 // Returns:
 // - error: an error if the email is empty or has an invalid format, otherwise nil.
-func EmailValidator(fieldName string, instance map[string]interface{}) FieldValidationError {
-	output := NewFieldValidationError(fieldName)
+func EmailValidator(fieldName string, instance map[string]interface{}, output *FieldValidationError) *FieldValidationError {
 	email := fmt.Sprint(instance[fieldName])
 	if email == "" {
 		output.Error = fieldName + " cannot be empty"
-		return output
 	}
 
 	emailRegex := `^[a-zA-Z0-9.!#$%&'*+/=?^_` + `{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$`
@@ -60,13 +56,11 @@ func EmailValidator(fieldName string, instance map[string]interface{}) FieldVali
 	match, err := regexp.MatchString(emailRegex, email)
 	if err != nil {
 		output.Error = err.Error()
-		return output
 	}
 
 	if !match {
 		output.Error = "email has an invalid format"
-		return output
 	}
 
-	return FieldValidationError{}
+	return output
 }

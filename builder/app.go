@@ -14,7 +14,7 @@ import (
 )
 
 // FieldValidationFunc is a function that validates a field value.
-type FieldValidationFunc func(fieldName string, jsonData map[string]interface{}) FieldValidationError
+type FieldValidationFunc func(fieldName string, jsonData map[string]interface{}, output *FieldValidationError) *FieldValidationError
 
 type FieldValidationError struct {
 	Field string // The name of the field that failed validation
@@ -105,9 +105,11 @@ func (a *App) Validate(instance interface{}) ValidationResult {
 		if validator == nil {
 			continue
 		}
-		validationResult := validator(key, jsonData)
-		if validationResult != (FieldValidationError{}) {
-			errors.Errors = append(errors.Errors, validationResult)
+
+		output := NewFieldValidationError(key)
+		validationResult := validator(key, jsonData, &output)
+		if validationResult.Error != "" {
+			errors.Errors = append(errors.Errors, *validationResult)
 		}
 	}
 

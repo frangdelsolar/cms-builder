@@ -27,15 +27,13 @@ type MockStruct struct {
 //
 // Returns:
 // - error: an error if the field value is empty, otherwise nil.
-func FieldValidator(fieldName string, instance map[string]interface{}) builder.FieldValidationError {
+func FieldValidator(fieldName string, instance map[string]interface{}, output *builder.FieldValidationError) *builder.FieldValidationError {
 	fieldValue := fmt.Sprint(instance[fieldName])
-	output := builder.NewFieldValidationError(fieldName)
 	if fieldValue == "" {
 		output.Error = fieldName + " cannot be empty"
-		return output
 	}
 
-	return builder.FieldValidationError{}
+	return output
 }
 
 // setupTest sets up a default Builder instance, Admin, Database, and Server instances,
