@@ -43,9 +43,10 @@ func TestRegisterUserController(t *testing.T) {
 	engine.RegisterUserController(&responseWriter, registerUserRequest)
 
 	t.Log("Testing Response")
-	userStr := responseWriter.GetWrittenData()
-	createdUser := &builder.User{}
-	json.Unmarshal([]byte(userStr), createdUser)
+	createdUser := builder.User{}
+	response, err := builder.ParseResponse(responseWriter.Buffer.Bytes(), &createdUser)
+	assert.NoError(t, err)
+	assert.True(t, response.Success)
 	assert.Equal(t, createdUser.Name, newUserData.Name)
 
 	t.Log("Testing Verification token")
@@ -60,3 +61,5 @@ func TestRegisterUserController(t *testing.T) {
 	t.Log("Rolling back user registration")
 	firebase.RollbackUserRegistration(context.Background(), createdUser.FirebaseId)
 }
+
+// TODO: Create a test for authmiddleware

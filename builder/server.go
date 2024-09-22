@@ -117,25 +117,28 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 // applies all registered middleware to the server's handler,
 // and finally calls the underlying http.Server's ListenAndServe method.
 func (s *Server) Run() error {
-	log.Info().Msgf("Running server on port %s", s.Addr)
 
 	for _, middleware := range s.Middlewares {
 		s.Handler = middleware(s.Handler)
 	}
-
+	log.Info().Msg("Public routes")
 	for _, route := range s.Routes {
 		if !route.RequiresAuth {
+			log.Info().Msgf("Route: %s", route.Route)
 			s.Root.HandleFunc(route.Route, route.Handler).Name(route.Name)
 		}
 	}
 
 	s.Root.Use(s.Builder.authMiddleware)
+	log.Info().Msg("Authenticated routes")
 	for _, route := range s.Routes {
 		if route.RequiresAuth {
+			log.Info().Msgf("Route: %s", route.Route)
 			s.Root.HandleFunc(route.Route, route.Handler).Name(route.Name)
 		}
 	}
 
+	log.Info().Msgf("Running server on port %s", s.Addr)
 	return s.ListenAndServe()
 }
 

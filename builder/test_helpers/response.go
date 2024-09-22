@@ -12,7 +12,7 @@ type ResponseWriter interface {
 }
 
 type MockWriter struct {
-	buffer bytes.Buffer
+	Buffer bytes.Buffer
 }
 
 // Header returns a Header that can be used as a response header.
@@ -27,7 +27,7 @@ func (m *MockWriter) Header() http.Header {
 // It returns 0 and nil because it is not possible to write to the buffer in a
 // way that would return an error.
 func (m *MockWriter) Write(b []byte) (int, error) {
-	m.buffer.Write(b)
+	m.Buffer.Write(b)
 	return 0, nil
 }
 
@@ -35,5 +35,5 @@ func (m *MockWriter) WriteHeader(statusCode int) {}
 
 // GetWrittenData returns the data written to the MockWriter as a string.
 func (m *MockWriter) GetWrittenData() string {
-	return m.buffer.String()
+	return m.Buffer.String()
 }

@@ -84,9 +84,8 @@ func RegisterTestUser(newUserData *builder.RegisterUserInput) (*builder.User, fu
 
 	engine.RegisterUserController(&responseWriter, registerUserRequest)
 
-	userStr := responseWriter.GetWrittenData()
 	createdUser := builder.User{}
-	json.Unmarshal([]byte(userStr), &createdUser)
+	builder.ParseResponse(responseWriter.Buffer.Bytes(), &createdUser)
 
 	return &createdUser, func() {
 		firebase.RollbackUserRegistration(context.Background(), createdUser.FirebaseId)

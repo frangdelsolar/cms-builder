@@ -156,7 +156,7 @@ func (a *App) ApiList(db *Database) HandlerFunc {
 
 		err := validateRequestMethod(r, http.MethodGet)
 		if err != nil {
-			handleError(w, err, "Invalid request method")
+			SendJsonResponse(w, http.StatusMethodNotAllowed, nil, err.Error())
 			return
 		}
 
@@ -165,7 +165,7 @@ func (a *App) ApiList(db *Database) HandlerFunc {
 		// Create slice to store the model instances.
 		instances, err := createSliceForUndeterminedType(a.model)
 		if err != nil {
-			handleError(w, err, "Error creating slice for model")
+			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
 		}
 
@@ -177,17 +177,11 @@ func (a *App) ApiList(db *Database) HandlerFunc {
 		}
 
 		if result.Error != nil {
-			handleError(w, result.Error, "Error finding instances")
+			SendJsonResponse(w, http.StatusInternalServerError, nil, result.Error.Error())
 			return
 		}
 
-		response, err := json.Marshal(instances)
-		if err != nil {
-			handleError(w, err, "Error marshaling instances to JSON")
-			return
-		}
-
-		writeJsonResponse(w, response, http.StatusOK)
+		SendJsonResponse(w, http.StatusOK, instances, a.Name()+" list")
 	}
 }
 
@@ -205,7 +199,7 @@ func (a *App) ApiDetail(db *Database) HandlerFunc {
 
 		err := validateRequestMethod(r, http.MethodGet)
 		if err != nil {
-			handleError(w, err, err.Error())
+			SendJsonResponse(w, http.StatusMethodNotAllowed, err, err.Error())
 			return
 		}
 
@@ -219,18 +213,11 @@ func (a *App) ApiDetail(db *Database) HandlerFunc {
 		// Query the database to find the record by ID
 		result := db.FindById(instanceId, instance, userId, a.skipUserBinding)
 		if result.Error != nil {
-			handleError(w, result.Error, result.Error.Error())
+			SendJsonResponse(w, http.StatusInternalServerError, result.Error, "Failed to get "+a.Name()+" detail")
 			return
 		}
 
-		// Marshal the results into JSON
-		response, err := json.Marshal(instance)
-		if err != nil {
-			handleError(w, err, err.Error())
-			return
-		}
-
-		writeJsonResponse(w, response, http.StatusOK)
+		SendJsonResponse(w, http.StatusOK, instance, a.Name()+" detail")
 	}
 }
 
@@ -247,21 +234,21 @@ func (a *App) ApiNew(db *Database) HandlerFunc {
 
 		err := validateRequestMethod(r, http.MethodPost)
 		if err != nil {
-			handleError(w, err, "Invalid request method")
+			SendJsonResponse(w, http.StatusMethodNotAllowed, nil, err.Error())
 			return
 		}
 
 		// Will read bytes, append user data and pack the bytes again to be processed
 		bodyBytes, err := readRequestBody(r)
 		if err != nil {
-			handleError(w, err, "Error reading request body")
+			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
 		}
 
 		// Make sure user is not attempting to modify system data fields
 		bodyBytes, err = removeSystemDataFieldsFromRequest(bodyBytes)
 		if err != nil {
-			handleError(w, err, "Error making sure user is not modifying system data fields")
+			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
 		}
 
@@ -269,7 +256,7 @@ func (a *App) ApiNew(db *Database) HandlerFunc {
 		if !a.skipUserBinding {
 			bodyBytes, err = appendUserDataToRequestBody(bodyBytes, r, true, a)
 			if err != nil {
-				handleError(w, err, "Error appending user data to request body")
+				SendJsonResponse(w, http.StatusUnauthorized, err, err.Error())
 				return
 			}
 		}
@@ -280,32 +267,25 @@ func (a *App) ApiNew(db *Database) HandlerFunc {
 		// Unmarshal the updated bytes into the instance
 		err = json.Unmarshal(bodyBytes, instance)
 		if err != nil {
-			handleError(w, err, "Error unmarshalling instance")
+			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
 		}
 
 		// Run validations
 		validationErrors := a.Validate(instance)
 		if len(validationErrors.Errors) > 0 {
-			handleError(w, fmt.Errorf("validation errors: %v", validationErrors), "Validation failed")
+			SendJsonResponse(w, http.StatusBadRequest, validationErrors, "Validation failed")
 			return
 		}
 
 		// Perform database operation
 		result := db.Create(instance)
 		if result.Error != nil {
-			handleError(w, result.Error, "DB error")
+			SendJsonResponse(w, http.StatusInternalServerError, nil, result.Error.Error())
 			return
 		}
 
-		// Convert the instance to JSON and send it
-		responseBytes, err := json.Marshal(instance)
-		if err != nil {
-			handleError(w, err, "Error marshalling response")
-			return
-		}
-
-		writeJsonResponse(w, responseBytes, http.StatusOK)
+		SendJsonResponse(w, http.StatusCreated, instance, a.Name()+" created")
 	}
 }
 
@@ -323,7 +303,7 @@ func (a *App) ApiUpdate(db *Database) HandlerFunc {
 
 		err := validateRequestMethod(r, http.MethodPut)
 		if err != nil {
-			handleError(w, err, "Invalid request method")
+			SendJsonResponse(w, http.StatusMethodNotAllowed, nil, err.Error())
 			return
 		}
 
@@ -337,20 +317,20 @@ func (a *App) ApiUpdate(db *Database) HandlerFunc {
 		// Query the database to find the record by ID
 		result := db.FindById(instanceId, instance, userId, a.skipUserBinding)
 		if result.Error != nil {
-			handleError(w, result.Error, result.Error.Error())
+			SendJsonResponse(w, http.StatusInternalServerError, nil, result.Error.Error())
 			return
 		}
 
 		bodyBytes, err := readRequestBody(r)
 		if err != nil {
-			handleError(w, err, "Error reading request body")
+			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
 		}
 
 		// Make sure user is not attempting to modify system data fields
 		bodyBytes, err = removeSystemDataFieldsFromRequest(bodyBytes)
 		if err != nil {
-			handleError(w, err, "Error making sure user is not modifying system data fields")
+			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
 		}
 
@@ -358,7 +338,7 @@ func (a *App) ApiUpdate(db *Database) HandlerFunc {
 		if !a.skipUserBinding {
 			bodyBytes, err = appendUserDataToRequestBody(bodyBytes, r, false, a)
 			if err != nil {
-				handleError(w, err, "Error appending user data to request body")
+				SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 				return
 			}
 		}
@@ -366,7 +346,7 @@ func (a *App) ApiUpdate(db *Database) HandlerFunc {
 		// Unmarshal the updated bytes into the instance
 		err = json.Unmarshal(bodyBytes, instance)
 		if err != nil {
-			handleError(w, err, "Error unmarshalling instance")
+			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
 		}
 
@@ -376,28 +356,22 @@ func (a *App) ApiUpdate(db *Database) HandlerFunc {
 			response, err := json.Marshal(validationErrors)
 
 			if err != nil {
-				handleError(w, err, "Error marshalling response")
+				SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 				return
 			}
-			writeJsonResponse(w, response, http.StatusBadRequest)
+
+			SendJsonResponse(w, http.StatusBadRequest, response, "Validation failed")
 			return
 		}
 
 		// Update the record in the database
 		result = db.Save(instance)
 		if result.Error != nil {
-			handleError(w, result.Error, result.Error.Error())
+			SendJsonResponse(w, http.StatusInternalServerError, nil, result.Error.Error())
 			return
 		}
 
-		// Convert the instance to JSON and send it
-		response, err := json.Marshal(instance)
-		if err != nil {
-			handleError(w, err, "Error marshalling response")
-			return
-		}
-
-		writeJsonResponse(w, response, http.StatusOK)
+		SendJsonResponse(w, http.StatusOK, instance, a.Name()+" updated")
 	}
 }
 
@@ -415,7 +389,7 @@ func (a *App) ApiDelete(db *Database) HandlerFunc {
 
 		err := validateRequestMethod(r, http.MethodDelete)
 		if err != nil {
-			handleError(w, err, err.Error())
+			SendJsonResponse(w, http.StatusMethodNotAllowed, nil, err.Error())
 			return
 		}
 
@@ -429,20 +403,19 @@ func (a *App) ApiDelete(db *Database) HandlerFunc {
 		// Query the database to find the record by ID
 		dbResponse := db.FindById(instanceId, instance, userId, a.skipUserBinding)
 		if dbResponse.Error != nil {
-			handleError(w, dbResponse.Error, dbResponse.Error.Error())
+			SendJsonResponse(w, http.StatusInternalServerError, nil, dbResponse.Error.Error())
 			return
 		}
 
 		// Delete the record by ID
 		result := db.Delete(instance)
 		if result.Error != nil {
-			handleError(w, result.Error, result.Error.Error())
+			SendJsonResponse(w, http.StatusInternalServerError, nil, result.Error.Error())
 			return
 		}
 
-		// Set the content type to application/json
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNoContent) // 204 No Content
+		// Send a 204 No Content response
+		SendJsonResponse(w, http.StatusNoContent, nil, a.Name()+" deleted")
 	}
 }
 
@@ -524,20 +497,6 @@ func unmarshalRequestBody(data []byte) (map[string]interface{}, error) {
 	return jsonData, err
 }
 
-// handleError logs the given error and writes an internal server error to the
-// response writer.
-func handleError(w http.ResponseWriter, err error, msg string) {
-	log.Error().Err(err).Msg(msg)
-
-	// write the error to the response writer
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusInternalServerError) // 500 Internal Server Error
-
-	// write the error to the response writer
-	response, _ := json.Marshal(map[string]string{"error": err.Error()})
-	w.Write(response)
-}
-
 // appendUserDataToRequestBody appends the requested_by from the request header to the request body for create and update operations.
 // For create operations, the requested_by is added to the CreatedById field.
 // For update operations, the requested_by is added to the UpdatedById field.
@@ -551,16 +510,15 @@ func appendUserDataToRequestBody(bytes []byte, r *http.Request, isNewRecord bool
 
 	// Retrieve requested_by from request header
 	userId := getRequestUserId(r, a)
-	// userId := r.Header.Get("requested_by")
 
 	if userId == "" {
-		log.Error().Msgf("No requested_by found in authorization header")
+		log.Error().Msgf("No userId found for authorization header")
 		return bytes, fmt.Errorf("user not authenticated")
 	}
 
 	convertedUserId, err := strconv.ParseUint(userId, 10, 64)
 	if err != nil {
-		log.Error().Err(err).Msgf("Error converting requested_by")
+		log.Error().Err(err).Msgf("Error converting userId")
 		return nil, err
 	}
 
@@ -577,15 +535,6 @@ func appendUserDataToRequestBody(bytes []byte, r *http.Request, isNewRecord bool
 	}
 
 	return bodyBytes, err
-}
-
-// writeJsonResponse writes a JSON response to the given http.ResponseWriter.
-// It sets the Content-Type header to application/json, the status code to 200 OK,
-// and writes the provided data as the response body.
-func writeJsonResponse(w http.ResponseWriter, data []byte, status int) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status) // 200 OK
-	w.Write(data)         // Send the JSON response
 }
 
 /*

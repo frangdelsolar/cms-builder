@@ -1,7 +1,6 @@
 package builder_test
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
@@ -76,27 +75,33 @@ func createTestResource(t *testing.T, db *builder.Database, app *builder.App, us
 	request, user, rollback := th.NewRequest(http.MethodPost, data, true, user, nil)
 
 	t.Logf("Creating new resource for user: %v", user.ID)
-	response := executeApiCall(t, app.ApiNew(db), request)
 
 	var createdItem MockStruct
-	err := json.Unmarshal([]byte(response), &createdItem)
-	assert.NoError(t, err, "Unmarshal should not return an error")
+	response, err := executeApiCall(t, app.ApiNew(db), request, &createdItem)
 
+	assert.NoError(t, err, "ApiNew should not return an error")
+	assert.True(t, response.Success, "ApiNew should return a success response")
 	return &createdItem, user, rollback
 }
 
-// executeApiCall executes an API handler function and returns the response as a string.
+// executeApiCall executes the given API call handler function with the given request and stores the response in the given value.
 //
-// The given request is used as the input to the handler function.
+// It logs the request method and body, creates a new MockWriter, and calls the API call handler function with the MockWriter and the request. It then parses the response from the MockWriter and stores it in the given value. Finally, it asserts that the parsing did not return an error.
 //
-// The response is returned as a string, which is the JSON representation of the response.
+// Parameters:
+// - t: the testing.T instance.
+// - apiCall: the API call handler function to be executed.
+// - request: the request to be passed to the API call handler function.
+// - v: the value to store the response in.
 //
-// This function is meant to be used in tests.
-func executeApiCall(t *testing.T, apiCall builder.HandlerFunc, request *http.Request) string {
+// Returns:
+// - builder.Response: the parsed response from the API call handler function.
+func executeApiCall(t *testing.T, apiCall builder.HandlerFunc, request *http.Request, v interface{}) (builder.Response, error) {
 	t.Log("Executing API call", request.Method, request.Body)
 	writer := th.MockWriter{}
 	apiCall(&writer, request)
-	return writer.GetWrittenData()
+
+	return builder.ParseResponse(writer.Buffer.Bytes(), v)
 }
 
 // TestNewAdmin tests that NewAdmin returns a non-nil Admin instance.
@@ -199,14 +204,16 @@ func TestUserCanRetrieveAllowedResources(t *testing.T) {
 	)
 
 	t.Log("Getting the detail for user")
-	response := executeApiCall(
+	var result MockStruct
+	response, err := executeApiCall(
 		t,
 		app.ApiDetail(db),
 		request,
+		&result,
 	)
 
-	var result MockStruct
-	json.Unmarshal([]byte(response), &result)
+	assert.NoError(t, err, "ApiDetail should not return an error")
+	assert.NotNil(t, response, "ApiDetail should return a non-nil response")
 
 	assert.Equal(t, instance.ID, result.ID, "ID should be the same")
 	assert.Equal(t, instance.Field, result.Field, "Field should be the same")
@@ -238,8 +245,10 @@ func TestUserCanNotRetrieveDeniedResources(t *testing.T) {
 		map[string]string{"id": instanceB.GetIDString()},
 	)
 
-	responseA := executeApiCall(t, app.ApiDetail(db), requestA)
-	assert.Contains(t, responseA, "record not found", "The response should be an error")
+	responseA, err := executeApiCall(t, app.ApiDetail(db), requestA, nil)
+	assert.Error(t, err, "ApiDetail should return an error")
+	assert.False(t, responseA.Success, "ParseResponse should return an error response")
+	assert.Contains(t, responseA.Message, "Failed to get", "The response should be an error")
 
 	// User B tries to get the detail for user A
 	requestB, _, _ := th.NewRequest(
@@ -250,8 +259,10 @@ func TestUserCanNotRetrieveDeniedResources(t *testing.T) {
 		map[string]string{"id": instanceA.GetIDString()},
 	)
 
-	responseB := executeApiCall(t, app.ApiDetail(db), requestB)
-	assert.Contains(t, responseB, "record not found", "The response should be an error")
+	responseB, err := executeApiCall(t, app.ApiDetail(db), requestB, nil)
+	assert.Error(t, err, "ApiDetail should return an error")
+	assert.False(t, responseB.Success, "ParseResponse should return an error response")
+	assert.Contains(t, responseB.Message, "Failed to get", "The response should be an error")
 }
 
 // TestUserCanListAllowedResources tests that a user can list resources if they have the correct permissions.
@@ -276,15 +287,16 @@ func TestUserCanListAllowedResources(t *testing.T) {
 	)
 
 	t.Log("Getting the List for user")
-	response := executeApiCall(
+	var result []MockStruct
+	response, err := executeApiCall(
 		t,
 		app.ApiList(db),
 		request,
+		&result,
 	)
 
-	var result []MockStruct
-	json.Unmarshal([]byte(response), &result)
-
+	assert.NoError(t, err, "ApiList should not return an error")
+	assert.NotNil(t, response, "ApiList should return a non-nil response")
 	assert.Equal(t, 2, len(result), "List should contain two items")
 
 	resultA := result[0]
@@ -323,14 +335,16 @@ func TestUserCanNotListDeniedResources(t *testing.T) {
 	defer userBRollback()
 
 	t.Log("Getting the List for userB")
-	response := executeApiCall(
+	var result []MockStruct
+	response, err := executeApiCall(
 		t,
 		app.ApiList(db),
 		request,
+		&result,
 	)
 
-	var result []MockStruct
-	json.Unmarshal([]byte(response), &result)
+	assert.NoError(t, err, "ApiList should not return an error")
+	assert.NotNil(t, response, "ApiList should return a non-nil response")
 	assert.Equal(t, 0, len(result), "List should be empty")
 }
 
@@ -358,7 +372,6 @@ func TestUserCanNotCreateDeniedResources(t *testing.T) {
 	defer deregisterApp()
 
 	// Create a resource without authentication
-	responseWriter := th.MockWriter{}
 	request, user, _ := th.NewRequest(
 		http.MethodPost,
 		`{"field": "test"}`,
@@ -370,10 +383,16 @@ func TestUserCanNotCreateDeniedResources(t *testing.T) {
 	assert.Nil(t, user, "User should be nil")
 
 	t.Log("Creating a resource without authentication")
-	app.ApiNew(db)(&responseWriter, request)
-
-	data := responseWriter.GetWrittenData()
-	assert.Contains(t, data, "user not authenticated")
+	var result []MockStruct
+	response, err := executeApiCall(
+		t,
+		app.ApiNew(db),
+		request,
+		&result,
+	)
+	assert.Error(t, err, "ApiNew should return an error")
+	assert.NotNil(t, response, "ApiNew should return a non-nil response")
+	assert.Contains(t, response.Message, "user not authenticated", "The response should be an error message")
 }
 
 // TestUserCanUpdateAllowedResources tests that a user can update a resource if they have the correct permissions.
@@ -396,11 +415,13 @@ func TestUserCanUpdateAllowedResources(t *testing.T) {
 		map[string]string{"id": instance.GetIDString()},
 	)
 
-	response := executeApiCall(t, app.ApiUpdate(db), request)
+	var updatedInstance MockStruct
+	response, err := executeApiCall(t, app.ApiUpdate(db), request, &updatedInstance)
+
+	assert.NoError(t, err, "ApiUpdate should not return an error")
+	assert.NotNil(t, response, "ApiUpdate should return a non-nil response")
 
 	// Verify the update was successful
-	var updatedInstance MockStruct
-	json.Unmarshal([]byte(response), &updatedInstance)
 	assert.Equal(t, instance.ID, updatedInstance.ID, "ID should be the same")
 	assert.Equal(t, "updated_field", updatedInstance.Field, "Field should be the same")
 	assert.Equal(t, user.ID, updatedInstance.CreatedByID, "CreatedBy should be the same")
@@ -428,8 +449,11 @@ func TestUserCanNotUpdateDeniedResources(t *testing.T) {
 	)
 	defer userBRollback()
 
-	response := executeApiCall(t, app.ApiUpdate(db), request)
-	assert.Contains(t, response, "record not found", "The response should be an error")
+	response, err := executeApiCall(t, app.ApiUpdate(db), request, nil)
+
+	assert.Error(t, err, "ApiUpdate should return an error")
+	assert.NotNil(t, response, "ApiUpdate should return a non-nil response")
+	assert.Contains(t, response.Message, "record not found", "The response should be an error")
 }
 
 // TestUserCanDeleteAllowedResources tests that a user can delete a resource if they have the correct permissions.
@@ -453,7 +477,12 @@ func TestUserCanDeleteAllowedResources(t *testing.T) {
 	)
 
 	t.Log("Deleting the resource")
-	executeApiCall(t, app.ApiDelete(db), deleteRequest)
+	var resultA MockStruct
+	responseA, err := executeApiCall(t, app.ApiDelete(db), deleteRequest, &resultA)
+
+	assert.NoError(t, err, "ApiDelete should not return an error")
+	assert.NotNil(t, responseA, "ApiDelete should return a non-nil response")
+	assert.Equal(t, responseA.Success, true, "Success should be true")
 
 	// Create a helper request to get the detail
 	getRequest, _, _ := th.NewRequest(
@@ -465,13 +494,19 @@ func TestUserCanDeleteAllowedResources(t *testing.T) {
 	)
 
 	t.Log("Getting the detail for user")
-	response := executeApiCall(
+	var resultB MockStruct
+	responseB, err := executeApiCall(
 		t,
 		app.ApiDetail(db),
 		getRequest,
+		&resultB,
 	)
 
-	assert.Contains(t, response, "record not found", "The response should be an error")
+	assert.NoError(t, err, "ApiDetail should not return an error")
+	assert.NotNil(t, responseB, "ApiDetail should return a non-nil response")
+	assert.Equal(t, responseB.Success, false, "Success should be false")
+	assert.Contains(t, responseB.Message, "Failed to get", "The response should be an error")
+	assert.Equal(t, resultB, MockStruct{}, "The result should be empty")
 }
 
 // TestUserCanNotDeleteDeniedResources tests that a user cannot delete a resource if they don't have the correct permissions.
@@ -496,8 +531,14 @@ func TestUserCanNotDeleteDeniedResources(t *testing.T) {
 	defer userBRollback()
 
 	t.Log("Attempting to delete the resource with userB")
-	response := executeApiCall(t, app.ApiDelete(db), deleteRequest)
-	assert.Contains(t, response, "record not found", "The response should be an error")
+	var resultA MockStruct
+	responseA, err := executeApiCall(t, app.ApiDelete(db), deleteRequest, &resultA)
+
+	assert.NoError(t, err, "ApiDetail should not return an error")
+	assert.NotNil(t, responseA, "ApiDetail should return a non-nil response")
+	assert.Equal(t, responseA.Success, false, "Success should be false")
+	assert.Contains(t, responseA.Message, "record not found", "The response should be an error")
+	assert.Equal(t, resultA, MockStruct{}, "The result should be empty")
 
 	// Create a helper request to get the detail
 	t.Log("Validating userA can retrieve the resource")
@@ -510,17 +551,21 @@ func TestUserCanNotDeleteDeniedResources(t *testing.T) {
 	)
 
 	t.Log("Getting the detail for userA")
-	responseB := executeApiCall(
+	var resultB MockStruct
+	responseB, err := executeApiCall(
 		t,
 		app.ApiDetail(db),
 		getRequest,
+		&resultB,
 	)
 
-	var result MockStruct
-	json.Unmarshal([]byte(responseB), &result)
-	assert.Equal(t, instance.ID, result.ID, "ID should be the same")
-	assert.Equal(t, instance.Field, result.Field, "Field should be the same")
-	assert.Equal(t, instance.CreatedByID, result.CreatedByID, "CreatedBy should be the same")
+	assert.NoError(t, err, "ApiDetail should not return an error")
+	assert.NotNil(t, responseB, "ApiDetail should return a non-nil response")
+	assert.Equal(t, responseB.Success, true, "Success should be true")
+
+	assert.Equal(t, instance.ID, resultB.ID, "ID should be the same")
+	assert.Equal(t, instance.Field, resultB.Field, "Field should be the same")
+	assert.Equal(t, instance.CreatedByID, resultB.CreatedByID, "CreatedBy should be the same")
 }
 
 // TestValidators tests that a user cannot create a resource with invalid
@@ -531,7 +576,6 @@ func TestCreateCallsValidators(t *testing.T) {
 	defer deregisterApp()
 
 	// Create a resource
-	responseWriter := th.MockWriter{}
 	request, _, rollback := th.NewRequest(
 		http.MethodPost,
 		`{"field": ""}`,
@@ -542,10 +586,17 @@ func TestCreateCallsValidators(t *testing.T) {
 	defer rollback()
 
 	t.Log("Creating a resource")
-	app.ApiNew(db)(&responseWriter, request)
+	var result MockStruct
+	response, err := executeApiCall(
+		t,
+		app.ApiNew(db),
+		request,
+		&result,
+	)
 
-	data := responseWriter.GetWrittenData()
-	assert.Contains(t, data, "Field cannot be empty", "The response should be an error")
+	assert.NoError(t, err, "executeApiCall should not return an error")
+	assert.False(t, response.Success, "ApiDetail should return an error")
+	assert.Contains(t, response.Message, "Validation failed", "The response should be an error")
 }
 
 // TestUpdateCallsValidators tests that a user cannot update a resource with
@@ -561,7 +612,6 @@ func TestUpdateCallsValidators(t *testing.T) {
 	defer rollback()
 
 	// Update the resource
-	responseWriter := th.MockWriter{}
 	request, _, _ := th.NewRequest(
 		http.MethodPut,
 		`{"field": ""}`,
@@ -572,10 +622,17 @@ func TestUpdateCallsValidators(t *testing.T) {
 	defer rollback()
 
 	t.Log("Trying to update the resource")
-	app.ApiUpdate(db)(&responseWriter, request)
+	var result MockStruct
+	response, _ := executeApiCall(
+		t,
+		app.ApiUpdate(db),
+		request,
+		&result,
+	)
 
-	data := responseWriter.GetWrittenData()
-	assert.Contains(t, data, "Field cannot be empty", "The response should be an error")
+	// assert.NoError(t, err, "executeApiCall should not return an error")
+	assert.False(t, response.Success, "ApiDetail should return an error")
+	assert.Contains(t, response.Message, "Validation failed", "The response should be an error")
 }
 
 // TestUserCanNotReplaceCreatedByIDOnCreate tests that a user cannot create a resource with a createdById or updatedById that is not their own user ID.
@@ -584,7 +641,6 @@ func TestUserCanNotReplaceCreatedByIDOnCreate(t *testing.T) {
 	defer deregisterApp()
 
 	// Create a resource for the logged-in user
-	responseWriter := th.MockWriter{}
 	request, user, rollback := th.NewRequest(
 		http.MethodPost,
 		`{"field": "some value", "createdById": 9999991, "updatedById": 9999991}`,
@@ -595,13 +651,12 @@ func TestUserCanNotReplaceCreatedByIDOnCreate(t *testing.T) {
 	defer rollback()
 
 	t.Log("Creating a resource")
-	app.ApiNew(db)(&responseWriter, request)
 
-	response := responseWriter.GetWrittenData()
-
-	// Verify the update was successful
 	var instance MockStruct
-	json.Unmarshal([]byte(response), &instance)
+	response, err := executeApiCall(t, app.ApiNew(db), request, &instance)
+	assert.NoError(t, err, "executeApiCall should not return an error")
+	assert.NotNil(t, response, "ApiNew should return a non-nil response")
+
 	assert.Equal(t, user.GetIDString(), fmt.Sprintf("%d", instance.CreatedByID), "CreatedByID should be the logged in user")
 	assert.Equal(t, user.GetIDString(), fmt.Sprintf("%d", instance.UpdatedByID), "UpdatedByID should be the logged in user")
 }
@@ -625,11 +680,13 @@ func TestUserCanNotReplaceCreatedByIDOnUpdate(t *testing.T) {
 	)
 
 	t.Log("Updating the resource systemData")
-	response := executeApiCall(t, app.ApiUpdate(db), request)
+	var updatedInstance MockStruct
+	response, _ := executeApiCall(t, app.ApiUpdate(db), request, &updatedInstance)
+
+	assert.NotNil(t, response, "ApiUpdate should return a non-nil response")
+	assert.Equal(t, true, response.Success, "ApiUpdate should return a success response")
 
 	// Verify the update was successful
-	var updatedInstance MockStruct
-	json.Unmarshal([]byte(response), &updatedInstance)
 	assert.Equal(t, instance.ID, updatedInstance.ID, "ID should be the same")
 	assert.Equal(t, user.GetIDString(), fmt.Sprintf("%d", updatedInstance.CreatedByID), "CreatedByID should be the logged in user")
 	assert.Equal(t, user.GetIDString(), fmt.Sprintf("%d", updatedInstance.UpdatedByID), "UpdatedByID should be the logged in user")
@@ -653,11 +710,11 @@ func TestUserCanNotReplaceInstanceIDOnUpdate(t *testing.T) {
 		map[string]string{"id": instance.GetIDString()},
 	)
 	t.Log("Updating the resource with an some ID")
-	response := executeApiCall(t, app.ApiUpdate(db), request)
-
-	// Verify the update was successful
 	var updatedInstance MockStruct
-	json.Unmarshal([]byte(response), &updatedInstance)
+	response, _ := executeApiCall(t, app.ApiUpdate(db), request, &updatedInstance)
+	assert.NotNil(t, response, "ApiUpdate should return a non-nil response")
+	assert.Equal(t, true, response.Success, "ApiUpdate should return a success response")
+	// Verify the update was successful
 	assert.Equal(t, instance.GetIDString(), updatedInstance.GetIDString(), "ID should remain the same")
 	assert.Equal(t, user.GetIDString(), fmt.Sprintf("%d", updatedInstance.CreatedByID), "CreatedByID should be the logged in user")
 	assert.Equal(t, user.GetIDString(), fmt.Sprintf("%d", updatedInstance.UpdatedByID), "UpdatedByID should be the logged in user")

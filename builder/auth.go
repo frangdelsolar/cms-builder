@@ -52,9 +52,9 @@ func (b *Builder) authMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		if *localUser == (User{}) {
-			log.Error().Msg("User not found")
-			http.Error(w, "User not found", http.StatusUnauthorized)
+		if localUser.GetIDString() == "" {
+			log.Error().Err(err).Msg("Error verifying user")
+			http.Error(w, "Error verifying user", http.StatusUnauthorized)
 			return
 		}
 
@@ -74,39 +74,37 @@ func (b *Builder) authMiddleware(next http.Handler) http.Handler {
 // user.
 func (b *Builder) RegisterUserController(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		SendJsonResponse(w, http.StatusMethodNotAllowed, nil, "Method not allowed")
 		return
 	}
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, "Error reading request body", http.StatusInternalServerError)
+		SendJsonResponse(w, http.StatusInternalServerError, nil, "Error reading request body")
 		return
 	}
 
 	var input RegisterUserInput
 	err = json.Unmarshal(body, &input)
 	if err != nil {
-		http.Error(w, "Error unmarshalling request body", http.StatusInternalServerError)
+		SendJsonResponse(w, http.StatusBadRequest, nil, "Error unmarshalling request body")
 		return
 	}
 	fb, err := b.GetFirebase()
 	if err != nil {
-		log.Error().Err(err).Msg("Error getting firebase")
-		http.Error(w, "Error getting firebase", http.StatusInternalServerError)
+		SendJsonResponse(w, http.StatusInternalServerError, nil, "Error getting firebase")
 		return
 	}
+
 	fbUser, err := fb.RegisterUser(r.Context(), input)
 	if err != nil {
-		log.Error().Err(err).Msg("Error registering user")
-		http.Error(w, "Error registering user", http.StatusInternalServerError)
+		SendJsonResponse(w, http.StatusInternalServerError, nil, "Error registering user")
 		return
 	}
 
 	userApp, err := b.admin.GetApp("user")
 	if err != nil {
-		log.Error().Err(err).Msg("Error getting user app")
-		http.Error(w, "Error getting user app", http.StatusInternalServerError)
+		SendJsonResponse(w, http.StatusInternalServerError, nil, "Error getting user app")
 		return
 	}
 
@@ -119,8 +117,7 @@ func (b *Builder) RegisterUserController(w http.ResponseWriter, r *http.Request)
 
 	bodyBytes, err := json.Marshal(userRequestBody)
 	if err != nil {
-		log.Error().Err(err).Msg("Error marshalling user request body")
-		http.Error(w, "Error marshalling user request body", http.StatusInternalServerError)
+		SendJsonResponse(w, http.StatusInternalServerError, nil, "Error marshalling user request body")
 		return
 	}
 
@@ -129,7 +126,6 @@ func (b *Builder) RegisterUserController(w http.ResponseWriter, r *http.Request)
 		Header: r.Header,
 		Body:   io.NopCloser(bytes.NewBuffer(bodyBytes)),
 	}
-
 	userApp.ApiNew(b.db)(w, userRequest)
 
 	// TODO: Should rollback firebase if unsuccessful
@@ -142,7 +138,6 @@ func (b *Builder) RegisterUserController(w http.ResponseWriter, r *http.Request)
 func GetAccessTokenFromRequest(r *http.Request) string {
 	header := r.Header.Get("Authorization")
 	if header != "" {
-		// get token from header
 		token := strings.Split(header, " ")[1]
 		if token != "" {
 			return token
