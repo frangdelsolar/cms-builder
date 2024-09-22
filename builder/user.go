@@ -29,11 +29,11 @@ func (u *User) GetIDString() string {
 //
 // Returns:
 // - error: an error if the name is empty, otherwise nil.
-func NameValidator(inName interface{}) FieldValidationError {
-	name := fmt.Sprint(inName)
-	output := NewFieldValidationError("name")
+func NameValidator(fieldName string, instance map[string]interface{}) FieldValidationError {
+	name := fmt.Sprint(instance[fieldName])
+	output := NewFieldValidationError(fieldName)
 	if name == "" {
-		output.Error = "name cannot be empty"
+		output.Error = fieldName + " cannot be empty"
 		return output
 	}
 
@@ -47,11 +47,11 @@ func NameValidator(inName interface{}) FieldValidationError {
 //
 // Returns:
 // - error: an error if the email is empty or has an invalid format, otherwise nil.
-func EmailValidator(inEmail interface{}) FieldValidationError {
-	email := fmt.Sprint(inEmail)
-	output := NewFieldValidationError("email")
+func EmailValidator(fieldName string, instance map[string]interface{}) FieldValidationError {
+	output := NewFieldValidationError(fieldName)
+	email := fmt.Sprint(instance[fieldName])
 	if email == "" {
-		output.Error = "email cannot be empty"
+		output.Error = fieldName + " cannot be empty"
 		return output
 	}
 

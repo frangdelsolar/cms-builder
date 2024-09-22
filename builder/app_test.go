@@ -16,17 +16,32 @@ type MockStruct struct {
 	Field string
 }
 
-func FieldValidator(inName interface{}) builder.FieldValidationError {
-	fieldValue := fmt.Sprint(inName)
-	output := builder.NewFieldValidationError("field")
+// FieldValidator validates the given field.
+//
+// It checks if the field value is empty. If the field value is empty, it returns an error with the message
+// "{field name} cannot be empty". Otherwise, it returns nil.
+//
+// Parameters:
+// - fieldName: the name of the field to be validated.
+// - instance: a map[string]interface{} representing the instance to be validated.
+//
+// Returns:
+// - error: an error if the field value is empty, otherwise nil.
+func FieldValidator(fieldName string, instance map[string]interface{}) builder.FieldValidationError {
+	fieldValue := fmt.Sprint(instance[fieldName])
+	output := builder.NewFieldValidationError(fieldName)
 	if fieldValue == "" {
-		output.Error = "field cannot be empty"
+		output.Error = fieldName + " cannot be empty"
 		return output
 	}
 
 	return builder.FieldValidationError{}
 }
 
+// setupTest sets up a default Builder instance, Admin, Database, and Server instances,
+// and registers a new App with a MockStruct type. It also sets up a field validator
+// for the "field" key on the MockStruct type. The function returns the instances
+// and a callback to be used to deregister the App after the test is finished.
 func setupTest(t *testing.T) (engine *builder.Builder, admin *builder.Admin, db *builder.Database, server *builder.Server, app *builder.App, deregisterApp func()) {
 
 	engine = th.GetDefaultEngine()
@@ -532,7 +547,7 @@ func TestCreateCallsValidators(t *testing.T) {
 	app.ApiNew(db)(&responseWriter, request)
 
 	data := responseWriter.GetWrittenData()
-	assert.Contains(t, data, "field cannot be empty", "The response should be an error")
+	assert.Contains(t, data, "Field cannot be empty", "The response should be an error")
 }
 
 // TestUpdateCallsValidators tests that a user cannot update a resource with
@@ -562,7 +577,7 @@ func TestUpdateCallsValidators(t *testing.T) {
 	app.ApiUpdate(db)(&responseWriter, request)
 
 	data := responseWriter.GetWrittenData()
-	assert.Contains(t, data, "field cannot be empty", "The response should be an error")
+	assert.Contains(t, data, "Field cannot be empty", "The response should be an error")
 }
 
 // TestUserCanNotReplaceCreatedByIDOnCreate tests that a user cannot create a resource with a createdById or updatedById that is not their own user ID.
