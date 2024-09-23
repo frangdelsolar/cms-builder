@@ -26,9 +26,9 @@ var firebaseLoginUrl = "https://www.googleapis.com/identitytoolkit/v3/relyingpar
 // - error: An error if the login fails.
 func LoginUser(userData *builder.RegisterUserInput) (string, error) {
 	userToken := ""
-	engine := GetDefaultEngine()
-	log, _ := engine.GetLogger()
-	configReader, _ := engine.GetConfigReader()
+	e := GetDefaultEngine()
+	log, _ := e.Engine.GetLogger()
+	configReader, _ := e.Engine.GetConfigReader()
 
 	firebaseApiKey := configReader.GetString("firebaseApiKey")
 

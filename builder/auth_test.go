@@ -17,8 +17,8 @@ import (
 // verifying the response to make sure the user was created correctly.
 func TestRegisterUserController(t *testing.T) {
 	t.Log("Testing VerifyUser")
-	engine := th.GetDefaultEngine()
-	firebase, _ := engine.GetFirebase()
+	e := th.GetDefaultEngine()
+
 	newUserData := builder.RegisterUserInput{
 		Name:     th.RandomName(),
 		Email:    th.RandomEmail(),
@@ -40,7 +40,7 @@ func TestRegisterUserController(t *testing.T) {
 	}
 
 	t.Log("Registering user")
-	engine.RegisterUserController(&responseWriter, registerUserRequest)
+	e.Engine.RegisterUserController(&responseWriter, registerUserRequest)
 
 	t.Log("Testing Response")
 	createdUser := builder.User{}
@@ -54,12 +54,39 @@ func TestRegisterUserController(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Log("Verifying user")
-	retrievedUser, err := engine.VerifyUser(accessToken)
+	retrievedUser, err := e.Engine.VerifyUser(accessToken)
 	assert.NoError(t, err)
 	assert.Equal(t, createdUser.ID, retrievedUser.ID)
 
 	t.Log("Rolling back user registration")
-	firebase.RollbackUserRegistration(context.Background(), createdUser.FirebaseId)
+	e.Firebase.RollbackUserRegistration(context.Background(), createdUser.FirebaseId)
 }
 
-// TODO: Create a test for authmiddleware
+// func TestAuthenticationMiddleware(t *testing.T) {
+// 	// Create a mock HTTP server
+// 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// 		// Your handler code here
+// 	}))
+// 	defer ts.Close()
+
+// 	// Create a middleware instance
+// 	authMiddleware := middleware.NewAuthenticationMiddleware()
+
+// 	// Create a handler function
+// 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// 		// Your handler code here
+// 	})
+
+// 	// Wrap the handler with the middleware
+// 	wrappedHandler := authMiddleware.Handle(handler)
+
+// 	// Send a request to the wrapped handler
+// 	resp, err := http.Get(ts.URL)
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	defer resp.Body.Close()
+
+// 	// Assert the response
+// 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+// }

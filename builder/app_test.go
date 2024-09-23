@@ -10,108 +10,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type MockStruct struct {
-	*builder.SystemData
-	Field string
-}
-
-// FieldValidator validates the given field.
-//
-// It checks if the field value is empty. If the field value is empty, it returns an error with the message
-// "{field name} cannot be empty". Otherwise, it returns nil.
-//
-// Parameters:
-// - fieldName: the name of the field to be validated.
-// - instance: a map[string]interface{} representing the instance to be validated.
-//
-// Returns:
-// - error: an error if the field value is empty, otherwise nil.
-func FieldValidator(fieldName string, instance map[string]interface{}, output *builder.FieldValidationError) *builder.FieldValidationError {
-	fieldValue := fmt.Sprint(instance[fieldName])
-	if fieldValue == "" {
-		output.Error = fieldName + " cannot be empty"
-	}
-
-	return output
-}
-
-// setupTest sets up a default Builder instance, Admin, Database, and Server instances,
-// and registers a new App with a MockStruct type. It also sets up a field validator
-// for the "field" key on the MockStruct type. The function returns the instances
-// and a callback to be used to deregister the App after the test is finished.
-func setupTest(t *testing.T) (engine *builder.Builder, admin *builder.Admin, db *builder.Database, server *builder.Server, app *builder.App, deregisterApp func()) {
-
-	engine = th.GetDefaultEngine()
-	admin, err := engine.GetAdmin()
-	assert.NoError(t, err)
-	assert.NotNil(t, admin)
-
-	db, err = engine.GetDatabase()
-	assert.NoError(t, err)
-	assert.NotNil(t, db)
-
-	server, err = engine.GetServer()
-	assert.NoError(t, err)
-	assert.NotNil(t, server)
-
-	mockApp, err := admin.Register(MockStruct{}, false)
-	assert.NoError(t, err, "Register should not return an error")
-
-	mockApp.RegisterValidator("field", FieldValidator)
-
-	callback := func() {
-		admin.Unregister(app.Name())
-	}
-
-	return engine, admin, db, server, &mockApp, callback
-}
-
-// createTestResource creates a new resource for the given user and returns the created resource, the user, and a function to roll back the resource creation.
-//
-// It creates a new request with a random string as the value for the "field" key, then calls the app's ApiNew method to create a new resource. It then unmarshalls the response into the createdItem variable and returns it along with the user and the rollback function.
-func createTestResource(t *testing.T, db *builder.Database, app *builder.App, user *builder.User) (*MockStruct, *builder.User, func()) {
-
-	data := "{\"field\": \"" + th.RandomString(10) + "\"}"
-	request, user, rollback := th.NewRequest(http.MethodPost, data, true, user, nil)
-
-	t.Logf("Creating new resource for user: %v", user.ID)
-
-	var createdItem MockStruct
-	response, err := executeApiCall(t, app.ApiNew(db), request, &createdItem)
-
-	assert.NoError(t, err, "ApiNew should not return an error")
-	assert.True(t, response.Success, "ApiNew should return a success response")
-	return &createdItem, user, rollback
-}
-
-// executeApiCall executes the given API call handler function with the given request and stores the response in the given value.
-//
-// It logs the request method and body, creates a new MockWriter, and calls the API call handler function with the MockWriter and the request. It then parses the response from the MockWriter and stores it in the given value. Finally, it asserts that the parsing did not return an error.
-//
-// Parameters:
-// - t: the testing.T instance.
-// - apiCall: the API call handler function to be executed.
-// - request: the request to be passed to the API call handler function.
-// - v: the value to store the response in.
-//
-// Returns:
-// - builder.Response: the parsed response from the API call handler function.
-func executeApiCall(t *testing.T, apiCall builder.HandlerFunc, request *http.Request, v interface{}) (builder.Response, error) {
-	t.Log("Executing API call", request.Method, request.Body)
-	writer := th.MockWriter{}
-	apiCall(&writer, request)
-
-	return builder.ParseResponse(writer.Buffer.Bytes(), v)
-}
-
 // TestNewAdmin tests that NewAdmin returns a non-nil Admin instance.
 func TestNewAdmin(t *testing.T) {
 	t.Log("Testing NewAdmin")
-	engine := th.GetDefaultEngine()
-	db, _ := engine.GetDatabase()
-	server, _ := engine.GetServer()
+	e := th.GetDefaultEngine()
 
-	admin := builder.NewAdmin(db, server, engine)
+	admin := builder.NewAdmin(e.DB, e.Server, e.Engine)
 
 	assert.NotNil(t, admin, "NewAdmin should return a non-nil Admin instance")
 }
@@ -121,7 +25,7 @@ func TestNewAdmin(t *testing.T) {
 //
 // It also tests that the registered App is accessible via the GetApp method.
 func TestRegisterApp(t *testing.T) {
-	_, admin, _, _, _, _ := setupTest(t)
+	e := th.GetDefaultEngine()
 
 	// define a test struct to be registered
 	type testStruct struct {
@@ -130,7 +34,7 @@ func TestRegisterApp(t *testing.T) {
 	}
 
 	t.Log("Testing RegisterApp")
-	app, err := admin.Register(testStruct{}, false)
+	app, err := e.Admin.Register(testStruct{}, false)
 	assert.NoError(t, err, "Register should not return an error")
 	assert.NotNil(t, app, "Register should return a non-nil App")
 	assert.Equal(t, "teststruct", app.Name(), "App name should be 'teststruct'")
@@ -138,7 +42,7 @@ func TestRegisterApp(t *testing.T) {
 
 	// check if the app is registered
 	t.Log("Testing GetApp")
-	retrievedApp, err := admin.GetApp("teststruct")
+	retrievedApp, err := e.Admin.GetApp("teststruct")
 	assert.Equal(t, app.Name(), retrievedApp.Name(), "GetApp should return the same app")
 	assert.NoError(t, err, "GetApp should not return an error")
 }
@@ -147,7 +51,7 @@ func TestRegisterApp(t *testing.T) {
 //
 // It registers a test App with the admin instance, and then checks that the server has the expected routes.
 func TestRegisterAPIRoutes(t *testing.T) {
-	_, admin, _, server, _, _ := setupTest(t)
+	e := th.GetDefaultEngine()
 
 	type Test struct {
 		*builder.SystemData
@@ -155,7 +59,7 @@ func TestRegisterAPIRoutes(t *testing.T) {
 	}
 
 	t.Log("Testing RegisterApp")
-	admin.Register(Test{}, false)
+	e.Admin.Register(Test{}, false)
 
 	handler := func(w http.ResponseWriter, r *http.Request) {}
 
@@ -168,7 +72,7 @@ func TestRegisterAPIRoutes(t *testing.T) {
 		builder.NewRouteHandler("/api/tests/{id}/update", handler, "test-update", true),
 	}
 
-	routes := server.GetRoutes()
+	routes := e.Server.GetRoutes()
 	for _, expectedRoute := range expectedRoutes {
 		found := false
 		for _, route := range routes {
@@ -187,11 +91,10 @@ func TestRegisterAPIRoutes(t *testing.T) {
 //
 // It creates a resource for the logged-in user, and then checks that the response contains the same record.
 func TestUserCanRetrieveAllowedResources(t *testing.T) {
-	_, _, db, _, app, deregisterApp := setupTest(t)
-	defer deregisterApp()
+	e := th.GetDefaultEngine()
 
 	// Create a resource for some user
-	instance, user, userRollback := createTestResource(t, db, app, nil)
+	instance, user, userRollback := th.CreateMockResource(t, e.DB, e.App, nil)
 	defer userRollback()
 
 	// Create a helper request to get the detail
@@ -204,10 +107,10 @@ func TestUserCanRetrieveAllowedResources(t *testing.T) {
 	)
 
 	t.Log("Getting the detail for user")
-	var result MockStruct
-	response, err := executeApiCall(
+	var result th.MockStruct
+	response, err := th.ExecuteApiCall(
 		t,
-		app.ApiDetail(db),
+		e.App.ApiDetail(e.DB),
 		request,
 		&result,
 	)
@@ -224,15 +127,14 @@ func TestUserCanRetrieveAllowedResources(t *testing.T) {
 //
 // It creates two resources for two different users, and then checks that each user can not retrieve the resource of the other user.
 func TestUserCanNotRetrieveDeniedResources(t *testing.T) {
-	_, _, db, _, app, deregisterApp := setupTest(t)
-	defer deregisterApp()
+	e := th.GetDefaultEngine()
 
 	// Create a resource for user A
-	instanceA, userA, userARollback := createTestResource(t, db, app, nil)
+	instanceA, userA, userARollback := th.CreateMockResource(t, e.DB, e.App, nil)
 	defer userARollback()
 
 	// Create a resource for user B
-	instanceB, userB, userBRollback := createTestResource(t, db, app, nil)
+	instanceB, userB, userBRollback := th.CreateMockResource(t, e.DB, e.App, nil)
 	defer userBRollback()
 
 	// User A tries to get the detail for user A
@@ -245,7 +147,7 @@ func TestUserCanNotRetrieveDeniedResources(t *testing.T) {
 		map[string]string{"id": instanceB.GetIDString()},
 	)
 
-	responseA, err := executeApiCall(t, app.ApiDetail(db), requestA, nil)
+	responseA, err := th.ExecuteApiCall(t, e.App.ApiDetail(e.DB), requestA, nil)
 	assert.Error(t, err, "ApiDetail should return an error")
 	assert.False(t, responseA.Success, "ParseResponse should return an error response")
 	assert.Contains(t, responseA.Message, "Failed to get", "The response should be an error")
@@ -259,7 +161,7 @@ func TestUserCanNotRetrieveDeniedResources(t *testing.T) {
 		map[string]string{"id": instanceA.GetIDString()},
 	)
 
-	responseB, err := executeApiCall(t, app.ApiDetail(db), requestB, nil)
+	responseB, err := th.ExecuteApiCall(t, e.App.ApiDetail(e.DB), requestB, nil)
 	assert.Error(t, err, "ApiDetail should return an error")
 	assert.False(t, responseB.Success, "ParseResponse should return an error response")
 	assert.Contains(t, responseB.Message, "Failed to get", "The response should be an error")
@@ -269,12 +171,11 @@ func TestUserCanNotRetrieveDeniedResources(t *testing.T) {
 //
 // It creates two resources for some user, and then checks that the response contains the two resources.
 func TestUserCanListAllowedResources(t *testing.T) {
-	_, _, db, _, app, deregisterApp := setupTest(t)
-	defer deregisterApp()
+	e := th.GetDefaultEngine()
 
 	// Create two resource for some user
-	instanceA, user, userRollback := createTestResource(t, db, app, nil)
-	instanceB, _, _ := createTestResource(t, db, app, user)
+	instanceA, user, userRollback := th.CreateMockResource(t, e.DB, e.App, nil)
+	instanceB, _, _ := th.CreateMockResource(t, e.DB, e.App, user)
 	defer userRollback()
 
 	// Create a helper request to get the list
@@ -287,10 +188,10 @@ func TestUserCanListAllowedResources(t *testing.T) {
 	)
 
 	t.Log("Getting the List for user")
-	var result []MockStruct
-	response, err := executeApiCall(
+	var result []th.MockStruct
+	response, err := th.ExecuteApiCall(
 		t,
-		app.ApiList(db),
+		e.App.ApiList(e.DB),
 		request,
 		&result,
 	)
@@ -315,13 +216,12 @@ func TestUserCanListAllowedResources(t *testing.T) {
 //
 // It creates two resources for some user, and then checks that the response contains an empty list.
 func TestUserCanNotListDeniedResources(t *testing.T) {
-	_, _, db, _, app, deregisterApp := setupTest(t)
-	defer deregisterApp()
+	e := th.GetDefaultEngine()
 
 	// Create two resource for some user
 	t.Log("Creating two resources for userA")
-	_, userA, userARollback := createTestResource(t, db, app, nil)
-	createTestResource(t, db, app, userA)
+	_, userA, userARollback := th.CreateMockResource(t, e.DB, e.App, nil)
+	th.CreateMockResource(t, e.DB, e.App, userA)
 	defer userARollback()
 
 	// Create a helper request to get the list for user B
@@ -335,10 +235,10 @@ func TestUserCanNotListDeniedResources(t *testing.T) {
 	defer userBRollback()
 
 	t.Log("Getting the List for userB")
-	var result []MockStruct
-	response, err := executeApiCall(
+	var result []th.MockStruct
+	response, err := th.ExecuteApiCall(
 		t,
-		app.ApiList(db),
+		e.App.ApiList(e.DB),
 		request,
 		&result,
 	)
@@ -352,11 +252,10 @@ func TestUserCanNotListDeniedResources(t *testing.T) {
 //
 // It creates a new resource and checks that the response contains the created resource and that the resource is persisted in the database.
 func TestUserCanCreateAllowedResources(t *testing.T) {
-	_, _, db, _, app, deregisterApp := setupTest(t)
-	defer deregisterApp()
+	e := th.GetDefaultEngine()
 
 	// Create a resource for some user
-	instance, _, userRollback := createTestResource(t, db, app, nil)
+	instance, _, userRollback := th.CreateMockResource(t, e.DB, e.App, nil)
 	defer userRollback()
 
 	assert.NotNil(t, instance.ID, "ID should not be nil")
@@ -368,8 +267,7 @@ func TestUserCanCreateAllowedResources(t *testing.T) {
 //
 // It creates a new resource and checks that the response contains an error message indicating that the user does not have the correct permissions.
 func TestUserCanNotCreateDeniedResources(t *testing.T) {
-	_, _, db, _, app, deregisterApp := setupTest(t)
-	defer deregisterApp()
+	e := th.GetDefaultEngine()
 
 	// Create a resource without authentication
 	request, user, _ := th.NewRequest(
@@ -383,10 +281,10 @@ func TestUserCanNotCreateDeniedResources(t *testing.T) {
 	assert.Nil(t, user, "User should be nil")
 
 	t.Log("Creating a resource without authentication")
-	var result []MockStruct
-	response, err := executeApiCall(
+	var result []th.MockStruct
+	response, err := th.ExecuteApiCall(
 		t,
-		app.ApiNew(db),
+		e.App.ApiNew(e.DB),
 		request,
 		&result,
 	)
@@ -399,11 +297,10 @@ func TestUserCanNotCreateDeniedResources(t *testing.T) {
 //
 // It creates a resource for the logged-in user, and then checks that the response contains the updated record.
 func TestUserCanUpdateAllowedResources(t *testing.T) {
-	_, _, db, _, app, deregisterApp := setupTest(t)
-	defer deregisterApp()
+	e := th.GetDefaultEngine()
 
 	// Create a resource for the logged-in user
-	instance, user, userRollback := createTestResource(t, db, app, nil)
+	instance, user, userRollback := th.CreateMockResource(t, e.DB, e.App, nil)
 	defer userRollback()
 
 	// Update the resource
@@ -415,8 +312,8 @@ func TestUserCanUpdateAllowedResources(t *testing.T) {
 		map[string]string{"id": instance.GetIDString()},
 	)
 
-	var updatedInstance MockStruct
-	response, err := executeApiCall(t, app.ApiUpdate(db), request, &updatedInstance)
+	var updatedInstance th.MockStruct
+	response, err := th.ExecuteApiCall(t, e.App.ApiUpdate(e.DB), request, &updatedInstance)
 
 	assert.NoError(t, err, "ApiUpdate should not return an error")
 	assert.NotNil(t, response, "ApiUpdate should return a non-nil response")
@@ -432,11 +329,10 @@ func TestUserCanUpdateAllowedResources(t *testing.T) {
 //
 // It creates a resource for the logged-in user, and then checks that the response contains an error.
 func TestUserCanNotUpdateDeniedResources(t *testing.T) {
-	_, _, db, _, app, deregisterApp := setupTest(t)
-	defer deregisterApp()
+	e := th.GetDefaultEngine()
 
 	// Create a resource for the logged-in user
-	instance, _, userARollback := createTestResource(t, db, app, nil)
+	instance, _, userARollback := th.CreateMockResource(t, e.DB, e.App, nil)
 	defer userARollback()
 
 	// Update the resource with a different user
@@ -449,7 +345,7 @@ func TestUserCanNotUpdateDeniedResources(t *testing.T) {
 	)
 	defer userBRollback()
 
-	response, err := executeApiCall(t, app.ApiUpdate(db), request, nil)
+	response, err := th.ExecuteApiCall(t, e.App.ApiUpdate(e.DB), request, nil)
 
 	assert.Error(t, err, "ApiUpdate should return an error")
 	assert.NotNil(t, response, "ApiUpdate should return a non-nil response")
@@ -460,11 +356,10 @@ func TestUserCanNotUpdateDeniedResources(t *testing.T) {
 //
 // It creates a resource for the logged-in user, and then checks that the response contains an error message indicating that the user does not have the correct permissions.
 func TestUserCanDeleteAllowedResources(t *testing.T) {
-	_, _, db, _, app, deregisterApp := setupTest(t)
-	defer deregisterApp()
+	e := th.GetDefaultEngine()
 
 	// Create a resource for the logged-in user
-	instance, user, userRollback := createTestResource(t, db, app, nil)
+	instance, user, userRollback := th.CreateMockResource(t, e.DB, e.App, nil)
 	defer userRollback()
 
 	// Update the resource
@@ -477,8 +372,8 @@ func TestUserCanDeleteAllowedResources(t *testing.T) {
 	)
 
 	t.Log("Deleting the resource")
-	var resultA MockStruct
-	responseA, err := executeApiCall(t, app.ApiDelete(db), deleteRequest, &resultA)
+	var resultA th.MockStruct
+	responseA, err := th.ExecuteApiCall(t, e.App.ApiDelete(e.DB), deleteRequest, &resultA)
 
 	assert.NoError(t, err, "ApiDelete should not return an error")
 	assert.NotNil(t, responseA, "ApiDelete should return a non-nil response")
@@ -494,10 +389,10 @@ func TestUserCanDeleteAllowedResources(t *testing.T) {
 	)
 
 	t.Log("Getting the detail for user")
-	var resultB MockStruct
-	responseB, err := executeApiCall(
+	var resultB th.MockStruct
+	responseB, err := th.ExecuteApiCall(
 		t,
-		app.ApiDetail(db),
+		e.App.ApiDetail(e.DB),
 		getRequest,
 		&resultB,
 	)
@@ -506,18 +401,17 @@ func TestUserCanDeleteAllowedResources(t *testing.T) {
 	assert.NotNil(t, responseB, "ApiDetail should return a non-nil response")
 	assert.Equal(t, responseB.Success, false, "Success should be false")
 	assert.Contains(t, responseB.Message, "Failed to get", "The response should be an error")
-	assert.Equal(t, resultB, MockStruct{}, "The result should be empty")
+	assert.Equal(t, resultB, th.MockStruct{}, "The result should be empty")
 }
 
 // TestUserCanNotDeleteDeniedResources tests that a user cannot delete a resource if they don't have the correct permissions.
 //
 // It creates a resource for the logged-in user, and then checks that the response contains an error message indicating that the user does not have the correct permissions.
 func TestUserCanNotDeleteDeniedResources(t *testing.T) {
-	_, _, db, _, app, deregisterApp := setupTest(t)
-	defer deregisterApp()
+	e := th.GetDefaultEngine()
 
 	// Create a resource for the logged-in user
-	instance, userA, userARollback := createTestResource(t, db, app, nil)
+	instance, userA, userARollback := th.CreateMockResource(t, e.DB, e.App, nil)
 	defer userARollback()
 
 	// Update the resource
@@ -531,14 +425,14 @@ func TestUserCanNotDeleteDeniedResources(t *testing.T) {
 	defer userBRollback()
 
 	t.Log("Attempting to delete the resource with userB")
-	var resultA MockStruct
-	responseA, err := executeApiCall(t, app.ApiDelete(db), deleteRequest, &resultA)
+	var resultA th.MockStruct
+	responseA, err := th.ExecuteApiCall(t, e.App.ApiDelete(e.DB), deleteRequest, &resultA)
 
 	assert.NoError(t, err, "ApiDetail should not return an error")
 	assert.NotNil(t, responseA, "ApiDetail should return a non-nil response")
 	assert.Equal(t, responseA.Success, false, "Success should be false")
 	assert.Contains(t, responseA.Message, "record not found", "The response should be an error")
-	assert.Equal(t, resultA, MockStruct{}, "The result should be empty")
+	assert.Equal(t, resultA, th.MockStruct{}, "The result should be empty")
 
 	// Create a helper request to get the detail
 	t.Log("Validating userA can retrieve the resource")
@@ -551,10 +445,10 @@ func TestUserCanNotDeleteDeniedResources(t *testing.T) {
 	)
 
 	t.Log("Getting the detail for userA")
-	var resultB MockStruct
-	responseB, err := executeApiCall(
+	var resultB th.MockStruct
+	responseB, err := th.ExecuteApiCall(
 		t,
-		app.ApiDetail(db),
+		e.App.ApiDetail(e.DB),
 		getRequest,
 		&resultB,
 	)
@@ -572,8 +466,7 @@ func TestUserCanNotDeleteDeniedResources(t *testing.T) {
 // values. It creates a new resource and checks that the response contains an
 // error message indicating that the validation failed.
 func TestCreateCallsValidators(t *testing.T) {
-	_, _, db, _, app, deregisterApp := setupTest(t)
-	defer deregisterApp()
+	e := th.GetDefaultEngine()
 
 	// Create a resource
 	request, _, rollback := th.NewRequest(
@@ -586,15 +479,15 @@ func TestCreateCallsValidators(t *testing.T) {
 	defer rollback()
 
 	t.Log("Creating a resource")
-	var result MockStruct
-	response, err := executeApiCall(
+	var result th.MockStruct
+	response, err := th.ExecuteApiCall(
 		t,
-		app.ApiNew(db),
+		e.App.ApiNew(e.DB),
 		request,
 		&result,
 	)
 
-	assert.NoError(t, err, "executeApiCall should not return an error")
+	assert.NoError(t, err, "ExecuteApiCall should not return an error")
 	assert.False(t, response.Success, "ApiDetail should return an error")
 	assert.Contains(t, response.Message, "Validation failed", "The response should be an error")
 }
@@ -604,11 +497,10 @@ func TestCreateCallsValidators(t *testing.T) {
 // and checks that the response contains an error message indicating that the
 // validation failed.
 func TestUpdateCallsValidators(t *testing.T) {
-	_, _, db, _, app, deregisterApp := setupTest(t)
-	defer deregisterApp()
+	e := th.GetDefaultEngine()
 
 	// Create a resource
-	instance, user, rollback := createTestResource(t, db, app, nil)
+	instance, user, rollback := th.CreateMockResource(t, e.DB, e.App, nil)
 	defer rollback()
 
 	// Update the resource
@@ -622,23 +514,22 @@ func TestUpdateCallsValidators(t *testing.T) {
 	defer rollback()
 
 	t.Log("Trying to update the resource")
-	var result MockStruct
-	response, _ := executeApiCall(
+	var result th.MockStruct
+	response, _ := th.ExecuteApiCall(
 		t,
-		app.ApiUpdate(db),
+		e.App.ApiUpdate(e.DB),
 		request,
 		&result,
 	)
 
-	// assert.NoError(t, err, "executeApiCall should not return an error")
+	// assert.NoError(t, err, "ExecuteApiCall should not return an error")
 	assert.False(t, response.Success, "ApiDetail should return an error")
 	assert.Contains(t, response.Message, "Validation failed", "The response should be an error")
 }
 
 // TestUserCanNotReplaceCreatedByIDOnCreate tests that a user cannot create a resource with a createdById or updatedById that is not their own user ID.
 func TestUserCanNotReplaceCreatedByIDOnCreate(t *testing.T) {
-	_, _, db, _, app, deregisterApp := setupTest(t)
-	defer deregisterApp()
+	e := th.GetDefaultEngine()
 
 	// Create a resource for the logged-in user
 	request, user, rollback := th.NewRequest(
@@ -652,9 +543,9 @@ func TestUserCanNotReplaceCreatedByIDOnCreate(t *testing.T) {
 
 	t.Log("Creating a resource")
 
-	var instance MockStruct
-	response, err := executeApiCall(t, app.ApiNew(db), request, &instance)
-	assert.NoError(t, err, "executeApiCall should not return an error")
+	var instance th.MockStruct
+	response, err := th.ExecuteApiCall(t, e.App.ApiNew(e.DB), request, &instance)
+	assert.NoError(t, err, "ExecuteApiCall should not return an error")
 	assert.NotNil(t, response, "ApiNew should return a non-nil response")
 
 	assert.Equal(t, user.GetIDString(), fmt.Sprintf("%d", instance.CreatedByID), "CreatedByID should be the logged in user")
@@ -663,11 +554,10 @@ func TestUserCanNotReplaceCreatedByIDOnCreate(t *testing.T) {
 
 // TestUserCanNotReplaceCreatedByIDOnUpdate tests that a user cannot update a resource with a createdById or updatedById that is not their own user ID.
 func TestUserCanNotReplaceCreatedByIDOnUpdate(t *testing.T) {
-	_, _, db, _, app, deregisterApp := setupTest(t)
-	defer deregisterApp()
+	e := th.GetDefaultEngine()
 
 	// Create a resource for the logged-in user
-	instance, user, userRollback := createTestResource(t, db, app, nil)
+	instance, user, userRollback := th.CreateMockResource(t, e.DB, e.App, nil)
 	defer userRollback()
 
 	// Update the resource
@@ -680,8 +570,8 @@ func TestUserCanNotReplaceCreatedByIDOnUpdate(t *testing.T) {
 	)
 
 	t.Log("Updating the resource systemData")
-	var updatedInstance MockStruct
-	response, _ := executeApiCall(t, app.ApiUpdate(db), request, &updatedInstance)
+	var updatedInstance th.MockStruct
+	response, _ := th.ExecuteApiCall(t, e.App.ApiUpdate(e.DB), request, &updatedInstance)
 
 	assert.NotNil(t, response, "ApiUpdate should return a non-nil response")
 	assert.Equal(t, true, response.Success, "ApiUpdate should return a success response")
@@ -694,11 +584,10 @@ func TestUserCanNotReplaceCreatedByIDOnUpdate(t *testing.T) {
 
 // TestUserCanNotReplaceInstanceIDOnUpdate tests that a user cannot update a resource with an instance ID that is not the same as the one in the request.
 func TestUserCanNotReplaceInstanceIDOnUpdate(t *testing.T) {
-	_, _, db, _, app, deregisterApp := setupTest(t)
-	defer deregisterApp()
+	e := th.GetDefaultEngine()
 
 	// Create a resource for the logged-in user
-	instance, user, userRollback := createTestResource(t, db, app, nil)
+	instance, user, userRollback := th.CreateMockResource(t, e.DB, e.App, nil)
 	defer userRollback()
 
 	// Update the resource
@@ -710,8 +599,8 @@ func TestUserCanNotReplaceInstanceIDOnUpdate(t *testing.T) {
 		map[string]string{"id": instance.GetIDString()},
 	)
 	t.Log("Updating the resource with an some ID")
-	var updatedInstance MockStruct
-	response, _ := executeApiCall(t, app.ApiUpdate(db), request, &updatedInstance)
+	var updatedInstance th.MockStruct
+	response, _ := th.ExecuteApiCall(t, e.App.ApiUpdate(e.DB), request, &updatedInstance)
 	assert.NotNil(t, response, "ApiUpdate should return a non-nil response")
 	assert.Equal(t, true, response.Success, "ApiUpdate should return a success response")
 	// Verify the update was successful

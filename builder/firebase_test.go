@@ -11,17 +11,18 @@ import (
 
 func TestNewFirebaseAdmin_Success(t *testing.T) {
 	t.Log("Testing Firebase Admin initialization")
-	engine := th.GetDefaultEngine()
-	firebase, err := engine.GetFirebase()
+	e := th.GetDefaultEngine()
+	firebase, err := e.Engine.GetFirebase()
 
 	assert.NoError(t, err)
 	assert.NotNil(t, firebase)
 }
 
+// TestRegisterFirebaseUser tests the registration of a new user in Firebase, and
+// the rolling back of the user registration.
 func TestRegisterFirebaseUser(t *testing.T) {
 	t.Log("Testing Firebase User registration and rollback")
-	engine := th.GetDefaultEngine()
-	firebase, _ := engine.GetFirebase()
+	e := th.GetDefaultEngine()
 	newUserData := builder.RegisterUserInput{
 		Name:     th.RandomName(),
 		Email:    th.RandomEmail(),
@@ -29,20 +30,20 @@ func TestRegisterFirebaseUser(t *testing.T) {
 	}
 
 	t.Log("Registering user", newUserData)
-	user, err := firebase.RegisterUser(context.Background(), newUserData)
+	user, err := e.Firebase.RegisterUser(context.Background(), newUserData)
 	assert.NoError(t, err)
 	assert.NotNil(t, user)
 
 	// Perform rollback
 	t.Log("Rolling back user registration", user.UID)
-	err = firebase.RollbackUserRegistration(context.Background(), user.UID)
+	err = e.Firebase.RollbackUserRegistration(context.Background(), user.UID)
 	assert.NoError(t, err)
 }
 
 func TestLoginUser(t *testing.T) {
 	t.Log("Testing Firebase User login")
-	engine := th.GetDefaultEngine()
-	firebase, _ := engine.GetFirebase()
+	e := th.GetDefaultEngine()
+
 	newUserData := builder.RegisterUserInput{
 		Name:     th.RandomName(),
 		Email:    th.RandomEmail(),
@@ -50,7 +51,7 @@ func TestLoginUser(t *testing.T) {
 	}
 
 	t.Log("Registering user", newUserData)
-	fbUser, err := firebase.RegisterUser(context.Background(), newUserData)
+	fbUser, err := e.Firebase.RegisterUser(context.Background(), newUserData)
 	assert.NoError(t, err)
 
 	t.Log("Logging in user", fbUser.UID)
@@ -58,12 +59,12 @@ func TestLoginUser(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Log("Testing Verification token")
-	tkn, err := firebase.VerifyIDToken(context.Background(), token)
+	tkn, err := e.Firebase.VerifyIDToken(context.Background(), token)
 	assert.NoError(t, err)
 	assert.Equal(t, fbUser.UID, tkn.UID)
 
 	// Perform rollback
 	t.Log("Rolling back user registration", fbUser.UID)
-	err = firebase.RollbackUserRegistration(context.Background(), fbUser.UID)
+	err = e.Firebase.RollbackUserRegistration(context.Background(), fbUser.UID)
 	assert.NoError(t, err)
 }

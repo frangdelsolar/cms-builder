@@ -67,8 +67,7 @@ func NewRequest(method string, body string, authenticate bool, user *builder.Use
 // - *builder.User: The created user.
 // - func(): A function that can be used to undo the user registration.
 func RegisterTestUser(newUserData *builder.RegisterUserInput) (*builder.User, func()) {
-	engine := GetDefaultEngine()
-	firebase, _ := engine.GetFirebase()
+	e := GetDefaultEngine()
 	bodyBytes, _ := json.Marshal(newUserData)
 
 	header := http.Header{
@@ -82,12 +81,12 @@ func RegisterTestUser(newUserData *builder.RegisterUserInput) (*builder.User, fu
 		Body:   io.NopCloser(bytes.NewBuffer(bodyBytes)),
 	}
 
-	engine.RegisterUserController(&responseWriter, registerUserRequest)
+	e.Engine.RegisterUserController(&responseWriter, registerUserRequest)
 
 	createdUser := builder.User{}
 	builder.ParseResponse(responseWriter.Buffer.Bytes(), &createdUser)
 
 	return &createdUser, func() {
-		firebase.RollbackUserRegistration(context.Background(), createdUser.FirebaseId)
+		e.Firebase.RollbackUserRegistration(context.Background(), createdUser.FirebaseId)
 	}
 }
