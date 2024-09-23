@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -48,16 +49,16 @@ func (b *Builder) authMiddleware(next http.Handler) http.Handler {
 		localUser, err := b.VerifyUser(accessToken)
 		if err != nil {
 			log.Error().Err(err).Msg("Error verifying user")
-			http.Error(w, "Error verifying user", http.StatusUnauthorized)
+			SendJsonResponse(w, http.StatusUnauthorized, err, "Unauthorized")
 			return
 		}
 
-		if localUser.GetIDString() == "" {
-			log.Error().Err(err).Msg("Error verifying user")
-			http.Error(w, "Error verifying user", http.StatusUnauthorized)
+		if localUser == nil {
+			SendJsonResponse(w, http.StatusUnauthorized, fmt.Errorf("User not found"), "Unauthorized")
 			return
 		}
 
+		log.Info().Interface("User", localUser).Msg("Logging in user")
 		next.ServeHTTP(w, r)
 	})
 }

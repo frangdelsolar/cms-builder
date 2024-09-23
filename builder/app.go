@@ -511,9 +511,9 @@ func appendUserDataToRequestBody(bytes []byte, r *http.Request, isNewRecord bool
 	// Retrieve requested_by from request header
 	userId := getRequestUserId(r, a)
 
-	if userId == "" {
+	if userId == "" || userId == "0" {
 		log.Error().Msgf("No userId found for authorization header")
-		return bytes, fmt.Errorf("user not authenticated")
+		return nil, fmt.Errorf("user not authenticated")
 	}
 
 	convertedUserId, err := strconv.ParseUint(userId, 10, 64)
@@ -527,6 +527,8 @@ func appendUserDataToRequestBody(bytes []byte, r *http.Request, isNewRecord bool
 	}
 
 	jsonData["UpdatedById"] = convertedUserId
+
+	log.Info().Interface("body", jsonData).Msg("Appending user data to request body")
 
 	bodyBytes, err := json.Marshal(jsonData)
 	if err != nil {

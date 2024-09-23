@@ -66,7 +66,7 @@ func NewServer(config *ServerConfig) (*Server, error) {
 
 	r := mux.NewRouter()
 
-	adminRoutes := r.PathPrefix("/admin").Subrouter()
+	// adminRoutes := r.PathPrefix("/admin").Subrouter()
 
 	svr := &Server{
 		Server: &http.Server{
@@ -75,7 +75,7 @@ func NewServer(config *ServerConfig) (*Server, error) {
 		},
 		Middlewares: []func(http.Handler) http.Handler{},
 		Routes:      []RouteHandler{},
-		Root:        adminRoutes,
+		Root:        r,
 		Builder:     config.Builder,
 	}
 
@@ -118,23 +118,30 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 // and finally calls the underlying http.Server's ListenAndServe method.
 func (s *Server) Run() error {
 
+	// Create separate routers for authenticated and public routes
+	authRouter := s.Root.PathPrefix("/private").Subrouter()
+	publicRouter := s.Root.PathPrefix("/public").Subrouter()
+
 	for _, middleware := range s.Middlewares {
 		s.Handler = middleware(s.Handler)
 	}
+
+	// Apply authMiddleware only to the authenticated router
+	authRouter.Use(s.Builder.authMiddleware)
+
 	log.Info().Msg("Public routes")
 	for _, route := range s.Routes {
 		if !route.RequiresAuth {
-			log.Info().Msgf("Route: %s", route.Route)
-			s.Root.HandleFunc(route.Route, route.Handler).Name(route.Name)
+			log.Info().Msgf("Route: /public%s", route.Route)
+			publicRouter.HandleFunc(route.Route, route.Handler).Name(route.Name)
 		}
 	}
 
-	s.Root.Use(s.Builder.authMiddleware)
 	log.Info().Msg("Authenticated routes")
 	for _, route := range s.Routes {
 		if route.RequiresAuth {
-			log.Info().Msgf("Route: %s", route.Route)
-			s.Root.HandleFunc(route.Route, route.Handler).Name(route.Name)
+			log.Info().Msgf("Route: /private%s", route.Route)
+			authRouter.HandleFunc(route.Route, route.Handler).Name(route.Name)
 		}
 	}
 
@@ -173,14 +180,22 @@ type HandlerFunc func(w http.ResponseWriter, r *http.Request)
 // url, err := r.Get("getUser").URL("id", "123") =>
 // "/users/123"
 func (s *Server) AddRoute(route string, handler HandlerFunc, name string, requiresAuth bool) {
-	s.Routes = append(s.Routes, RouteHandler{
-		Route:        route,
-		Handler:      handler,
-		Name:         name,
-		RequiresAuth: requiresAuth,
-	})
+	s.Routes = append(s.Routes, NewRouteHandler(route, handler, name, requiresAuth))
 }
 
+// NewRouteHandler creates a new RouteHandler instance.
+//
+// It takes four arguments:
+//   - route: The path for the route (e.g., "/", "/users/{id}").
+//   - handler: The function to be called when the route is matched.
+//   - name: An optional name for the route (useful for generating URLs)
+//   - requiresAuth: A boolean flag indicating whether the route requires authentication
+//
+// Example:
+//
+//	routeHandler := NewRouteHandler("/users/{id}", func(w http.ResponseWriter, r *http.Request) {
+//	  // Handle user with ID
+//	}, "getUser", false)
 func NewRouteHandler(route string, handler HandlerFunc, name string, requiresAuth bool) RouteHandler {
 	return RouteHandler{
 		Route:        route,
@@ -190,6 +205,10 @@ func NewRouteHandler(route string, handler HandlerFunc, name string, requiresAut
 	}
 }
 
+// GetRoutes returns a slice of all registered routes.
+//
+// The slice is a shallow copy of the server's internal routes slice, so modifying
+// the slice or its elements will not affect the server's internal state.
 func (s *Server) GetRoutes() []RouteHandler {
 	return s.Routes
 }
