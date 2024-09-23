@@ -58,7 +58,7 @@ func (b *Builder) AuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		r.Header.Set("auth", "true")
+		r.Header.Set("auth", "true") // this is set only for testing purposes
 
 		log.Info().Interface("User", localUser).Msg("Logging in user")
 		next.ServeHTTP(w, r)

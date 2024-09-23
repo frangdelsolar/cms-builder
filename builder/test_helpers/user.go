@@ -32,6 +32,11 @@ func LoginUser(userData *builder.RegisterUserInput) (string, error) {
 
 	firebaseApiKey := configReader.GetString("firebaseApiKey")
 
+	if firebaseApiKey == "" {
+		log.Error().Msg("Firebase API key not set")
+		return userToken, fmt.Errorf("firebase API key not set")
+	}
+
 	firebaseLoginUrl := firebaseLoginUrl + firebaseApiKey
 
 	requestBody := map[string]string{
