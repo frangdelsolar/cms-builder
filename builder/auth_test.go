@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/frangdelsolar/cms/builder"
@@ -62,31 +63,29 @@ func TestRegisterUserController(t *testing.T) {
 	e.Firebase.RollbackUserRegistration(context.Background(), createdUser.FirebaseId)
 }
 
-// func TestAuthenticationMiddleware(t *testing.T) {
-// 	// Create a mock HTTP server
-// 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-// 		// Your handler code here
-// 	}))
-// 	defer ts.Close()
+// TestAuthenticationMiddleware tests the authentication middleware by registering a user,
+// logging in with that user, and verifying that the middleware adds the "auth" header
+// to the request.
+func TestAuthenticationMiddleware(t *testing.T) {
+	e := th.GetDefaultEngine()
 
-// 	// Create a middleware instance
-// 	authMiddleware := middleware.NewAuthenticationMiddleware()
+	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authHeader := r.Header.Get("auth")
+		if authHeader != "true" {
+			t.Errorf("missing auth header")
+		}
+	})
 
-// 	// Create a handler function
-// 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-// 		// Your handler code here
-// 	})
+	handlerToTest := e.Engine.AuthMiddleware(nextHandler)
 
-// 	// Wrap the handler with the middleware
-// 	wrappedHandler := authMiddleware.Handle(handler)
+	req := httptest.NewRequest("GET", "http://testing", nil)
 
-// 	// Send a request to the wrapped handler
-// 	resp, err := http.Get(ts.URL)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	defer resp.Body.Close()
+	userData := th.RandomUserData()
+	_, rollback := th.RegisterTestUser(userData)
+	defer rollback()
 
-// 	// Assert the response
-// 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-// }
+	accessToken, err := th.LoginUser(userData)
+	assert.NoError(t, err, "Error logging in user")
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	handlerToTest.ServeHTTP(httptest.NewRecorder(), req)
+}

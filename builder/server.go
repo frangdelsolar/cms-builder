@@ -127,7 +127,7 @@ func (s *Server) Run() error {
 	}
 
 	// Apply authMiddleware only to the authenticated router
-	authRouter.Use(s.Builder.authMiddleware)
+	authRouter.Use(s.Builder.AuthMiddleware)
 
 	log.Info().Msg("Public routes")
 	for _, route := range s.Routes {

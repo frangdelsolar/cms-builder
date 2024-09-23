@@ -37,12 +37,12 @@ func (b *Builder) VerifyUser(userIdToken string) (*User, error) {
 	return &localUser, nil
 }
 
-// authMiddleware is a middleware function that verifies the user based on the
+// AuthMiddleware is a middleware function that verifies the user based on the
 // access token provided in the Authorization header of the request. If the
 // verification fails, it will return a 401 error. If the verification is
 // successful, it will continue to the next handler in the chain, setting a
 // "requested_by" header in the request with the ID of the verified user.
-func (b *Builder) authMiddleware(next http.Handler) http.Handler {
+func (b *Builder) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		accessToken := GetAccessTokenFromRequest(r)
@@ -57,6 +57,8 @@ func (b *Builder) authMiddleware(next http.Handler) http.Handler {
 			SendJsonResponse(w, http.StatusUnauthorized, fmt.Errorf("User not found"), "Unauthorized")
 			return
 		}
+
+		r.Header.Set("auth", "true")
 
 		log.Info().Interface("User", localUser).Msg("Logging in user")
 		next.ServeHTTP(w, r)
