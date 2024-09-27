@@ -94,20 +94,48 @@ def present_results():
     print(f"{Colors.CYAN}{Colors.BOLD}Please review the logs and keep them to a minimum.")
     print(f"{Colors.WHITE}**************************************************")
 
+def get_files_from_env():
 
-def main():
+    """
+    Tries to get the list of changed files from the environment variable CHANGED_FILES
+    and returns it as a list of file paths relative to the current working directory.
 
+    If the variable is not set, the method returns an empty list.
+    """
     files = os.getenv("CHANGED_FILES")
-
-    print(files)
-
+    output = []
     if files is not None:
         files = files.split(" ")
 
-    else:
+        for file in files:
+            output.append("../"+file)
+
+    return output
+
+def main():
+
+    """
+    Main entry point of the script.
+
+    This method first tries to get changed files from the environment variable
+    CHANGED_FILES. If it's not set, it reads all .go files from the ../builder
+    folder and uses those for the log search.
+
+    It then searches for log statements in the given files and prints the
+    results to the console.
+    """
+    files = []
+
+    try:
+        files = get_files_from_env()
+    except Exception as e:
+        print(f"Error: {e}")
+
+    if len(files) == 0 or files is None:
         folder_path = "../builder"
         files = read_go_files(folder_path)
 
+    print(files)
 
     for file in files:
         find_logs(file)

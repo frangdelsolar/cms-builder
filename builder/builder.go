@@ -135,7 +135,7 @@ func NewBuilder(input *NewBuilderInput) (*Builder, error) {
 	}
 
 	log.Debug().Msg("Builder initialized ")
-	log.Info().Msg("All components initialized")
+	log.Info().Msg("All components initialized ")
 	log.Warn().Msg("The application is ready to use")
 	log.Error().Msg("The application failed to initialize")
 
