@@ -99,9 +99,15 @@ def main():
 
     files = os.getenv("CHANGED_FILES")
 
+    print(files)
 
-    # folder_path = "../builder"
-    # files = read_go_files(folder_path)
+    if files is not None:
+        files = files.split(" ")
+
+    else:
+        folder_path = "../builder"
+        files = read_go_files(folder_path)
+
 
     for file in files:
         find_logs(file)
