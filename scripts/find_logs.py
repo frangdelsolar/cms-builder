@@ -96,8 +96,12 @@ def present_results():
 
 
 def main():
-    folder_path = "../builder"
-    files = read_go_files(folder_path)
+
+    files = os.getenv("CHANGED_FILES")
+
+
+    # folder_path = "../builder"
+    # files = read_go_files(folder_path)
 
     for file in files:
         find_logs(file)
