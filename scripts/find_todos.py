@@ -1,6 +1,5 @@
 import os
 
-
 class Colors:
     GREEN = "\033[0;32m"
     RED = "\033[0;31m"
@@ -70,10 +69,47 @@ def present_results():
         print(f"{Colors.RED}Error: Found FIXME comments. Please address them before continuing.")
         exit(1)  # Exit with non-zero code to indicate an error
 
+def get_files_from_env():
+
+    """
+    Tries to get the list of changed files from the environment variable CHANGED_FILES
+    and returns it as a list of file paths relative to the current working directory.
+
+    If the variable is not set, the method returns an empty list.
+    """
+    files = os.getenv("CHANGED_FILES")
+    output = []
+    if files is not None:
+        files = files.split(" ")
+
+        for file in files:
+            output.append("../"+file)
+
+    return output
 
 def main():
-    folder_path = "../builder"
-    files = read_go_files(folder_path)
+    """
+    Main entry point of the script.
+
+    This method first tries to get changed files from the environment variable
+    CHANGED_FILES. If it's not set, it reads all .go files from the ../builder
+    folder and uses those for the log search.
+
+    It then searches for log statements in the given files and prints the
+    results to the console.
+    """
+    files = []
+
+    try:
+        files = get_files_from_env()
+    except Exception as e:
+        print(f"Error: {e}")
+
+    if len(files) == 0 or files is None:
+        folder_path = "../builder"
+        files = read_go_files(folder_path)
+
+    print(files)
 
     for file in files:
         find_comments(file)
