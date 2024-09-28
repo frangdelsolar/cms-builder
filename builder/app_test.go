@@ -13,7 +13,8 @@ import (
 // TestNewAdmin tests that NewAdmin returns a non-nil Admin instance.
 func TestNewAdmin(t *testing.T) {
 	t.Log("Testing NewAdmin")
-	e := th.GetDefaultEngine()
+	e, err := th.GetDefaultEngine()
+	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 
 	admin := builder.NewAdmin(e.DB, e.Server, e.Engine)
 
@@ -25,7 +26,8 @@ func TestNewAdmin(t *testing.T) {
 //
 // It also tests that the registered App is accessible via the GetApp method.
 func TestRegisterApp(t *testing.T) {
-	e := th.GetDefaultEngine()
+	e, err := th.GetDefaultEngine()
+	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 
 	// define a test struct to be registered
 	type testStruct struct {
@@ -51,7 +53,8 @@ func TestRegisterApp(t *testing.T) {
 //
 // It registers a test App with the admin instance, and then checks that the server has the expected routes.
 func TestRegisterAPIRoutes(t *testing.T) {
-	e := th.GetDefaultEngine()
+	e, err := th.GetDefaultEngine()
+	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 
 	type Test struct {
 		*builder.SystemData
@@ -91,7 +94,8 @@ func TestRegisterAPIRoutes(t *testing.T) {
 //
 // It creates a resource for the logged-in user, and then checks that the response contains the same record.
 func TestUserCanRetrieveAllowedResources(t *testing.T) {
-	e := th.GetDefaultEngine()
+	e, err := th.GetDefaultEngine()
+	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 
 	// Create a resource for some user
 	instance, user, userRollback := th.CreateMockResource(t, e.DB, e.App, nil)
@@ -127,7 +131,8 @@ func TestUserCanRetrieveAllowedResources(t *testing.T) {
 //
 // It creates two resources for two different users, and then checks that each user can not retrieve the resource of the other user.
 func TestUserCanNotRetrieveDeniedResources(t *testing.T) {
-	e := th.GetDefaultEngine()
+	e, err := th.GetDefaultEngine()
+	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 
 	// Create a resource for user A
 	instanceA, userA, userARollback := th.CreateMockResource(t, e.DB, e.App, nil)
@@ -171,7 +176,8 @@ func TestUserCanNotRetrieveDeniedResources(t *testing.T) {
 //
 // It creates two resources for some user, and then checks that the response contains the two resources.
 func TestUserCanListAllowedResources(t *testing.T) {
-	e := th.GetDefaultEngine()
+	e, err := th.GetDefaultEngine()
+	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 
 	// Create two resource for some user
 	instanceA, user, userRollback := th.CreateMockResource(t, e.DB, e.App, nil)
@@ -216,7 +222,8 @@ func TestUserCanListAllowedResources(t *testing.T) {
 //
 // It creates two resources for some user, and then checks that the response contains an empty list.
 func TestUserCanNotListDeniedResources(t *testing.T) {
-	e := th.GetDefaultEngine()
+	e, err := th.GetDefaultEngine()
+	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 
 	// Create two resource for some user
 	t.Log("Creating two resources for userA")
@@ -252,7 +259,8 @@ func TestUserCanNotListDeniedResources(t *testing.T) {
 //
 // It creates a new resource and checks that the response contains the created resource and that the resource is persisted in the database.
 func TestUserCanCreateAllowedResources(t *testing.T) {
-	e := th.GetDefaultEngine()
+	e, err := th.GetDefaultEngine()
+	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 
 	// Create a resource for some user
 	instance, _, userRollback := th.CreateMockResource(t, e.DB, e.App, nil)
@@ -267,7 +275,8 @@ func TestUserCanCreateAllowedResources(t *testing.T) {
 //
 // It creates a new resource and checks that the response contains an error message indicating that the user does not have the correct permissions.
 func TestUserCanNotCreateDeniedResources(t *testing.T) {
-	e := th.GetDefaultEngine()
+	e, err := th.GetDefaultEngine()
+	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 
 	// Create a resource without authentication
 	request, user, _ := th.NewRequest(
@@ -297,7 +306,8 @@ func TestUserCanNotCreateDeniedResources(t *testing.T) {
 //
 // It creates a resource for the logged-in user, and then checks that the response contains the updated record.
 func TestUserCanUpdateAllowedResources(t *testing.T) {
-	e := th.GetDefaultEngine()
+	e, err := th.GetDefaultEngine()
+	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 
 	// Create a resource for the logged-in user
 	instance, user, userRollback := th.CreateMockResource(t, e.DB, e.App, nil)
@@ -329,7 +339,8 @@ func TestUserCanUpdateAllowedResources(t *testing.T) {
 //
 // It creates a resource for the logged-in user, and then checks that the response contains an error.
 func TestUserCanNotUpdateDeniedResources(t *testing.T) {
-	e := th.GetDefaultEngine()
+	e, err := th.GetDefaultEngine()
+	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 
 	// Create a resource for the logged-in user
 	instance, _, userARollback := th.CreateMockResource(t, e.DB, e.App, nil)
@@ -356,7 +367,8 @@ func TestUserCanNotUpdateDeniedResources(t *testing.T) {
 //
 // It creates a resource for the logged-in user, and then checks that the response contains an error message indicating that the user does not have the correct permissions.
 func TestUserCanDeleteAllowedResources(t *testing.T) {
-	e := th.GetDefaultEngine()
+	e, err := th.GetDefaultEngine()
+	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 
 	// Create a resource for the logged-in user
 	instance, user, userRollback := th.CreateMockResource(t, e.DB, e.App, nil)
@@ -408,7 +420,8 @@ func TestUserCanDeleteAllowedResources(t *testing.T) {
 //
 // It creates a resource for the logged-in user, and then checks that the response contains an error message indicating that the user does not have the correct permissions.
 func TestUserCanNotDeleteDeniedResources(t *testing.T) {
-	e := th.GetDefaultEngine()
+	e, err := th.GetDefaultEngine()
+	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 
 	// Create a resource for the logged-in user
 	instance, userA, userARollback := th.CreateMockResource(t, e.DB, e.App, nil)
@@ -466,7 +479,8 @@ func TestUserCanNotDeleteDeniedResources(t *testing.T) {
 // values. It creates a new resource and checks that the response contains an
 // error message indicating that the validation failed.
 func TestCreateCallsValidators(t *testing.T) {
-	e := th.GetDefaultEngine()
+	e, err := th.GetDefaultEngine()
+	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 
 	// Create a resource
 	request, _, rollback := th.NewRequest(
@@ -497,7 +511,8 @@ func TestCreateCallsValidators(t *testing.T) {
 // and checks that the response contains an error message indicating that the
 // validation failed.
 func TestUpdateCallsValidators(t *testing.T) {
-	e := th.GetDefaultEngine()
+	e, err := th.GetDefaultEngine()
+	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 
 	// Create a resource
 	instance, user, rollback := th.CreateMockResource(t, e.DB, e.App, nil)
@@ -529,7 +544,8 @@ func TestUpdateCallsValidators(t *testing.T) {
 
 // TestUserCanNotReplaceCreatedByIDOnCreate tests that a user cannot create a resource with a createdById or updatedById that is not their own user ID.
 func TestUserCanNotReplaceCreatedByIDOnCreate(t *testing.T) {
-	e := th.GetDefaultEngine()
+	e, err := th.GetDefaultEngine()
+	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 
 	// Create a resource for the logged-in user
 	request, user, rollback := th.NewRequest(
@@ -554,7 +570,8 @@ func TestUserCanNotReplaceCreatedByIDOnCreate(t *testing.T) {
 
 // TestUserCanNotReplaceCreatedByIDOnUpdate tests that a user cannot update a resource with a createdById or updatedById that is not their own user ID.
 func TestUserCanNotReplaceCreatedByIDOnUpdate(t *testing.T) {
-	e := th.GetDefaultEngine()
+	e, err := th.GetDefaultEngine()
+	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 
 	// Create a resource for the logged-in user
 	instance, user, userRollback := th.CreateMockResource(t, e.DB, e.App, nil)
@@ -584,7 +601,8 @@ func TestUserCanNotReplaceCreatedByIDOnUpdate(t *testing.T) {
 
 // TestUserCanNotReplaceInstanceIDOnUpdate tests that a user cannot update a resource with an instance ID that is not the same as the one in the request.
 func TestUserCanNotReplaceInstanceIDOnUpdate(t *testing.T) {
-	e := th.GetDefaultEngine()
+	e, err := th.GetDefaultEngine()
+	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 
 	// Create a resource for the logged-in user
 	instance, user, userRollback := th.CreateMockResource(t, e.DB, e.App, nil)

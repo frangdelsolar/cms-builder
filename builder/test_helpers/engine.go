@@ -34,13 +34,15 @@ func FieldValidator(fieldName string, instance map[string]interface{}, output *b
 	return output
 }
 
-type EngineServices struct {
+type TestEngineServices struct {
 	Engine   *builder.Builder
 	Admin    *builder.Admin
 	DB       *builder.Database
 	Server   *builder.Server
 	Firebase *builder.FirebaseAdmin
 	App      *builder.App
+	Log      *builder.Logger
+	Config   *builder.ConfigReader
 }
 
 // GetDefaultEngine returns a default Builder instance, Admin, Database, Server, and App instances,
@@ -50,7 +52,7 @@ type EngineServices struct {
 // a Database instance, a Server instance, and an App instance with a MockStruct type.
 // The function also sets up a field validator for the "field" key on the MockStruct type.
 // The function returns the instances and a callback to be used to deregister the App after the test is finished.
-func GetDefaultEngine() EngineServices {
+func GetDefaultEngine() (TestEngineServices, error) {
 	input := &builder.NewBuilderInput{
 		ReadConfigFromFile: true,
 		ConfigFilePath:     "config.yaml", // Replace with a valid config file path
@@ -63,19 +65,49 @@ func GetDefaultEngine() EngineServices {
 
 	var err error
 	engine, err := builder.NewBuilder(input)
+	if err != nil {
+		return TestEngineServices{}, err
+	}
+
 	admin, err := engine.GetAdmin()
+	if err != nil {
+		return TestEngineServices{}, err
+	}
+
 	db, err := engine.GetDatabase()
+	if err != nil {
+		return TestEngineServices{}, err
+	}
+
 	server, err := engine.GetServer()
+	if err != nil {
+		return TestEngineServices{}, err
+	}
+
 	firebase, err := engine.GetFirebase()
+	if err != nil {
+		return TestEngineServices{}, err
+	}
 
 	app, err := admin.Register(MockStruct{}, false)
+	if err != nil {
+		return TestEngineServices{}, err
+	}
+
 	app.RegisterValidator("field", FieldValidator)
 	defer admin.Unregister(app.Name())
 
+	logger, err := engine.GetLogger()
 	if err != nil {
-		panic(err)
+		return TestEngineServices{}, err
 	}
-	return EngineServices{engine, admin, db, server, firebase, &app}
+
+	configReader, err := engine.GetConfigReader()
+	if err != nil {
+		return TestEngineServices{}, err
+	}
+
+	return TestEngineServices{engine, admin, db, server, firebase, &app, logger, configReader}, nil
 }
 
 // createMockResource creates a new resource for the given user and returns the created resource, the user, and a function to roll back the resource creation.

@@ -11,7 +11,8 @@ import (
 
 func TestNewFirebaseAdmin_Success(t *testing.T) {
 	t.Log("Testing Firebase Admin initialization")
-	e := th.GetDefaultEngine()
+	e, err := th.GetDefaultEngine()
+	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 	firebase, err := e.Engine.GetFirebase()
 
 	assert.NoError(t, err)
@@ -22,7 +23,8 @@ func TestNewFirebaseAdmin_Success(t *testing.T) {
 // the rolling back of the user registration.
 func TestRegisterFirebaseUser(t *testing.T) {
 	t.Log("Testing Firebase User registration and rollback")
-	e := th.GetDefaultEngine()
+	e, err := th.GetDefaultEngine()
+	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 	newUserData := builder.RegisterUserInput{
 		Name:     th.RandomName(),
 		Email:    th.RandomEmail(),
@@ -42,7 +44,8 @@ func TestRegisterFirebaseUser(t *testing.T) {
 
 func TestLoginUser(t *testing.T) {
 	t.Log("Testing Firebase User login")
-	e := th.GetDefaultEngine()
+	e, err := th.GetDefaultEngine()
+	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 
 	newUserData := builder.RegisterUserInput{
 		Name:     th.RandomName(),

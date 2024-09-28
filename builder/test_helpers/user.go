@@ -26,11 +26,13 @@ var firebaseLoginUrl = "https://www.googleapis.com/identitytoolkit/v3/relyingpar
 // - error: An error if the login fails.
 func LoginUser(userData *builder.RegisterUserInput) (string, error) {
 	userToken := ""
-	e := GetDefaultEngine()
-	log, _ := e.Engine.GetLogger()
-	configReader, _ := e.Engine.GetConfigReader()
+	e, err := GetDefaultEngine()
+	if err != nil {
+		panic(err)
+	}
 
-	firebaseApiKey := configReader.GetString("firebaseApiKey")
+	log := e.Log
+	firebaseApiKey := e.Config.GetString("firebaseApiKey")
 
 	if firebaseApiKey == "" {
 		log.Error().Msg("Firebase API key not set")
@@ -47,7 +49,7 @@ func LoginUser(userData *builder.RegisterUserInput) (string, error) {
 
 	var bodyBytes []byte
 	// Marshal the request body to JSON format
-	bodyBytes, err := json.Marshal(requestBody)
+	bodyBytes, err = json.Marshal(requestBody)
 	if err != nil {
 		log.Error().Err(err).Msg("Error marshalling request body")
 		return userToken, err

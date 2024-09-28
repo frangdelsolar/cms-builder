@@ -18,7 +18,8 @@ import (
 // verifying the response to make sure the user was created correctly.
 func TestRegisterUserController(t *testing.T) {
 	t.Log("Testing VerifyUser")
-	e := th.GetDefaultEngine()
+	e, err := th.GetDefaultEngine()
+	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 
 	newUserData := builder.RegisterUserInput{
 		Name:     th.RandomName(),
@@ -67,7 +68,8 @@ func TestRegisterUserController(t *testing.T) {
 // logging in with that user, and verifying that the middleware adds the "auth" header
 // to the request.
 func TestAuthenticationMiddleware(t *testing.T) {
-	e := th.GetDefaultEngine()
+	e, err := th.GetDefaultEngine()
+	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("auth")

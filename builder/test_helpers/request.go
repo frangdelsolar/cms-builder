@@ -67,7 +67,11 @@ func NewRequest(method string, body string, authenticate bool, user *builder.Use
 // - *builder.User: The created user.
 // - func(): A function that can be used to undo the user registration.
 func RegisterTestUser(newUserData *builder.RegisterUserInput) (*builder.User, func()) {
-	e := GetDefaultEngine()
+	e, err := GetDefaultEngine()
+	if err != nil {
+		panic(err)
+	}
+
 	bodyBytes, _ := json.Marshal(newUserData)
 
 	header := http.Header{
