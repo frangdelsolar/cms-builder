@@ -8,11 +8,19 @@ import (
 
 // Following these standards
 // https://github.com/omniti-labs/jsend
+// https://medium.com/@bojanmajed/standard-json-api-response-format-c6c1aabcaa6d
+
+type Pagination struct {
+	Total int64 `json:"total"`
+	Page  int   `json:"page"`
+	Limit int   `json:"limit"`
+}
 
 type Response struct {
-	Success bool        `json:"success"`
-	Data    interface{} `json:"data"`
-	Message string      `json:"message"`
+	Success    bool        `json:"success"`
+	Data       interface{} `json:"data"`
+	Message    string      `json:"message"`
+	Pagination *Pagination `json:"pagination"`
 }
 
 // NewSuccessResponse returns a Response with Success set to true.
@@ -39,20 +47,44 @@ func newErrorResponse(message string, data interface{}) Response {
 	}
 }
 
-// SendJsonResponse sends a JSON response to the client using the given http.ResponseWriter.
+// SendJsonResponse writes a JSON response to the given http.ResponseWriter.
 //
-// The `status` argument is used to set the HTTP status code of the response.
-// The `data` argument is used to populate the `data` field of the response.
-// The `msg` argument is used to populate the `message` field of the response.
+// It takes four arguments:
 //
-// If the response is for a successful status code (200), the response will have a
-// `success` field set to true. For all other status codes, the response will have
-// a `success` field set to false.
+// - status: The HTTP status code to write to the response.
+// - data: The data to include in the response body.
+// - msg: A message to include in the response body.
+//
+// If the status code is in the 200 range, the data are included in the response body.
+// If the status code is not in the 200 range, the msg is included in the response body.
+//
+// The function also sets the Content-Type header to "application/json", and writes the response with the given status code.
 func SendJsonResponse(w http.ResponseWriter, status int, data interface{}, msg string) {
+	SendJsonResponseWithPagination(w, status, data, msg, nil)
+}
+
+// SendJsonResponseWithPagination writes a JSON response to the given http.ResponseWriter.
+// It takes four arguments:
+//
+// - status: The HTTP status code to write to the response.
+// - data: The data to include in the response body.
+// - msg: A message to include in the response body.
+// - pagination: An optional pagination struct to include in the response body.
+//
+// If the status code is in the 200 range, the data and pagination are included in the response body.
+// If the status code is not in the 200 range, the msg is included in the response body.
+//
+// The function also sets the Content-Type header to "application/json", and writes the response with the given status code.
+func SendJsonResponseWithPagination(w http.ResponseWriter, status int, data interface{}, msg string, pagination *Pagination) {
+
 	var response Response
 
 	if status >= 200 && status < 300 {
 		response = newSuccessResponse(msg, data)
+		if pagination != nil {
+			response.Pagination = pagination
+		}
+
 	} else {
 		response = newErrorResponse(msg, data)
 	}

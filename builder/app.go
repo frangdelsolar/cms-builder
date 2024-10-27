@@ -143,18 +143,44 @@ func NewFieldValidationError(fieldName string) FieldValidationError {
 	API HANDLERS
 */
 
-// ApiList returns a handler function that responds to GET requests on the
-// list endpoint, e.g. /api/users.
+// ApiList returns a handler function that responds to GET requests on the list endpoint.
 //
-// The handler function will return a JSON response containing all the records
-// of the given model.
+// The handler function retrieves the parameters `limit` and `page` from the request, and
+// uses them to fetch the corresponding page of records from the database.
 //
-// It will also handle errors and return a 500 Internal Server Error if the
-// error is not a gorm.ErrRecordNotFound.
+// The handler function returns a JSON response containing the records.
+//
+// Parameters:
+//   - db: a pointer to a Database instance.
+//
+// Returns:
+// - A HandlerFunc that responds to GET requests on the list endpoint.
 func (a *App) ApiList(db *Database) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		err := validateRequestMethod(r, http.MethodGet)
+		// Retrieve parameters from the request
+		param_limit := "10"
+
+		if r.URL != nil && r.URL.Query().Get("limit") != "" {
+			param_limit = r.URL.Query().Get("limit")
+		}
+		param_page := "1"
+
+		if r.URL != nil && r.URL.Query().Get("page") != "" {
+			param_page = r.URL.Query().Get("page")
+		}
+
+		limit, err := strconv.Atoi(param_limit)
+		if err != nil {
+			limit = 10
+		}
+
+		page, err := strconv.Atoi(param_page)
+		if err != nil {
+			page = 1
+		}
+
+		err = validateRequestMethod(r, http.MethodGet)
 		if err != nil {
 			SendJsonResponse(w, http.StatusMethodNotAllowed, nil, err.Error())
 			return
@@ -170,10 +196,16 @@ func (a *App) ApiList(db *Database) HandlerFunc {
 		}
 
 		var result *gorm.DB
+		pagination := &Pagination{
+			Total: 0,
+			Page:  page,
+			Limit: limit,
+		}
+
 		if a.skipUserBinding {
-			result = db.FindAll(instances)
+			result = db.FindAll(instances, pagination)
 		} else {
-			result = db.FindAllByUserId(instances, userId)
+			result = db.FindAllByUserId(instances, userId, pagination)
 		}
 
 		if result.Error != nil {
@@ -181,7 +213,7 @@ func (a *App) ApiList(db *Database) HandlerFunc {
 			return
 		}
 
-		SendJsonResponse(w, http.StatusOK, instances, a.Name()+" list")
+		SendJsonResponseWithPagination(w, http.StatusOK, instances, a.Name()+" list", pagination)
 	}
 }
 

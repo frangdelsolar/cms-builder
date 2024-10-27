@@ -121,10 +121,19 @@ func CreateMockResource(t *testing.T, db *builder.Database, app *builder.App, us
 	t.Logf("Creating new resource for user: %v", user.ID)
 
 	var createdItem MockStruct
-	response, err := ExecuteApiCall(t, app.ApiNew(db), request, &createdItem)
+	response, err := ExecuteApiCall(
+		t,
+		app.ApiNew(db),
+		request,
+		&createdItem,
+	)
+
+	t.Logf("Response: %v", response)
 
 	assert.NoError(t, err, "ApiNew should not return an error")
 	assert.True(t, response.Success, "ApiNew should return a success response")
+	assert.Nil(t, response.Pagination, "ApiNew should not return a pagination response")
+	assert.Equal(t, "mockstruct created", response.Message, "The response should be a success message")
 	return &createdItem, user, rollback
 }
 
@@ -141,7 +150,7 @@ func CreateMockResource(t *testing.T, db *builder.Database, app *builder.App, us
 // Returns:
 // - builder.Response: the parsed response from the API call handler function.
 func ExecuteApiCall(t *testing.T, apiCall builder.HandlerFunc, request *http.Request, v interface{}) (builder.Response, error) {
-	t.Log("Executing API call", request.Method, request.Body)
+	t.Log("Executing API call", request.Method, request.Body, v)
 	writer := MockWriter{}
 	apiCall(&writer, request)
 

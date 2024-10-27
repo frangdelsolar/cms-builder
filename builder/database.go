@@ -20,21 +20,51 @@ type Database struct {
 
 // FindById retrieves an entity by its ID from the database.
 func (db *Database) FindById(id string, entity interface{}, userId string, skipUserBinding bool) *gorm.DB {
+	// Queries
+	idQuery := "id = '" + id + "'"
+	createdByIdQuery := "created_by_id = '" + userId + "'"
+
 	if skipUserBinding {
-		return db.DB.Where("id = ?", id).First(entity)
+		return db.DB.Where(idQuery).First(entity)
 	} else {
-		return db.DB.Where("id = ? AND created_by_id = ?", id, userId).First(entity)
+		return db.DB.Where(idQuery + " AND " + createdByIdQuery).First(entity)
 	}
 }
 
 // FindAll retrieves all entities from the database.
-func (db *Database) FindAll(entity interface{}) *gorm.DB {
-	return db.DB.Find(entity)
+func (db *Database) FindAll(entity interface{}, pagination *Pagination) *gorm.DB {
+
+	if pagination == nil {
+		return db.DB.Find(entity)
+	}
+
+	// Apply pagination
+	limit := pagination.Limit
+	offset := (pagination.Page - 1) * pagination.Limit
+
+	// Retrieve total number of records
+	db.DB.Model(entity).Count(&pagination.Total)
+
+	return db.DB.Limit(limit).Offset(offset).Model(entity)
 }
 
-// FindAllByUserId retrieves all entities associated with a specific user ID from the database.
-func (db *Database) FindAllByUserId(entity interface{}, userId string) *gorm.DB {
-	return db.DB.Where("created_by_id = ?", userId).Find(entity)
+func (db *Database) FindAllByUserId(entity interface{}, userId string, pagination *Pagination) *gorm.DB {
+	// Queries
+	createdByIdQuery := "created_by_id = '" + userId + "'"
+
+	if pagination == nil {
+		return db.DB.Where(createdByIdQuery).Find(entity)
+	}
+
+	// Retrieve total number of records
+	db.DB.Model(entity).Where(createdByIdQuery).Count(&pagination.Total)
+
+	// Apply pagination
+	query := db.DB.Where(createdByIdQuery)
+	limit := pagination.Limit
+	offset := (pagination.Page - 1) * pagination.Limit
+
+	return query.Limit(limit).Offset(offset).Find(entity)
 }
 
 func (db *Database) Create(entity interface{}) *gorm.DB {
