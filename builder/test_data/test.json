@@ -1,12 +1,4 @@
 {
     "name": "file",
-    "version": "1.0.0",
-    "description": "file",
-    "main": "file.go",
-    "type": "module",
-    "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1"
-    },
-    "keywords": [],
-    "author": ""
+    "description": "test file"
 }
