@@ -1,0 +1,8 @@
+*logs*
+*.log
+*.db
+config.yaml
+coverage.out
+covprofile
+
+/vendor*

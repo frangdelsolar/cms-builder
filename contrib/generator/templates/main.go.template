@@ -1,0 +1,27 @@
+package main
+
+import (
+	"github.com/frangdelsolar/cms/builder"
+)
+
+func main() {
+	engine, _ := builder.NewBuilder(&builder.NewBuilderInput{
+		ReadConfigFromFile: true,
+		ConfigFilePath:     "config.yaml",
+		InitializeLogger:   true,
+		InitiliazeDB:       true,
+		InitiliazeServer:   true,
+		InitiliazeAdmin:    true,
+		InitiliazeFirebase: true,
+	})
+
+	log, _ := engine.GetLogger()
+	log.Info().Msg("Builder initialized")
+
+	svr, _ := engine.GetServer()
+	admin, _ := engine.GetAdmin()
+	log.Debug().Msg("Initializing admin")
+
+	log.Debug().Msg("Initializing server")
+	svr.Run()
+}
