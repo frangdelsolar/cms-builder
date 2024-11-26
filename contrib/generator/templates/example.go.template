@@ -8,7 +8,7 @@ import (
 
 type Example struct {
 	*builder.SystemData
-	Example string
+	Title string
 }
 
 // ExampleTitleValidator validates the title of a task.

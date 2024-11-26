@@ -6,26 +6,16 @@ import (
 )
 
 func main() {
-	engine, _ := builder.NewBuilder(&builder.NewBuilderInput{
-		ReadConfigFromFile: true,
-		ConfigFilePath:     "config.yaml",
-		InitializeLogger:   true,
-		InitiliazeDB:       true,
-		InitiliazeServer:   true,
-		InitiliazeAdmin:    true,
-		InitiliazeFirebase: true,
-	})
+	engine, _ := builder.NewDefaultEngine()
 
-	log, _ := engine.GetLogger()
+	log := engine.Log
 	log.Info().Msg("Builder initialized")
 
-	svr, _ := engine.GetServer()
-	admin, _ := engine.GetAdmin()
-	log.Debug().Msg("Initializing admin")
+	svr := engine.Server
 
+	admin := engine.Admin
 	exampleApp, _ := admin.Register(&{{projectName}}.Example{}, false)
 	exampleApp.RegisterValidator("title", {{projectName}}.ExampleTitleValidator)
-
 
 	log.Debug().Msg("Initializing server")
 	svr.Run()
