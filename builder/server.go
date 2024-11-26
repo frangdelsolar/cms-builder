@@ -94,8 +94,8 @@ func NewServer(config *ServerConfig) (*Server, error) {
 	// r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir(PUBLIC_DIR))))
 
 	svr.AddRoute("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Home")
-	}, "home", false)
+		fmt.Fprintf(w, "ok")
+	}, "healthz", false)
 
 	return svr, nil
 }
@@ -120,7 +120,7 @@ func (s *Server) Run() error {
 
 	// Create separate routers for authenticated and public routes
 	authRouter := s.Root.PathPrefix("/private").Subrouter()
-	publicRouter := s.Root.PathPrefix("").Subrouter()
+	publicRouter := s.Root
 
 	for _, middleware := range s.Middlewares {
 		s.Handler = middleware(s.Handler)
