@@ -132,7 +132,7 @@ func (s *Server) Run() error {
 	log.Info().Msg("Public routes")
 	for _, route := range s.Routes {
 		if !route.RequiresAuth {
-			log.Info().Msgf("Route: /public%s", route.Route)
+			log.Info().Msgf("Route: %s", route.Route)
 			publicRouter.HandleFunc(route.Route, route.Handler).Name(route.Name)
 		}
 	}
