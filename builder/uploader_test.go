@@ -67,7 +67,6 @@ func TestAnonymousCanUploadAllowed(t *testing.T) {
 		&result,
 	)
 
-	t.Log(response.Message)
 	assert.NoError(t, err, "ApiDetail should not return an error")
 	assert.NotNil(t, response, "ApiDetail should return a non-nil response")
 	assert.Equal(t, response.Success, true, "Success should be true")

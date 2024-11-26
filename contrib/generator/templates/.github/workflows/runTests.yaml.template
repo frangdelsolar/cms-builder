@@ -31,7 +31,11 @@ jobs:
           echo "dbFile: ${{ github.workspace }}/cicd.db" >> config.yaml
           echo "firebaseSecret: ${{ secrets.FIREBASE_SECRET }}" >> config.yaml
           echo "firebaseApiKey: ${{ secrets.FIREBASE_API_KEY }}" >> config.yaml
-
+          echo "uploaderMaxSize: 5000" >> config.yaml
+          echo "uploaderAuthenticate: true" >> config.yaml
+          echo "uploaderSupportedMimeTypes: [\"*\"]" >> config.yaml
+          echo "uploaderFolder: ${{ github.workspace }}/test_output" >> config.yaml
+          
       - name: Run tests
         working-directory: builder
         run: go test -v -race -covermode atomic -coverprofile=covprofile ./...
