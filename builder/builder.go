@@ -5,6 +5,8 @@ import (
 	"fmt"
 )
 
+const builderVersion = "1.0.0"
+
 var log *Logger // Global variable for the logger instance
 
 // Initializes the global logger instance with a default configuration.
@@ -101,6 +103,8 @@ func NewBuilder(input *NewBuilderInput) (*Builder, error) {
 	}
 
 	log, _ = builder.GetLogger()
+
+	log.Info().Msgf("Running Builder v%s", builderVersion)
 
 	// Database
 	if !input.InitiliazeDB {
