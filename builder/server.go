@@ -120,7 +120,7 @@ func (s *Server) Run() error {
 
 	// Create separate routers for authenticated and public routes
 	authRouter := s.Root.PathPrefix("/private").Subrouter()
-	publicRouter := s.Root.PathPrefix("/public").Subrouter()
+	publicRouter := s.Root.PathPrefix("").Subrouter()
 
 	for _, middleware := range s.Middlewares {
 		s.Handler = middleware(s.Handler)
