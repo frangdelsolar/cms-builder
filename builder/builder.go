@@ -35,12 +35,12 @@ type BuilderConfig struct {
 	dbConfig       *DBConfig       // Embedded configuration for the database (optional)
 	serverConfig   *ServerConfig   // Embedded configuration for the server (optional)
 	firebaseConfig *FirebaseConfig // Embedded configuration for firebase (optional)
-	uploaderConfig *UploaderConfig // Embedded configuration for the uploader (optional)
+	UploaderConfig *UploaderConfig // Embedded configuration for the uploader (optional)
 }
 
 // Builder defines a central configuration and management structure for building applications.
 type Builder struct {
-	config   *BuilderConfig // Pointer to the main configuration object
+	Config   *BuilderConfig // Pointer to the main configuration object
 	reader   *ConfigReader  // Reference to the Viper instance used for configuration
 	logger   *Logger        // Reference to the application's logger instance
 	db       *Database      // Reference to the connected database instance (if applicable)
@@ -69,7 +69,7 @@ func NewBuilder(input *NewBuilderInput) (*Builder, error) {
 	}
 
 	builder := &Builder{
-		config: &BuilderConfig{
+		Config: &BuilderConfig{
 			configFile:     &ReaderConfig{},
 			loggerConfig:   &LoggerConfig{},
 			dbConfig:       &DBConfig{},
@@ -151,8 +151,8 @@ func NewBuilder(input *NewBuilderInput) (*Builder, error) {
 
 // InitConfigReader initializes the configuration reader based on the provided configuration file.
 func (b *Builder) InitConfigReader(configFile *ReaderConfig) error {
-	b.config.configFile = configFile
-	reader, err := NewConfigReader(b.config.configFile)
+	b.Config.configFile = configFile
+	reader, err := NewConfigReader(b.Config.configFile)
 	if err != nil {
 		return err
 	}
@@ -170,7 +170,7 @@ func (b *Builder) GetConfigReader() (*ConfigReader, error) {
 
 // InitLogger initializes the logger based on the provided configuration.
 func (b *Builder) InitLogger(config *LoggerConfig) error {
-	b.config.loggerConfig = config
+	b.Config.loggerConfig = config
 	logger, err := NewLogger(config)
 	if err != nil {
 		return err
@@ -191,7 +191,7 @@ func (b *Builder) GetLogger() (*Logger, error) {
 
 // InitDatabase initializes the database based on the provided configuration.
 func (b *Builder) InitDatabase(config *DBConfig) error {
-	b.config.dbConfig = config
+	b.Config.dbConfig = config
 	db, err := LoadDB(config)
 	if err != nil {
 		return err
@@ -212,7 +212,7 @@ func (b *Builder) GetDatabase() (*Database, error) {
 
 // initServer initializes the server based on the provided configuration.
 func (b *Builder) initServer(config *ServerConfig) error {
-	b.config.serverConfig = config
+	b.Config.serverConfig = config
 	server, err := NewServer(config)
 	if err != nil {
 		return err
@@ -251,7 +251,7 @@ func (b *Builder) GetAdmin() (*Admin, error) {
 //
 // It checks if the Firebase Admin is initialized and returns an error if not. Otherwise, it returns a pointer to the Firebase Admin instance.
 func (b *Builder) initFirebase(config *FirebaseConfig) error {
-	b.config.firebaseConfig = config
+	b.Config.firebaseConfig = config
 	fb, err := NewFirebaseAdmin(config)
 	if err != nil {
 		return err
@@ -306,7 +306,7 @@ func (b *Builder) initAuth() {
 // If an error occurs while registering the Upload app, it logs the error and panics.
 func (b *Builder) initUploader(config *UploaderConfig) {
 	// Set the uploader configuration
-	b.config.uploaderConfig = config
+	b.Config.UploaderConfig = config
 
 	// Register the Upload app without authentication
 	_, err := b.admin.Register(&Upload{}, false)
@@ -321,7 +321,7 @@ func (b *Builder) initUploader(config *UploaderConfig) {
 	// Add route for uploading new files
 	b.server.AddRoute(
 		route,
-		b.getUploadPostHandler(config),
+		b.GetUploadPostHandler(config),
 		"file-new",
 		true, // Requires authentication
 	)
@@ -329,7 +329,7 @@ func (b *Builder) initUploader(config *UploaderConfig) {
 	// Add route for deleting files by ID
 	b.server.AddRoute(
 		route+"/{id}/delete",
-		b.getUploadDeleteHandler(config),
+		b.GetUploadDeleteHandler(config),
 		"file-delete",
 		true, // Requires authentication
 	)
@@ -337,7 +337,7 @@ func (b *Builder) initUploader(config *UploaderConfig) {
 	// Add route for serving uploaded files
 	b.server.AddRoute(
 		"/static/{path:.*}",
-		b.getStaticHandler(config),
+		b.GetStaticHandler(config),
 		"file-static",
 		config.Authenticate, // Authentication based on config
 	)

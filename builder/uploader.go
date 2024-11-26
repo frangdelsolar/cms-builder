@@ -39,7 +39,7 @@ type UploaderConfig struct {
 // information in the database. It will also handle errors and return a 400
 // error if the request body is not valid JSON, or a 500 error if there is an
 // error storing the file or saving the file information to the database.
-func (b *Builder) getUploadPostHandler(config *UploaderConfig) HandlerFunc {
+func (b *Builder) GetUploadPostHandler(config *UploaderConfig) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Validate method
 		err := validateRequestMethod(r, http.MethodPost)
@@ -145,7 +145,7 @@ func (b *Builder) getUploadPostHandler(config *UploaderConfig) HandlerFunc {
 // database record is not found, it will return a 500 Internal Server Error
 // response. If the file is deleted successfully, it will return a 200 OK
 // response with a message saying "File deleted successfully".
-func (b *Builder) getUploadDeleteHandler(config *UploaderConfig) HandlerFunc {
+func (b *Builder) GetUploadDeleteHandler(config *UploaderConfig) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := mux.Vars(r)["id"]
 		uploadApp, err := b.admin.GetApp("upload")
@@ -194,7 +194,7 @@ func (b *Builder) getUploadDeleteHandler(config *UploaderConfig) HandlerFunc {
 // configured folder. The handler will serve files from the configured folder
 // under the path "/public/static/" if config.Authenticate is false, or
 // "/private/static/" if config.Authenticate is true.
-func (b *Builder) getStaticHandler(config *UploaderConfig) HandlerFunc {
+func (b *Builder) GetStaticHandler(config *UploaderConfig) HandlerFunc {
 	prefix := "/public/static/"
 	if config.Authenticate {
 		prefix = "/private/static/"
