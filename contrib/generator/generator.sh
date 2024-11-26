@@ -77,6 +77,12 @@ copyGithubActions(){
   copyFile "$run_tests_yaml" "$output_github_actions_dir/runTests.yaml"
 }
 
+initGit(){
+  cd "$output_dir"
+  git init
+  cd "$base_dir"
+}
+
 
 ## SCRIPT ##
 createFolders
@@ -85,5 +91,7 @@ updateGitIgnore
 copyFiles
 copyScripts
 copyGithubActions
+
+initGit
 
 echo "Project '$project_name' created successfully!"
