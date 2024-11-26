@@ -1,7 +1,5 @@
 package builder
 
-// FIXME: Refactor and comment and test
-
 import (
 	"bytes"
 	"encoding/json"
@@ -273,7 +271,7 @@ func randomizeFileName(fileName string) string {
 // It returns an error if the file cannot be deleted.
 func DeleteFile(path string) error {
 	// Log the file path to be deleted
-	log.Info().Msgf("Deleting file: %s", path)
+	log.Warn().Msgf("Deleting file: %s", path)
 
 	// Attempt to delete the file
 	if err := os.Remove(path); err != nil {
