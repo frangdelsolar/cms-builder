@@ -19,6 +19,7 @@ func NewDefaultEngine() (EngineServices, error) {
 		InitiliazeServer:   true,
 		InitiliazeAdmin:    true,
 		InitiliazeFirebase: true,
+		InitiliazeUploader: true,
 	}
 
 	var err error

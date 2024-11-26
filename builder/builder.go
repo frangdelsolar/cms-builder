@@ -3,6 +3,7 @@ package builder
 import (
 	"errors"
 	"fmt"
+	"net/http"
 )
 
 var log *Logger // Global variable for the logger instance
@@ -35,6 +36,7 @@ type BuilderConfig struct {
 	dbConfig       *DBConfig       // Embedded configuration for the database (optional)
 	serverConfig   *ServerConfig   // Embedded configuration for the server (optional)
 	firebaseConfig *FirebaseConfig // Embedded configuration for firebase (optional)
+	uploaderConfig *UploaderConfig // Embedded configuration for the uploader (optional)
 }
 
 // Builder defines a central configuration and management structure for building applications.
@@ -57,6 +59,7 @@ type NewBuilderInput struct {
 	InitiliazeServer   bool   // Whether to initialize the server, needs readConfigFromFile to be true
 	InitiliazeAdmin    bool   // Whether to initialize the admin, needs readConfigFromFile to be true
 	InitiliazeFirebase bool   // Whether to initialize the firebase, needs readConfigFromFile to be true
+	InitiliazeUploader bool   // Whether to initialize the uploader
 }
 
 // NewBuilder creates a new Builder instance.
@@ -132,6 +135,16 @@ func NewBuilder(input *NewBuilderInput) (*Builder, error) {
 		})
 
 		builder.initAuth()
+	}
+
+	// Uploader
+	if input.InitiliazeUploader {
+		builder.initUploader(&UploaderConfig{
+			MaxSize:            config.GetInt64("uploaderMaxSize"),
+			Authenticate:       config.GetBool("uploaderAuthenticate"),
+			SupportedMimeTypes: config.GetStringSlice("uploaderSupportedMimeTypes"),
+			Folder:             config.GetString("uploaderFolder"),
+		})
 	}
 
 	return builder, nil
@@ -281,4 +294,18 @@ func (b *Builder) initAuth() {
 
 	svr := b.server
 	svr.AddRoute("/auth/register", b.RegisterUserController, "register", false)
+}
+
+func (b *Builder) initUploader(config *UploaderConfig) {
+	b.config.uploaderConfig = config
+
+	_, err := b.admin.Register(&Upload{}, config.Authenticate)
+	if err != nil {
+		log.Error().Err(err).Msg("Error registering upload app")
+		panic(err)
+	}
+	// uploadApp.RegisterValidator("name", NameValidator)
+	handleUpload := b.getUploaderHandler(config)
+	b.server.AddRoute("/upload", handleUpload, "upload", config.Authenticate)
+	b.server.Root.PathPrefix("/upload/").Handler(http.StripPrefix("/upload/", http.FileServer(http.Dir(config.Folder))))
 }
