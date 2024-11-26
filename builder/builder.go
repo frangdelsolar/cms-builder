@@ -3,7 +3,6 @@ package builder
 import (
 	"errors"
 	"fmt"
-	"net/http"
 )
 
 var log *Logger // Global variable for the logger instance
@@ -296,16 +295,50 @@ func (b *Builder) initAuth() {
 	svr.AddRoute("/auth/register", b.RegisterUserController, "register", false)
 }
 
+// initUploader initializes the uploader by setting the configuration,
+// registering the Upload app, and adding routes for file operations.
+//
+// It adds three primary routes:
+//   - POST /file: For uploading new files
+//   - DELETE /file/{id}/delete: For deleting files by ID
+//   - GET /static/{path:.*}: For serving uploaded files
+//
+// If an error occurs while registering the Upload app, it logs the error and panics.
 func (b *Builder) initUploader(config *UploaderConfig) {
+	// Set the uploader configuration
 	b.config.uploaderConfig = config
 
-	_, err := b.admin.Register(&Upload{}, config.Authenticate)
+	// Register the Upload app without authentication
+	_, err := b.admin.Register(&Upload{}, false)
 	if err != nil {
 		log.Error().Err(err).Msg("Error registering upload app")
 		panic(err)
 	}
-	// uploadApp.RegisterValidator("name", NameValidator)
-	handleUpload := b.getUploaderHandler(config)
-	b.server.AddRoute("/upload", handleUpload, "upload", config.Authenticate)
-	b.server.Root.PathPrefix("/upload/").Handler(http.StripPrefix("/upload/", http.FileServer(http.Dir(config.Folder))))
+
+	// Define the base route for file operations
+	route := "/file"
+
+	// Add route for uploading new files
+	b.server.AddRoute(
+		route,
+		b.getUploadPostHandler(config),
+		"file-new",
+		true, // Requires authentication
+	)
+
+	// Add route for deleting files by ID
+	b.server.AddRoute(
+		route+"/{id}/delete",
+		b.getUploadDeleteHandler(config),
+		"file-delete",
+		true, // Requires authentication
+	)
+
+	// Add route for serving uploaded files
+	b.server.AddRoute(
+		"/static/{path:.*}",
+		b.getStaticHandler(config),
+		"file-static",
+		config.Authenticate, // Authentication based on config
+	)
 }

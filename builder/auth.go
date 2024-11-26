@@ -34,6 +34,17 @@ func (b *Builder) VerifyUser(userIdToken string) (*User, error) {
 	q := "firebase_id = '" + accessToken.UID + "'"
 	b.db.Find(&localUser, q)
 
+	// Create user if firebase has it but not in database
+	if localUser.ID == 0 {
+		log.Info().Msg("User exists in Firebase but not in database. Will create it now")
+
+		// create user in database
+		localUser.Name = accessToken.Claims["name"].(string)
+		localUser.Email = accessToken.Claims["email"].(string)
+		localUser.FirebaseId = accessToken.UID
+		b.db.Create(&localUser)
+	}
+
 	return &localUser, nil
 }
 
