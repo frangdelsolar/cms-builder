@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/frangdelsolar/cms/builder"
+	"github.com/frangdelsolar/{{projectName}}"
 )
 
 func main() {
@@ -21,6 +22,10 @@ func main() {
 	svr, _ := engine.GetServer()
 	admin, _ := engine.GetAdmin()
 	log.Debug().Msg("Initializing admin")
+
+	exampleApp, _ := admin.Register(&{{projectName}}.Example{}, false)
+	exampleApp.RegisterValidator("title", {{projectName}}.ExampleTitleValidator)
+
 
 	log.Debug().Msg("Initializing server")
 	svr.Run()

@@ -15,6 +15,9 @@ scripts_dir="$templates_dir/scripts"
 github_actions_dir="$templates_dir/.github/workflows"
 
 main_go="$templates_dir/main.go.template"
+example_go="$templates_dir/example.go.template"
+go_mod="$templates_dir/go.mod.template"
+go_sum="$templates_dir/go.sum.template"
 config_yaml="$templates_dir/config.yaml.template"
 dockerfile="$templates_dir/Dockerfile.template"
 makefile="$templates_dir/Makefile.template"
@@ -36,6 +39,7 @@ output_github_actions_dir="$project_name/.github/workflows"
 ## HELPERS ##
 createFolders(){
   mkdir -p "$output_dir" || { echo "Failed to create directory: $output_dir" >&2; exit 1; }
+  mkdir -p "$output_dir/cmd" || { echo "Failed to create directory: $output_dir" >&2; exit 1; }
   mkdir -p "$output_script_dir" || { echo "Failed to create directory: $output_script_dir" >&2; exit 1; }
   mkdir -p "$output_github_actions_dir" || { echo "Failed to create directory: $output_github_actions_dir" >&2; exit 1; }
 }
@@ -53,12 +57,19 @@ copyFile(){
   sed 's/{{PROJECT_NAME}}/'$project_name'/g' "$dest_file" > "$temp_file"
   mv "$temp_file" "$dest_file"
 
+  temp_file=$(mktemp)
+  sed 's/{{projectName}}/'$project_name'/g' "$dest_file" > "$temp_file"
+  mv "$temp_file" "$dest_file"
+
   echo "Copied: $src_file to $dest_file"
 }
 
 
 copyFiles(){
-  copyFile "$main_go" "$output_dir/main.go"
+  copyFile "$main_go" "$output_dir/cmd/main.go"
+  copyFile "$go_mod" "$output_dir/go.mod"
+  copyFile "$go_sum" "$output_dir/go.sum"
+  copyFile "$example_go" "$output_dir/example.go"
   copyFile "$config_yaml" "$output_dir/config.yaml"
   copyFile "$dockerfile" "$output_dir/Dockerfile"
   copyFile "$makefile" "$output_dir/Makefile"

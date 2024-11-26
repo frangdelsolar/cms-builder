@@ -1,0 +1,29 @@
+package {{projectName}}
+
+import (
+	"fmt"
+
+	"github.com/frangdelsolar/cms/builder"
+)
+
+type Example struct {
+	*builder.SystemData
+	Example string
+}
+
+// ExampleTitleValidator validates the title of a task.
+//
+// Parameters:
+// - title: the title of the task.
+//
+// Returns:
+// - error: an error if the title is empty.
+func ExampleTitleValidator(fieldName string, instance map[string]interface{}, output *builder.FieldValidationError) *builder.FieldValidationError {
+	title := fmt.Sprint(instance[fieldName])
+	if title == "" {
+		output.Error = fieldName + " cannot be empty"
+		return output
+	}
+
+	return output
+}
