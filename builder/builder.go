@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-const builderVersion = "1.2.2"
+const builderVersion = "1.2.3"
 
 var log *Logger // Global variable for the logger instance
 
@@ -115,6 +115,13 @@ func NewBuilder(input *NewBuilderInput) (*Builder, error) {
 		URL:  config.GetString("dbUrl"),
 	})
 
+	db, err := builder.GetDatabase()
+	if err != nil {
+		log.Error().Err(err).Msg("Error getting database")
+		return nil, err
+	}
+	log.Debug().Interface("Database", db).Msg("Database initialized")
+
 	// Server
 	if !input.InitiliazeServer {
 		return builder, nil
@@ -195,12 +202,16 @@ func (b *Builder) GetLogger() (*Logger, error) {
 
 // InitDatabase initializes the database based on the provided configuration.
 func (b *Builder) InitDatabase(config *DBConfig) error {
+	log.Debug().Str("path", config.Path).Str("url", config.URL).Msg("Initializing database...")
+
 	b.Config.dbConfig = config
 	db, err := LoadDB(config)
 	if err != nil {
 		return err
 	}
 	b.db = db
+
+	log.Info().Bool("db nil", b.db == nil).Msg("Database initialized")
 	return nil
 }
 
