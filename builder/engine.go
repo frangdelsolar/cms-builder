@@ -58,5 +58,13 @@ func NewDefaultEngine() (EngineServices, error) {
 		return EngineServices{}, err
 	}
 
-	return EngineServices{engine, admin, db, server, firebase, logger, configReader}, nil
+	return EngineServices{
+		Engine:   engine,
+		Admin:    admin,
+		DB:       db,
+		Server:   server,
+		Firebase: firebase,
+		Log:      logger,
+		Config:   configReader,
+	}, nil
 }

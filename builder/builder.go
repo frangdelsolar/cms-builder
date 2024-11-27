@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-const builderVersion = "1.2.0"
+const builderVersion = "1.2.1"
 
 var log *Logger // Global variable for the logger instance
 
