@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-const builderVersion = "1.2.1"
+const builderVersion = "1.2.2"
 
 var log *Logger // Global variable for the logger instance
 
@@ -112,7 +112,7 @@ func NewBuilder(input *NewBuilderInput) (*Builder, error) {
 	}
 	builder.InitDatabase(&DBConfig{
 		Path: config.GetString("dbFile"),
-		URL:  config.GetString("dbURL"),
+		URL:  config.GetString("dbUrl"),
 	})
 
 	// Server
