@@ -13,23 +13,11 @@ import (
 	"gorm.io/gorm"
 )
 
-// FieldValidationFunc is a function that validates a field value.
-type FieldValidationFunc func(fieldName string, jsonData map[string]interface{}, output *FieldValidationError) *FieldValidationError
-
-type FieldValidationError struct {
-	Field string // The name of the field that failed validation
-	Error string // The error message
-}
-
-type ValidationResult struct {
-	Errors []FieldValidationError // A list of field validation errors
-}
-
 type App struct {
-	model           interface{}                    // The model struct
-	skipUserBinding bool                           // Means that theres a CreatedBy field in the model that will be used for filtering the database query to only include records created by the user
-	admin           *Admin                         // The admin instance
-	validators      map[string]FieldValidationFunc // A map of field names to validation functions
+	model           interface{}   // The model struct
+	skipUserBinding bool          // Means that theres a CreatedBy field in the model that will be used for filtering the database query to only include records created by the user
+	admin           *Admin        // The admin instance
+	validators      ValidatorsMap // A map of field names to validation functions
 }
 
 // Name returns the name of the model as a string, lowercased and without the package name.
@@ -51,9 +39,12 @@ func (a *App) PluralName() string {
 //
 // Returns:
 // - nothing
-func (a *App) RegisterValidator(fieldName string, validator FieldValidationFunc) {
+func (a *App) RegisterValidator(fieldName string, validators ValidatorsList) {
 	lowerFieldName := strings.ToLower(fieldName)
-	a.validators[lowerFieldName] = validator
+
+	for _, validator := range validators {
+		a.validators[lowerFieldName] = append(a.validators[lowerFieldName], validator)
+	}
 }
 
 // GetValidatorForField returns the validator function associated with the given field name.
@@ -65,15 +56,15 @@ func (a *App) RegisterValidator(fieldName string, validator FieldValidationFunc)
 //
 // Returns:
 // - FieldValidationFunc: the validator function associated with the given field name, or nil if none is associated.
-func (a *App) GetValidatorForField(fieldName string) FieldValidationFunc {
+func (a *App) GetValidatorsForField(fieldName string) ValidatorsList {
 
 	lowerFieldName := strings.ToLower(fieldName)
-	validator, ok := a.validators[lowerFieldName]
+	validators, ok := a.validators[lowerFieldName]
 	if !ok {
 		return nil
 	}
 
-	return validator
+	return validators
 }
 
 // Validate validates the given instance using all the registered validators.
@@ -90,26 +81,24 @@ func (a *App) GetValidatorForField(fieldName string) FieldValidationFunc {
 func (a *App) Validate(instance interface{}) ValidationResult {
 
 	errors := ValidationResult{
-		Errors: make([]FieldValidationError, 0),
+		Errors: make([]ValidationError, 0),
 	}
 
 	jsonData, err := jsonifyInterface(instance)
 
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to jsonify interface")
 		return errors
 	}
 
 	for key, _ := range jsonData {
-		validator := a.GetValidatorForField(key)
-		if validator == nil {
-			continue
-		}
+		validators := a.GetValidatorsForField(key)
 
-		output := NewFieldValidationError(key)
-		validationResult := validator(key, jsonData, &output)
-		if validationResult.Error != "" {
-			errors.Errors = append(errors.Errors, *validationResult)
+		for _, validator := range validators {
+			output := NewFieldValidationError(key)
+			validationResult := validator(key, jsonData, &output)
+			if validationResult.Error != "" {
+				errors.Errors = append(errors.Errors, *validationResult)
+			}
 		}
 	}
 
@@ -129,14 +118,6 @@ func jsonifyInterface(instance interface{}) (map[string]interface{}, error) {
 		return nil, err
 	}
 	return data, nil
-}
-
-// NewFieldValidationError creates a new FieldValidationError with the given field name and an empty error string.
-func NewFieldValidationError(fieldName string) FieldValidationError {
-	return FieldValidationError{
-		Field: fieldName,
-		Error: "",
-	}
 }
 
 /*

@@ -276,8 +276,8 @@ func (b *Builder) initAuth() {
 		panic(err)
 	}
 
-	userApp.RegisterValidator("email", EmailValidator)
-	userApp.RegisterValidator("name", NameValidator)
+	userApp.RegisterValidator("email", ValidatorsList{RequiredValidator, EmailValidator})
+	userApp.RegisterValidator("name", ValidatorsList{RequiredValidator})
 
 	svr := b.server
 	svr.AddRoute("/auth/register", b.RegisterUserController, "register", false)

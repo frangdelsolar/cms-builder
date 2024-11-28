@@ -21,11 +21,11 @@ type MockStruct struct {
 //
 // Parameters:
 // - fieldName: the name of the field to be validated.
-// - instance: a map[string]interface{} representing the instance to be validated.
+// - instance: a EntityData representing the instance to be validated.
 //
 // Returns:
 // - error: an error if the field value is empty, otherwise nil.
-func FieldValidator(fieldName string, instance map[string]interface{}, output *builder.FieldValidationError) *builder.FieldValidationError {
+func FieldValidator(fieldName string, instance builder.EntityData, output *builder.ValidationError) *builder.ValidationError {
 	fieldValue := fmt.Sprint(instance[fieldName])
 	if fieldValue == "" {
 		output.Error = fieldName + " cannot be empty"
@@ -94,7 +94,7 @@ func GetDefaultEngine() (TestEngineServices, error) {
 		return TestEngineServices{}, err
 	}
 
-	app.RegisterValidator("field", FieldValidator)
+	app.RegisterValidator("field", builder.ValidatorsList{FieldValidator})
 	defer admin.Unregister(app.Name())
 
 	logger, err := engine.GetLogger()
