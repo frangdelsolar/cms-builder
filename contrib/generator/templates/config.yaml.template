@@ -15,3 +15,9 @@ csrfToken: "someToken"
 # Firebase
 firebaseSecret: encoded64-token-thisIsGeneratedByEncodingFirebaseConfigFile
 firebaseApiKey: providedByFirebaseClient
+
+# Uploader
+uploaderMaxSize: 5000
+uploaderAuthenticate: true
+uploaderSupportedMimeTypes: ["image/jpeg", "image/png"] # ["*", "audio/*"]
+uploaderFolder: uploads

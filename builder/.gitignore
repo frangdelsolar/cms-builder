@@ -1,6 +1,7 @@
-*logs*
+*/logs*
 *.log
 *.db
 config.yaml
 coverage.out
 covprofile
+*/test_output*

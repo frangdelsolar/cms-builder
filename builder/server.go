@@ -94,8 +94,8 @@ func NewServer(config *ServerConfig) (*Server, error) {
 	// r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir(PUBLIC_DIR))))
 
 	svr.AddRoute("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Home")
-	}, "home", false)
+		fmt.Fprintf(w, "ok")
+	}, "healthz", false)
 
 	return svr, nil
 }
@@ -120,7 +120,7 @@ func (s *Server) Run() error {
 
 	// Create separate routers for authenticated and public routes
 	authRouter := s.Root.PathPrefix("/private").Subrouter()
-	publicRouter := s.Root.PathPrefix("/public").Subrouter()
+	publicRouter := s.Root
 
 	for _, middleware := range s.Middlewares {
 		s.Handler = middleware(s.Handler)
@@ -132,7 +132,7 @@ func (s *Server) Run() error {
 	log.Info().Msg("Public routes")
 	for _, route := range s.Routes {
 		if !route.RequiresAuth {
-			log.Info().Msgf("Route: /public%s", route.Route)
+			log.Info().Msgf("Route: %s", route.Route)
 			publicRouter.HandleFunc(route.Route, route.Handler).Name(route.Name)
 		}
 	}
@@ -180,6 +180,7 @@ type HandlerFunc func(w http.ResponseWriter, r *http.Request)
 // url, err := r.Get("getUser").URL("id", "123") =>
 // "/users/123"
 func (s *Server) AddRoute(route string, handler HandlerFunc, name string, requiresAuth bool) {
+	// log.Debug().Str("route", route).Bool("requiresAuth", requiresAuth).Str("name", name).Str("handler", fmt.Sprintf("%T", handler)).Msg("Adding route")
 	s.Routes = append(s.Routes, NewRouteHandler(route, handler, name, requiresAuth))
 }
 

@@ -20,6 +20,7 @@ go_mod="$templates_dir/go.mod.template"
 go_sum="$templates_dir/go.sum.template"
 config_yaml="$templates_dir/config.yaml.template"
 dockerfile="$templates_dir/Dockerfile.template"
+dockercompose="$templates_dir/docker-compose.yaml.template"
 makefile="$templates_dir/Makefile.template"
 gitignore="$templates_dir/.gitignore.template"
 
@@ -72,6 +73,7 @@ copyFiles(){
   copyFile "$example_go" "$output_dir/example.go"
   copyFile "$config_yaml" "$output_dir/config.yaml"
   copyFile "$dockerfile" "$output_dir/Dockerfile"
+  copyFile "$dockercompose" "$output_dir/docker-compose.yaml"
   copyFile "$makefile" "$output_dir/Makefile"
   copyFile "$gitignore" "$output_dir/.gitignore"
 }

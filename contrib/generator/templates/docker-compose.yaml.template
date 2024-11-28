@@ -1,0 +1,25 @@
+version: "3"
+
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ".:/app:rw"
+      - "./data:/data:rw"
+    links:
+      - "database_default"
+    command: go run cmd/main.go
+
+  database_default:
+    image: postgres:15.7-alpine
+    environment:
+      POSTGRES_DB: "db"
+      POSTGRES_HOST_AUTH_METHOD: "trust"
+      SERVICE_MANAGER: "fsm-postgres"
+    volumes:
+      - "database-default:/var/lib/postgresql/data/"
+
+volumes:
+  database-default:

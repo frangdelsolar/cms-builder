@@ -1,7 +1,6 @@
 package builder
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -33,6 +32,17 @@ func (b *Builder) VerifyUser(userIdToken string) (*User, error) {
 
 	q := "firebase_id = '" + accessToken.UID + "'"
 	b.db.Find(&localUser, q)
+
+	// Create user if firebase has it but not in database
+	if localUser.ID == 0 {
+		log.Info().Msg("User exists in Firebase but not in database. Will create it now")
+
+		// create user in database
+		localUser.Name = accessToken.Claims["name"].(string)
+		localUser.Email = accessToken.Claims["email"].(string)
+		localUser.FirebaseId = accessToken.UID
+		b.db.Create(&localUser)
+	}
 
 	return &localUser, nil
 }
@@ -83,56 +93,70 @@ func (b *Builder) RegisterUserController(w http.ResponseWriter, r *http.Request)
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		SendJsonResponse(w, http.StatusInternalServerError, nil, "Error reading request body")
+		msg := fmt.Sprintf("Error reading request body: %s", err.Error())
+		SendJsonResponse(w, http.StatusInternalServerError, nil, msg)
 		return
 	}
 
 	var input RegisterUserInput
 	err = json.Unmarshal(body, &input)
 	if err != nil {
-		SendJsonResponse(w, http.StatusBadRequest, nil, "Error unmarshalling request body")
+		msg := fmt.Sprintf("Error unmarshalling request body: %s", err.Error())
+		SendJsonResponse(w, http.StatusBadRequest, nil, msg)
 		return
 	}
 	fb, err := b.GetFirebase()
 	if err != nil {
-		SendJsonResponse(w, http.StatusInternalServerError, nil, "Error getting firebase")
+		msg := fmt.Sprintf("Error getting firebase: %s", err.Error())
+		SendJsonResponse(w, http.StatusInternalServerError, nil, msg)
 		return
 	}
-
+	var fbUserId string
 	fbUser, err := fb.RegisterUser(r.Context(), input)
 	if err != nil {
-		SendJsonResponse(w, http.StatusInternalServerError, nil, "Error registering user")
+		msg := fmt.Sprintf("Error registering user: %s", err.Error())
+
+		if strings.Contains(err.Error(), "EMAIL_EXISTS") {
+			existingFbUser, err := b.firebase.Client.GetUserByEmail(r.Context(), input.Email)
+			if err != nil {
+				msg := fmt.Sprintf("Error getting user by email: %s", err.Error())
+				SendJsonResponse(w, http.StatusInternalServerError, nil, msg)
+				return
+			}
+			log.Debug().Msg("User already exists in Firebase. Will add it to database")
+			fbUserId = existingFbUser.UID
+		} else {
+			SendJsonResponse(w, http.StatusInternalServerError, nil, msg)
+			return
+		}
+	} else {
+		fbUserId = fbUser.UID
+	}
+
+	// Check if there is a user with the same fbUserId in the database
+	var existingUser User
+	q := "firebase_id = '" + fbUserId + "'"
+	b.db.Find(&existingUser, q)
+	if existingUser.ID != 0 {
+		log.Debug().Msg("User already exists in database.")
+		// Prevent sending the firebaseId to the client
+		existingUser.FirebaseId = ""
+		SendJsonResponse(w, http.StatusOK, existingUser, "User already registered")
 		return
 	}
 
-	userApp, err := b.admin.GetApp("user")
-	if err != nil {
-		SendJsonResponse(w, http.StatusInternalServerError, nil, "Error getting user app")
+	// Create user in database
+	user := User{Name: input.Name, Email: input.Email, FirebaseId: fbUserId}
+	b.db.Create(&user)
+
+	if user.ID == 0 {
+		SendJsonResponse(w, http.StatusInternalServerError, nil, "Error creating user in database")
 		return
 	}
 
-	// set body
-	userRequestBody := map[string]string{
-		"name":        input.Name,
-		"email":       input.Email,
-		"firebase_id": fbUser.UID,
-	}
-
-	bodyBytes, err := json.Marshal(userRequestBody)
-	if err != nil {
-		SendJsonResponse(w, http.StatusInternalServerError, nil, "Error marshalling user request body")
-		return
-	}
-
-	userRequest := &http.Request{
-		Method: http.MethodPost,
-		Header: r.Header,
-		Body:   io.NopCloser(bytes.NewBuffer(bodyBytes)),
-	}
-	userApp.ApiNew(b.db)(w, userRequest)
-
-	// TODO: Should rollback firebase if unsuccessful
-
+	// Prevent sending the firebaseId to the client
+	user.FirebaseId = ""
+	SendJsonResponse(w, http.StatusOK, user, "User registered successfully")
 }
 
 // GetAccessTokenFromRequest extracts the access token from the Authorization header of the given request.

@@ -1,7 +1,7 @@
 up:
 	docker-compose up
 
-build-docker:
+build:
 	docker build . -t {{PROJECT_NAME}}
 
 run-docker:
