@@ -64,7 +64,7 @@ func (a *Admin) Register(model interface{}, skipUserBinding bool) (App, error) {
 		model:           model,
 		skipUserBinding: skipUserBinding,
 		admin:           a,
-		validators:      make(map[string]FieldValidationFunc),
+		validators:      make(ValidatorsMap),
 	}
 
 	// check the app is not already registered
