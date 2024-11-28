@@ -195,10 +195,7 @@ func (b *Builder) GetUploadDeleteHandler(config *UploaderConfig) HandlerFunc {
 // under the path "/public/static/" if config.Authenticate is false, or
 // "/private/static/" if config.Authenticate is true.
 func (b *Builder) GetStaticHandler(config *UploaderConfig) HandlerFunc {
-	prefix := "/public/static/"
-	if config.Authenticate {
-		prefix = "/private/static/"
-	}
+	prefix := "/static/"
 	handler := http.StripPrefix(prefix, http.FileServer(http.Dir(config.Folder)))
 	return func(w http.ResponseWriter, r *http.Request) {
 		handler.ServeHTTP(w, r)
