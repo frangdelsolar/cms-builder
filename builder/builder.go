@@ -3,9 +3,6 @@ package builder
 import (
 	"errors"
 	"fmt"
-	"net/http"
-
-	"github.com/gorilla/mux"
 )
 
 const builderVersion = "1.2.3"
@@ -52,6 +49,7 @@ type Builder struct {
 	server   *Server        // Reference to the created Server instance (if applicable)
 	admin    *Admin         // Reference to the created Admin instance (if applicable)
 	firebase *FirebaseAdmin // Reference to the created Firebase instance (if applicable)
+	Url      string         // The base URL of the application
 }
 
 // NewBuilderInput defines the input parameters for the Builder constructor.
@@ -138,6 +136,7 @@ func NewBuilder(input *NewBuilderInput) (*Builder, error) {
 		CSRFToken: config.GetString("csrfToken"),
 		Builder:   builder,
 	})
+	builder.Url = fmt.Sprintf("http://%s", config.GetString("serverHost"))
 
 	// Admin
 	if input.InitiliazeAdmin {
@@ -361,37 +360,5 @@ func (b *Builder) initUploader(config *UploaderConfig) {
 		b.GetStaticHandler(config),
 		"file-static",
 		config.Authenticate, // Authentication based on config
-	)
-
-	// TODO: Remove - just for testing purposes
-	b.server.AddRoute(
-		route+"/{id}",
-		func(w http.ResponseWriter, r *http.Request) {
-			id := mux.Vars(r)["id"]
-			uploadApp, err := b.admin.GetApp("upload")
-			if err != nil {
-				SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
-				return
-			}
-			userId := getRequestUserId(r, &uploadApp)
-
-			var instance Upload
-			// Query the database to find the record by ID
-			result := b.db.FindById(id, &instance, userId, true)
-			if result.Error != nil {
-				SendJsonResponse(w, http.StatusInternalServerError, nil, result.Error.Error())
-				return
-			}
-
-			if instance == (Upload{}) {
-				SendJsonResponse(w, http.StatusNotFound, nil, "File not found")
-				return
-			}
-
-			// Serve the file to the client
-			http.ServeFile(w, r, instance.FilePath)
-		},
-		"file-see",
-		true, // Requires authentication
 	)
 }
