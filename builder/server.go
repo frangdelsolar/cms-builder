@@ -180,7 +180,6 @@ type HandlerFunc func(w http.ResponseWriter, r *http.Request)
 // url, err := r.Get("getUser").URL("id", "123") =>
 // "/users/123"
 func (s *Server) AddRoute(route string, handler HandlerFunc, name string, requiresAuth bool) {
-	// log.Debug().Str("route", route).Bool("requiresAuth", requiresAuth).Str("name", name).Str("handler", fmt.Sprintf("%T", handler)).Msg("Adding route")
 	s.Routes = append(s.Routes, NewRouteHandler(route, handler, name, requiresAuth))
 }
 

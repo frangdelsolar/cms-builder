@@ -15,14 +15,6 @@ import (
 // If the token is valid, it retrieves the user record from the database and returns it.
 // If the token is invalid, it returns an error.
 func (b *Builder) VerifyUser(userIdToken string) (*User, error) {
-	// FIXME
-	// verify token
-	// firebase, err := b.GetFirebase()
-	// if err != nil {
-	// 	log.Error().Err(err).Msg("Error getting firebase")
-	// 	return nil, err
-	// }
-
 	accessToken, err := b.Firebase.VerifyIDToken(context.Background(), userIdToken)
 	if err != nil {
 		log.Error().Err(err).Msg("Error verifying token")
@@ -106,16 +98,9 @@ func (b *Builder) RegisterUserController(w http.ResponseWriter, r *http.Request)
 		SendJsonResponse(w, http.StatusBadRequest, nil, msg)
 		return
 	}
-	// FIXME
-	// fb, err := b.GetFirebase()
-	// if err != nil {
-	// 	msg := fmt.Sprintf("Error getting firebase: %s", err.Error())
-	// 	SendJsonResponse(w, http.StatusInternalServerError, nil, msg)
-	// 	return
-	// }
-	fb := b.Firebase
+
 	var fbUserId string
-	fbUser, err := fb.RegisterUser(r.Context(), input)
+	fbUser, err := b.Firebase.RegisterUser(r.Context(), input)
 	if err != nil {
 		msg := fmt.Sprintf("Error registering user: %s", err.Error())
 
@@ -126,7 +111,7 @@ func (b *Builder) RegisterUserController(w http.ResponseWriter, r *http.Request)
 				SendJsonResponse(w, http.StatusInternalServerError, nil, msg)
 				return
 			}
-			log.Debug().Msg("User already exists in Firebase. Will add it to database")
+			log.Warn().Msg("User already exists in Firebase. Will add it to database")
 			fbUserId = existingFbUser.UID
 		} else {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, msg)
@@ -141,7 +126,7 @@ func (b *Builder) RegisterUserController(w http.ResponseWriter, r *http.Request)
 	q := "firebase_id = '" + fbUserId + "'"
 	b.DB.Find(&existingUser, q)
 	if existingUser.ID != 0 {
-		log.Debug().Msg("User already exists in database.")
+		log.Warn().Msg("User already exists in database.")
 		// Prevent sending the firebaseId to the client
 		existingUser.FirebaseId = ""
 		SendJsonResponse(w, http.StatusOK, existingUser, "User already registered")

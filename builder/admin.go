@@ -19,8 +19,7 @@ type Admin struct {
 // configuration and management structure for managing applications.
 //
 // Parameters:
-// - db: A pointer to the Database instance to use for database operations.
-// - server: A pointer to the Server instance to use for registering API routes.
+// - builder: A pointer to the Builder instance to use for building App instances.
 //
 // Returns:
 // - *Admin: A pointer to the new Admin instance.

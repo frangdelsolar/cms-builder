@@ -63,7 +63,7 @@ func NewConfigReader(cfg *ReaderConfig) (*ConfigReader, error) {
 	}
 
 	if cfg.ReadFile && cfg.ConfigFilePath != "" {
-		log.Debug().Msgf("Reading config file: %s", cfg.ConfigFilePath)
+		log.Info().Msgf("Reading config file: %s", cfg.ConfigFilePath)
 		viper.SetConfigFile(cfg.ConfigFilePath)
 		err := viper.ReadInConfig()
 		if err != nil {
@@ -72,8 +72,6 @@ func NewConfigReader(cfg *ReaderConfig) (*ConfigReader, error) {
 		}
 	}
 	viper.AutomaticEnv()
-
-	log.Info().Msgf("Config: %s", viper.AllKeys())
 
 	return &ConfigReader{viper.GetViper()}, nil
 }

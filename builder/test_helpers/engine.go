@@ -54,9 +54,9 @@ type TestEngineServices struct {
 // The function returns the instances and a callback to be used to deregister the App after the test is finished.
 func GetDefaultEngine() (TestEngineServices, error) {
 	input := &builder.NewBuilderInput{
-		ReadConfigFromEnv:  true,
-		ReadConfigFromFile: true,
-		ConfigFilePath:     ".test.env",
+		ReadConfigFromEnv:    true,
+		ReadConfigFromFile:   true,
+		ReaderConfigFilePath: ".test.env",
 	}
 
 	var err error

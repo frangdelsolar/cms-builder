@@ -7,7 +7,7 @@ import (
 
 const builderVersion = "1.3.0"
 
-// ConfigKeys defines the variables used in the configuration file
+// ConfigKeys define the keys used in the configuration file
 type ConfigKeys struct {
 	Environment           string `json:"environment"`           // Environment where the app is running
 	LogLevel              string `json:"logLevel"`              // Log level
@@ -25,10 +25,10 @@ type ConfigKeys struct {
 	UploaderSupportedMime string `json:"uploaderSupportedMime"` // Supported mime types for uploaded files
 	UploaderFolder        string `json:"uploaderFolder"`        // Uploader folder
 	StaticPath            string `json:"staticPath"`            // Static path
-	Domain                string `json:"domain"`                // where the app is running
+	BaseUrl               string `json:"baseUrl"`               // where the app is running
 }
 
-// EnvKeys defines the keys used in the configuration file
+// EnvKeys are the keys used in the configuration file
 var EnvKeys = ConfigKeys{
 	Environment:           "ENVIRONMENT",
 	LogLevel:              "LOG_LEVEL",
@@ -46,7 +46,7 @@ var EnvKeys = ConfigKeys{
 	UploaderSupportedMime: "UPLOADER_SUPPORTED_MIME_TYPES",
 	UploaderFolder:        "UPLOADER_FOLDER",
 	StaticPath:            "STATIC_PATH",
-	Domain:                "DOMAIN",
+	BaseUrl:               "BASE_URL",
 }
 
 // defaultConfig defines the default values for the configuration
@@ -67,49 +67,28 @@ var DefaultEnvValues = ConfigKeys{
 	UploaderSupportedMime: "image/*",
 	UploaderFolder:        "uploads",
 	StaticPath:            "static",
-	Domain:                "0.0.0.0:80",
-}
-
-var DefaultConfigMap = map[string]string{
-	EnvKeys.Environment:           DefaultEnvValues.Environment,
-	EnvKeys.LogLevel:              DefaultEnvValues.LogLevel,
-	EnvKeys.LogFilePath:           DefaultEnvValues.LogFilePath,
-	EnvKeys.LogWriteToFile:        DefaultEnvValues.LogWriteToFile,
-	EnvKeys.DbFile:                DefaultEnvValues.DbFile,
-	EnvKeys.DbUrl:                 DefaultEnvValues.DbUrl,
-	EnvKeys.ServerHost:            DefaultEnvValues.ServerHost,
-	EnvKeys.ServerPort:            DefaultEnvValues.ServerPort,
-	EnvKeys.CsrfToken:             DefaultEnvValues.CsrfToken,
-	EnvKeys.FirebaseSecret:        DefaultEnvValues.FirebaseSecret,
-	EnvKeys.FirebaseApiKey:        DefaultEnvValues.FirebaseApiKey,
-	EnvKeys.UploaderMaxSize:       DefaultEnvValues.UploaderMaxSize,
-	EnvKeys.UploaderAuthenticate:  DefaultEnvValues.UploaderAuthenticate,
-	EnvKeys.UploaderSupportedMime: DefaultEnvValues.UploaderSupportedMime,
-	EnvKeys.UploaderFolder:        DefaultEnvValues.UploaderFolder,
-	EnvKeys.StaticPath:            DefaultEnvValues.StaticPath,
-	EnvKeys.Domain:                DefaultEnvValues.Domain,
+	BaseUrl:               "http://0.0.0.0:80",
 }
 
 type BuilderErrors struct {
 	LoggerNotInitialized       error
 	ConfigReaderNotInitialized error
+	ConfigurationNotProvided   error
 }
 
 var builderErr = BuilderErrors{
 	LoggerNotInitialized:       errors.New("logger not initialized"),
 	ConfigReaderNotInitialized: errors.New("config reader not initialized"),
+	ConfigurationNotProvided:   errors.New("configuration not provided"),
 }
 
 var log *Logger          // Global variable for the logger instance
 var config *ConfigReader // Global variable for the config reader
 
-// Initializes the global logger instance with a default configuration.
-//
-// This function is automatically invoked when the package is imported.
-//
-// If an error occurs while initializing the logger, the program will panic.
+// init initializes the global logger and config reader instances with default values.
+// It checks if the logger and config reader are initialized and panics if not.
+// It also logs the version and environment at the info level.
 func init() {
-	// Make sure the logger is initialized
 	var err error
 	log, err = NewLogger(&LoggerConfig{
 		LogLevel:    DefaultEnvValues.LogLevel,
@@ -120,8 +99,6 @@ func init() {
 		fmt.Println("Error initializing logger:", err)
 		panic(builderErr.LoggerNotInitialized)
 	}
-
-	// Just read env variables for now
 	config, err = NewConfigReader(&ReaderConfig{
 		ReadEnv:  true,
 		ReadFile: false,
@@ -130,11 +107,6 @@ func init() {
 		fmt.Println("Error initializing config reader:", err)
 		panic(builderErr.ConfigReaderNotInitialized)
 	}
-
-	log.Info().
-		Str("version", builderVersion).
-		Str("env", config.GetString(EnvKeys.Environment)).
-		Msg("Running Builder")
 }
 
 // Builder defines a central configuration and management structure for building applications.
@@ -149,16 +121,16 @@ type Builder struct {
 
 // NewBuilderInput defines the input parameters for the Builder constructor.
 type NewBuilderInput struct {
-	ReadConfigFromEnv  bool   // Whether to read the configuration from environment variables
-	ReadConfigFromFile bool   // Whether to read the configuration from a file
-	ConfigFilePath     string // Path to the configuration file
+	ReadConfigFromEnv    bool   // Whether to read the configuration from environment variables
+	ReadConfigFromFile   bool   // Whether to read the configuration from a file
+	ReaderConfigFilePath string // Path to the configuration file
 }
 
 // NewBuilder creates a new Builder instance.
 func NewBuilder(input *NewBuilderInput) (*Builder, error) {
 
 	if input == nil {
-		input = &NewBuilderInput{}
+		return nil, builderErr.ConfigurationNotProvided
 	}
 
 	builder := &Builder{}
@@ -181,6 +153,11 @@ func NewBuilder(input *NewBuilderInput) (*Builder, error) {
 
 	// Make logger available for other modules
 	log = builder.Logger
+
+	log.Info().
+		Str("version", builderVersion).
+		Str("env", config.GetString(EnvKeys.Environment)).
+		Msg("Running Builder")
 
 	// Database
 	err = builder.InitDatabase()
@@ -206,18 +183,29 @@ func NewBuilder(input *NewBuilderInput) (*Builder, error) {
 		return nil, err
 	}
 
-	builder.InitAuth()
+	err = builder.InitAuth()
+	if err != nil {
+		log.Err(err).Msg("Error initializing auth")
+		return nil, err
+	}
 
 	// Uploader
-	builder.InitUploader()
+	err = builder.InitUploader()
+	if err != nil {
+		log.Err(err).Msg("Error initializing uploader")
+		return nil, err
+	}
 
 	return builder, nil
 }
 
-// InitConfigReader initializes the configuration reader based on the provided configuration file.
+// InitConfigReader initializes the config reader based on the provided configuration.
+//
+// It takes a NewBuilderInput pointer as a parameter, which specifies whether to read the configuration from environment variables or a file.
+// It returns an error if the config reader cannot be initialized.
 func (b *Builder) InitConfigReader(cfg *NewBuilderInput) error {
 	readerCfg := &ReaderConfig{
-		ConfigFilePath: cfg.ConfigFilePath,
+		ConfigFilePath: cfg.ReaderConfigFilePath,
 		ReadEnv:        cfg.ReadConfigFromEnv,
 		ReadFile:       cfg.ReadConfigFromFile,
 	}
@@ -230,7 +218,10 @@ func (b *Builder) InitConfigReader(cfg *NewBuilderInput) error {
 	return nil
 }
 
-// InitLogger initializes the logger based on the provided configuration.
+// InitLogger initializes the logger for the Builder instance.
+//
+// It retrieves the log configuration from the environment variables and uses it to create a new logger.
+// If the logger initialization fails, it returns an error. On success, the logger is assigned to the Builder instance.
 func (b *Builder) InitLogger() error {
 	config := &LoggerConfig{
 		LogLevel:    config.GetString(EnvKeys.LogLevel),
@@ -247,6 +238,10 @@ func (b *Builder) InitLogger() error {
 }
 
 // InitDatabase initializes the database based on the provided configuration.
+//
+// It determines the database configuration to use based on the environment. If the environment is "development" or "test", it uses the file-based configuration. Otherwise, it uses the URL-based configuration.
+// It then calls LoadDB to initialize the database and assigns the result to the Builder's DB field.
+// If there is an error initializing the database, it returns the error. On success, it logs a message indicating that the database has been initialized and returns nil.
 func (b *Builder) InitDatabase() error {
 	dbConfig := &DBConfig{}
 
@@ -270,7 +265,11 @@ func (b *Builder) InitDatabase() error {
 	return nil
 }
 
-// initServer initializes the server based on the provided configuration.
+// InitServer initializes the server based on the provided configuration.
+//
+// It takes the server host, port, and CSRF token from the environment variables and uses them to create a new server.
+// The server is assigned to the Builder instance.
+// If there is an error initializing the server, it returns the error. On success, it returns nil.
 func (b *Builder) InitServer() error {
 	server, err := NewServer(&ServerConfig{
 		Host:      config.GetString(EnvKeys.ServerHost),
@@ -285,14 +284,15 @@ func (b *Builder) InitServer() error {
 	return nil
 }
 
-// initAdmin initializes the admin based on the provided configuration.
+// InitAdmin initializes the admin based on the provided configuration.
 func (b *Builder) InitAdmin() {
 	b.Admin = NewAdmin(b)
 }
 
-// initFirebase initializes the Firebase Admin based on the provided configuration.
+// InitFirebase initializes the Firebase Admin based on the provided configuration.
 //
-// It checks if the Firebase Admin is initialized and returns an error if not. Otherwise, it returns a pointer to the Firebase Admin instance.
+// It takes the secret for the Firebase Admin from the environment variables, creates a new Firebase Admin instance, and assigns it to the Builder instance.
+// If there is an error initializing the Firebase Admin, it returns the error. On success, it returns nil.
 func (b *Builder) InitFirebase() error {
 	cfg := &FirebaseConfig{
 		Secret: config.GetString(EnvKeys.FirebaseSecret),
@@ -306,7 +306,7 @@ func (b *Builder) InitFirebase() error {
 	return nil
 }
 
-// initAuth initializes the auth system of the builder by registering the User app, and
+// InitAuth initializes the auth system of the builder by registering the User app, and
 // adding a route for user registration.
 //
 // It also registers two validators for the User model, EmailValidator and NameValidator.
@@ -315,12 +315,12 @@ func (b *Builder) InitFirebase() error {
 // the path "/auth/register".
 //
 // If an error occurs while registering the User app, it logs the error and panics.
-func (b *Builder) InitAuth() {
+func (b *Builder) InitAuth() error {
 	admin := b.Admin
 	userApp, err := admin.Register(&User{}, true)
 	if err != nil {
 		log.Error().Err(err).Msg("Error registering user app")
-		panic(err)
+		return err
 	}
 
 	userApp.RegisterValidator("email", ValidatorsList{RequiredValidator, EmailValidator})
@@ -328,9 +328,10 @@ func (b *Builder) InitAuth() {
 
 	svr := b.Server
 	svr.AddRoute("/auth/register", b.RegisterUserController, "register", false)
+	return nil
 }
 
-// initUploader initializes the uploader by setting the configuration,
+// InitUploader initializes the uploader by setting the configuration,
 // registering the Upload app, and adding routes for file operations.
 //
 // It adds three primary routes:
@@ -339,19 +340,24 @@ func (b *Builder) InitAuth() {
 //   - GET /static/{path:.*}: For serving uploaded files
 //
 // If an error occurs while registering the Upload app, it logs the error and panics.
-func (b *Builder) InitUploader() {
+func (b *Builder) InitUploader() error {
+	staticPath := config.GetString(EnvKeys.StaticPath)
+	if staticPath == "" {
+		staticPath = DefaultEnvValues.StaticPath
+	}
+
 	cfg := &UploaderConfig{
-		MaxSize:            config.GetInt64("uploaderMaxSize"),
-		Authenticate:       config.GetBool("uploaderAuthenticate"),
-		SupportedMimeTypes: config.GetStringSlice("uploaderSupportedMimeTypes"),
-		Folder:             config.GetString("uploaderFolder"),
+		MaxSize:            config.GetInt64(config.GetString(EnvKeys.UploaderMaxSize)),
+		SupportedMimeTypes: config.GetStringSlice(EnvKeys.UploaderSupportedMime),
+		Folder:             config.GetString(config.GetString(EnvKeys.UploaderFolder)),
+		StaticPath:         staticPath,
 	}
 
 	// Register the Upload app without authentication
 	_, err := b.Admin.Register(&Upload{}, false)
 	if err != nil {
 		log.Error().Err(err).Msg("Error registering upload app")
-		panic(err)
+		return err
 	}
 
 	// Define the base route for file operations
@@ -375,9 +381,11 @@ func (b *Builder) InitUploader() {
 
 	// Add route for serving uploaded files
 	b.Server.AddRoute(
-		"/static/{path:.*}",
+		"/"+staticPath+"/{path:.*}",
 		b.GetStaticHandler(cfg),
 		"file-static",
-		cfg.Authenticate, // Authentication based on config
+		false, // Authentication based on config
 	)
+
+	return nil
 }
