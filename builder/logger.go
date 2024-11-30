@@ -9,13 +9,6 @@ import (
 	"github.com/rs/zerolog"
 )
 
-const (
-	// defaultLogFilePath defines the default path for the log file
-	defaultLogFilePath = "logs/default.log"
-	// defaultLogLevel defines the default logging level
-	DefaultLogLevel = zerolog.DebugLevel
-)
-
 // Logger wraps a zerolog.Logger instance with additional convenience methods
 type Logger struct {
 	*zerolog.Logger
@@ -24,11 +17,11 @@ type Logger struct {
 // LoggerConfig defines the configuration options for the logger
 type LoggerConfig struct {
 	// LogLevel defines the desired logging level (e.g., "debug", "info", "warn", "error")
-	LogLevel string `json:"logLevel"`
+	LogLevel string
 	// WriteToFile specifies whether logs should be written to a file
-	WriteToFile bool `json:"writeToFile"`
+	WriteToFile bool
 	// LogFilePath defines the path to the log file
-	LogFilePath string `json:"logFilePath"`
+	LogFilePath string
 }
 
 // NewLogger creates a new zerolog.Logger instance based on the provided configuration.
@@ -37,17 +30,17 @@ func NewLogger(config *LoggerConfig) (*Logger, error) {
 	// Handle nil config by providing a default configuration
 	if config == nil {
 		config = &LoggerConfig{
-			LogLevel:    DefaultLogLevel.String(),
-			WriteToFile: true,
-			LogFilePath: defaultLogFilePath,
+			LogLevel:    DefaultEnvValues.LogLevel,
+			WriteToFile: DefaultEnvValues.LogWriteToFile == "true",
+			LogFilePath: DefaultEnvValues.LogFilePath,
 		}
 	}
 
 	// Validate log level
 	level, err := zerolog.ParseLevel(config.LogLevel)
 	if err != nil {
-		fmt.Printf("Invalid log level: %s\n", config.LogLevel)
-		level = DefaultLogLevel // Use default level if invalid
+		fmt.Printf("Invalid log level: %s. Defaulting to debug level.\n", config.LogLevel)
+		level = zerolog.DebugLevel // Use default level if invalid
 	}
 
 	// Set global log level for zerolog

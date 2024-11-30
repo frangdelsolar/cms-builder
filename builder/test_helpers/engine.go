@@ -54,41 +54,18 @@ type TestEngineServices struct {
 // The function returns the instances and a callback to be used to deregister the App after the test is finished.
 func GetDefaultEngine() (TestEngineServices, error) {
 	input := &builder.NewBuilderInput{
+		ReadConfigFromEnv:  true,
 		ReadConfigFromFile: true,
-		ConfigFilePath:     "config.yaml", // Replace with a valid config file path
-		InitializeLogger:   true,
-		InitiliazeDB:       true,
-		InitiliazeServer:   true,
-		InitiliazeAdmin:    true,
-		InitiliazeFirebase: true,
-		InitiliazeUploader: true,
+		ConfigFilePath:     ".test.env",
 	}
 
 	var err error
-	engine, err := builder.NewBuilder(input)
+	e, err := builder.NewBuilder(input)
 	if err != nil {
 		return TestEngineServices{}, err
 	}
 
-	admin, err := engine.GetAdmin()
-	if err != nil {
-		return TestEngineServices{}, err
-	}
-
-	db, err := engine.GetDatabase()
-	if err != nil {
-		return TestEngineServices{}, err
-	}
-
-	server, err := engine.GetServer()
-	if err != nil {
-		return TestEngineServices{}, err
-	}
-
-	firebase, err := engine.GetFirebase()
-	if err != nil {
-		return TestEngineServices{}, err
-	}
+	admin := e.Admin
 
 	app, err := admin.Register(MockStruct{}, false)
 	if err != nil {
@@ -98,17 +75,7 @@ func GetDefaultEngine() (TestEngineServices, error) {
 	app.RegisterValidator("field", builder.ValidatorsList{FieldValidator})
 	defer admin.Unregister(app.Name())
 
-	logger, err := engine.GetLogger()
-	if err != nil {
-		return TestEngineServices{}, err
-	}
-
-	configReader, err := engine.GetConfigReader()
-	if err != nil {
-		return TestEngineServices{}, err
-	}
-
-	return TestEngineServices{engine, admin, db, server, firebase, &app, logger, configReader}, nil
+	return TestEngineServices{e, admin, e.DB, e.Server, e.Firebase, &app, e.Logger, e.Config}, nil
 }
 
 // createMockResource creates a new resource for the given user and returns the created resource, the user, and a function to roll back the resource creation.

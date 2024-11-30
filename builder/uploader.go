@@ -108,7 +108,7 @@ func (b *Builder) GetUploadPostHandler(config *UploaderConfig) HandlerFunc {
 		}
 
 		// Store filedata in db
-		uploadApp, err := b.admin.GetApp("upload")
+		uploadApp, err := b.Admin.GetApp("upload")
 		if err != nil {
 			handleUploadError(path, w, err)
 			return
@@ -133,7 +133,7 @@ func (b *Builder) GetUploadPostHandler(config *UploaderConfig) HandlerFunc {
 		}
 
 		// This will send the response to the client
-		uploadApp.ApiNew(b.db)(w, request)
+		uploadApp.ApiNew(b.DB)(w, request)
 	}
 }
 
@@ -148,7 +148,7 @@ func (b *Builder) GetUploadPostHandler(config *UploaderConfig) HandlerFunc {
 func (b *Builder) GetUploadDeleteHandler(config *UploaderConfig) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := mux.Vars(r)["id"]
-		uploadApp, err := b.admin.GetApp("upload")
+		uploadApp, err := b.Admin.GetApp("upload")
 		if err != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
@@ -157,7 +157,7 @@ func (b *Builder) GetUploadDeleteHandler(config *UploaderConfig) HandlerFunc {
 
 		var instance Upload
 		// Query the database to find the record by ID
-		result := b.db.FindById(id, &instance, userId, true)
+		result := b.DB.FindById(id, &instance, userId, true)
 		if result.Error != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, result.Error.Error())
 			return
@@ -175,7 +175,7 @@ func (b *Builder) GetUploadDeleteHandler(config *UploaderConfig) HandlerFunc {
 		}
 
 		// Delete the record from the database
-		result = b.db.Delete(&instance)
+		result = b.DB.Delete(&instance)
 		if result.Error != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, result.Error.Error())
 			return
@@ -194,9 +194,9 @@ func (b *Builder) GetUploadDeleteHandler(config *UploaderConfig) HandlerFunc {
 // configured folder. The handler will serve files from the configured folder
 // under the path "/public/static/" if config.Authenticate is false, or
 // "/private/static/" if config.Authenticate is true.
-func (b *Builder) GetStaticHandler(config *UploaderConfig) HandlerFunc {
-	prefix := b.Url + "/static/"
-	handler := http.StripPrefix(prefix, http.FileServer(http.Dir(config.Folder)))
+func (b *Builder) GetStaticHandler(cfg *UploaderConfig) HandlerFunc {
+	prefix := config.GetString(EnvKeys.Domain) + "/" + config.GetString(EnvKeys.StaticPath) + "/"
+	handler := http.StripPrefix(prefix, http.FileServer(http.Dir(cfg.Folder)))
 	return func(w http.ResponseWriter, r *http.Request) {
 		handler.ServeHTTP(w, r)
 	}

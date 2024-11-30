@@ -15,14 +15,15 @@ import (
 // If the token is valid, it retrieves the user record from the database and returns it.
 // If the token is invalid, it returns an error.
 func (b *Builder) VerifyUser(userIdToken string) (*User, error) {
+	// FIXME
 	// verify token
-	firebase, err := b.GetFirebase()
-	if err != nil {
-		log.Error().Err(err).Msg("Error getting firebase")
-		return nil, err
-	}
+	// firebase, err := b.GetFirebase()
+	// if err != nil {
+	// 	log.Error().Err(err).Msg("Error getting firebase")
+	// 	return nil, err
+	// }
 
-	accessToken, err := firebase.VerifyIDToken(context.Background(), userIdToken)
+	accessToken, err := b.Firebase.VerifyIDToken(context.Background(), userIdToken)
 	if err != nil {
 		log.Error().Err(err).Msg("Error verifying token")
 		return nil, err
@@ -31,7 +32,7 @@ func (b *Builder) VerifyUser(userIdToken string) (*User, error) {
 	var localUser User
 
 	q := "firebase_id = '" + accessToken.UID + "'"
-	b.db.Find(&localUser, q)
+	b.DB.Find(&localUser, q)
 
 	// Create user if firebase has it but not in database
 	if localUser.ID == 0 {
@@ -41,7 +42,7 @@ func (b *Builder) VerifyUser(userIdToken string) (*User, error) {
 		localUser.Name = accessToken.Claims["name"].(string)
 		localUser.Email = accessToken.Claims["email"].(string)
 		localUser.FirebaseId = accessToken.UID
-		b.db.Create(&localUser)
+		b.DB.Create(&localUser)
 	}
 
 	return &localUser, nil
@@ -105,19 +106,21 @@ func (b *Builder) RegisterUserController(w http.ResponseWriter, r *http.Request)
 		SendJsonResponse(w, http.StatusBadRequest, nil, msg)
 		return
 	}
-	fb, err := b.GetFirebase()
-	if err != nil {
-		msg := fmt.Sprintf("Error getting firebase: %s", err.Error())
-		SendJsonResponse(w, http.StatusInternalServerError, nil, msg)
-		return
-	}
+	// FIXME
+	// fb, err := b.GetFirebase()
+	// if err != nil {
+	// 	msg := fmt.Sprintf("Error getting firebase: %s", err.Error())
+	// 	SendJsonResponse(w, http.StatusInternalServerError, nil, msg)
+	// 	return
+	// }
+	fb := b.Firebase
 	var fbUserId string
 	fbUser, err := fb.RegisterUser(r.Context(), input)
 	if err != nil {
 		msg := fmt.Sprintf("Error registering user: %s", err.Error())
 
 		if strings.Contains(err.Error(), "EMAIL_EXISTS") {
-			existingFbUser, err := b.firebase.Client.GetUserByEmail(r.Context(), input.Email)
+			existingFbUser, err := b.Firebase.Client.GetUserByEmail(r.Context(), input.Email)
 			if err != nil {
 				msg := fmt.Sprintf("Error getting user by email: %s", err.Error())
 				SendJsonResponse(w, http.StatusInternalServerError, nil, msg)
@@ -136,7 +139,7 @@ func (b *Builder) RegisterUserController(w http.ResponseWriter, r *http.Request)
 	// Check if there is a user with the same fbUserId in the database
 	var existingUser User
 	q := "firebase_id = '" + fbUserId + "'"
-	b.db.Find(&existingUser, q)
+	b.DB.Find(&existingUser, q)
 	if existingUser.ID != 0 {
 		log.Debug().Msg("User already exists in database.")
 		// Prevent sending the firebaseId to the client
@@ -147,7 +150,7 @@ func (b *Builder) RegisterUserController(w http.ResponseWriter, r *http.Request)
 
 	// Create user in database
 	user := User{Name: input.Name, Email: input.Email, FirebaseId: fbUserId}
-	b.db.Create(&user)
+	b.DB.Create(&user)
 
 	if user.ID == 0 {
 		SendJsonResponse(w, http.StatusInternalServerError, nil, "Error creating user in database")

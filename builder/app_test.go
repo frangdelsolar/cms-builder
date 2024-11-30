@@ -16,7 +16,7 @@ func TestNewAdmin(t *testing.T) {
 	e, err := th.GetDefaultEngine()
 	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 
-	admin := builder.NewAdmin(e.DB, e.Server, e.Engine)
+	admin := builder.NewAdmin(e.Engine)
 
 	assert.NotNil(t, admin, "NewAdmin should return a non-nil Admin instance")
 }

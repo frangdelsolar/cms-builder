@@ -22,7 +22,7 @@ func TestNewLogger_DefaultConfig(t *testing.T) {
 
 	// Check the actual log level (may require additional verification depending on your setup)
 	actualLevel := zerolog.GlobalLevel()
-	assert.Equal(t, builder.DefaultLogLevel, actualLevel)
+	assert.Equal(t, builder.DefaultEnvValues.LogLevel, actualLevel.String())
 }
 
 func TestNewLogger_ValidConfig(t *testing.T) {
@@ -64,7 +64,7 @@ func TestNewLogger_InvalidLogLevel(t *testing.T) {
 
 	// Check the actual log level (may require additional verification depending on your setup)
 	actualLevel := zerolog.GlobalLevel()
-	assert.Equal(t, builder.DefaultLogLevel, actualLevel)
+	assert.Equal(t, builder.DefaultEnvValues.LogLevel, actualLevel.String())
 }
 
 func TestNewLogger_WriteToFile_Success(t *testing.T) {

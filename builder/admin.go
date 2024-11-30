@@ -12,8 +12,6 @@ var (
 
 type Admin struct {
 	apps    map[string]App
-	db      *Database
-	server  *Server
 	builder *Builder
 }
 
@@ -26,11 +24,9 @@ type Admin struct {
 //
 // Returns:
 // - *Admin: A pointer to the new Admin instance.
-func NewAdmin(db *Database, server *Server, builder *Builder) *Admin {
+func NewAdmin(builder *Builder) *Admin {
 	return &Admin{
 		apps:    make(map[string]App),
-		db:      db,
-		server:  server,
 		builder: builder,
 	}
 }
@@ -79,7 +75,7 @@ func (a *Admin) Register(model interface{}, skipUserBinding bool) (App, error) {
 	a.apps[app.Name()] = app
 
 	// apply migrations
-	a.db.Migrate(app.model)
+	a.builder.DB.Migrate(app.model)
 
 	// register CRUD routes
 	a.registerAPIRoutes(app)
@@ -125,37 +121,37 @@ func (a *Admin) registerAPIRoutes(app App) {
 	baseRoute := "/api/" + app.PluralName()
 	protectedRoute := true
 
-	a.server.AddRoute(
+	a.builder.Server.AddRoute(
 		baseRoute,
-		app.ApiList(a.db),
+		app.ApiList(a.builder.DB),
 		app.Name()+"-list",
 		protectedRoute,
 	)
 
-	a.server.AddRoute(
+	a.builder.Server.AddRoute(
 		baseRoute+"/new",
-		app.ApiNew(a.db),
+		app.ApiNew(a.builder.DB),
 		app.Name()+"-new",
 		protectedRoute,
 	)
 
-	a.server.AddRoute(
+	a.builder.Server.AddRoute(
 		baseRoute+"/{id}",
-		app.ApiDetail(a.db),
+		app.ApiDetail(a.builder.DB),
 		app.Name()+"-get",
 		protectedRoute,
 	)
 
-	a.server.AddRoute(
+	a.builder.Server.AddRoute(
 		baseRoute+"/{id}/delete",
-		app.ApiDelete(a.db),
+		app.ApiDelete(a.builder.DB),
 		app.Name()+"-delete",
 		protectedRoute,
 	)
 
-	a.server.AddRoute(
+	a.builder.Server.AddRoute(
 		baseRoute+"/{id}/update",
-		app.ApiUpdate(a.db),
+		app.ApiUpdate(a.builder.DB),
 		app.Name()+"-update",
 		protectedRoute,
 	)

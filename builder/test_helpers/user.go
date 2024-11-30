@@ -32,7 +32,7 @@ func LoginUser(userData *builder.RegisterUserInput) (string, error) {
 	}
 
 	log := e.Log
-	firebaseApiKey := e.Config.GetString("firebaseApiKey")
+	firebaseApiKey := e.Config.GetString(builder.EnvKeys.FirebaseApiKey)
 
 	if firebaseApiKey == "" {
 		log.Error().Msg("Firebase API key not set")

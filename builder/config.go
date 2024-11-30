@@ -6,12 +6,13 @@ import (
 	"github.com/spf13/viper"
 )
 
-const defaultConfigPath = "config.yaml"
-
 var ErrConfigFileNotProvided = errors.New("configuration file not provided")
+var ErrConfigFileNotFound = errors.New("configuration file not found")
 
 type ReaderConfig struct {
-	ConfigPath string
+	ReadEnv        bool
+	ReadFile       bool
+	ConfigFilePath string
 }
 
 type ConfigReader struct {
@@ -56,24 +57,23 @@ func (c *ConfigReader) Get(key string) interface{} {
 // It takes a ConfigFile pointer as a parameter, which specifies whether to use a config file and the path to the config file.
 // If the config file path is empty, it defaults to the defaultConfigPath.
 // Returns a viper instance and an error if the config file cannot be read.
-func NewConfigReader(config *ReaderConfig) (*ConfigReader, error) {
-
-	if config == nil {
+func NewConfigReader(cfg *ReaderConfig) (*ConfigReader, error) {
+	if cfg == nil {
 		return nil, ErrConfigFileNotProvided
 	}
 
-	path := config.ConfigPath
-	if path == "" {
-		path = defaultConfigPath
+	if cfg.ReadFile && cfg.ConfigFilePath != "" {
+		log.Debug().Msgf("Reading config file: %s", cfg.ConfigFilePath)
+		viper.SetConfigFile(cfg.ConfigFilePath)
+		err := viper.ReadInConfig()
+		if err != nil {
+			log.Error().Err(err).Msgf("Error reading config file: %s", cfg.ConfigFilePath)
+			return nil, ErrConfigFileNotFound
+		}
 	}
+	viper.AutomaticEnv()
 
-	viper.SetConfigFile(path)
-
-	err := viper.ReadInConfig()
-	if err != nil {
-		log.Error().Err(err).Msgf("Error reading config file: %s", path)
-		return nil, err
-	}
+	log.Info().Msgf("Config: %s", viper.AllKeys())
 
 	return &ConfigReader{viper.GetViper()}, nil
 }

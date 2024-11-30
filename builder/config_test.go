@@ -18,7 +18,7 @@ func TestNewConfigReader_Success(t *testing.T) {
 	testConfigPath := "config.yaml"
 
 	// Create a ReaderConfig with the test path
-	config := &builder.ReaderConfig{ConfigPath: testConfigPath}
+	config := &builder.ReaderConfig{ConfigFilePath: testConfigPath}
 
 	// Call NewConfigReader to create a ConfigReader instance
 	reader, err := builder.NewConfigReader(config)
@@ -50,7 +50,10 @@ func TestNewConfigReader_InvalidConfigPath(t *testing.T) {
 	invalidPath := "invalid/path/config.yaml"
 
 	// Create a ReaderConfig with the invalid path
-	config := &builder.ReaderConfig{ConfigPath: invalidPath}
+	config := &builder.ReaderConfig{
+		ConfigFilePath: invalidPath,
+		ReadFile:       true,
+	}
 
 	// Call NewConfigReader
 	reader, err := builder.NewConfigReader(config)

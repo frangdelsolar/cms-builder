@@ -5,9 +5,103 @@ import (
 	"fmt"
 )
 
-const builderVersion = "1.2.3"
+const builderVersion = "1.3.0"
 
-var log *Logger // Global variable for the logger instance
+// ConfigKeys defines the variables used in the configuration file
+type ConfigKeys struct {
+	Environment           string `json:"environment"`           // Environment where the app is running
+	LogLevel              string `json:"logLevel"`              // Log level
+	LogFilePath           string `json:"logFilePath"`           // File path for logging
+	LogWriteToFile        string `json:"logWriteToFile"`        // Write logs to file
+	DbFile                string `json:"dbFile"`                // Database file
+	DbUrl                 string `json:"dbUrl"`                 // Database URL
+	ServerHost            string `json:"serverHost"`            // Server host
+	ServerPort            string `json:"serverPort"`            // Server port
+	CsrfToken             string `json:"csrfToken"`             // CSRF token
+	FirebaseSecret        string `json:"firebaseSecret"`        // Firebase secret
+	FirebaseApiKey        string `json:"firebaseApiKey"`        // Firebase API key
+	UploaderMaxSize       string `json:"uploaderMaxSize"`       // Uploader max size in MB
+	UploaderAuthenticate  string `json:"uploaderAuthenticate"`  // Whether files will be public or private accessible
+	UploaderSupportedMime string `json:"uploaderSupportedMime"` // Supported mime types for uploaded files
+	UploaderFolder        string `json:"uploaderFolder"`        // Uploader folder
+	StaticPath            string `json:"staticPath"`            // Static path
+	Domain                string `json:"domain"`                // where the app is running
+}
+
+// EnvKeys defines the keys used in the configuration file
+var EnvKeys = ConfigKeys{
+	Environment:           "ENVIRONMENT",
+	LogLevel:              "LOG_LEVEL",
+	LogFilePath:           "LOG_FILE_PATH",
+	LogWriteToFile:        "LOG_WRITE_TO_FILE",
+	DbFile:                "DB_FILE",
+	DbUrl:                 "DB_URL",
+	ServerHost:            "SERVER_HOST",
+	ServerPort:            "SERVER_PORT",
+	CsrfToken:             "CSRF_TOKEN",
+	FirebaseSecret:        "FIREBASE_SECRET",
+	FirebaseApiKey:        "FIREBASE_API_KEY",
+	UploaderMaxSize:       "UPLOADER_MAX_SIZE",
+	UploaderAuthenticate:  "UPLOADER_AUTHENTICATE",
+	UploaderSupportedMime: "UPLOADER_SUPPORTED_MIME_TYPES",
+	UploaderFolder:        "UPLOADER_FOLDER",
+	StaticPath:            "STATIC_PATH",
+	Domain:                "DOMAIN",
+}
+
+// defaultConfig defines the default values for the configuration
+var DefaultEnvValues = ConfigKeys{
+	Environment:           "development",
+	LogLevel:              "debug",
+	LogFilePath:           "logs/default.log",
+	LogWriteToFile:        "true",
+	DbFile:                "database.db",
+	DbUrl:                 "",
+	ServerHost:            "0.0.0.0",
+	ServerPort:            "80",
+	CsrfToken:             "someToken",
+	FirebaseSecret:        "encoded64-token-thisIsGeneratedByEncodingFirebaseConfigFile",
+	FirebaseApiKey:        "apikeyProvidedByFirebaseClient",
+	UploaderMaxSize:       "5", // in MB
+	UploaderAuthenticate:  "true",
+	UploaderSupportedMime: "image/*",
+	UploaderFolder:        "uploads",
+	StaticPath:            "static",
+	Domain:                "0.0.0.0:80",
+}
+
+var DefaultConfigMap = map[string]string{
+	EnvKeys.Environment:           DefaultEnvValues.Environment,
+	EnvKeys.LogLevel:              DefaultEnvValues.LogLevel,
+	EnvKeys.LogFilePath:           DefaultEnvValues.LogFilePath,
+	EnvKeys.LogWriteToFile:        DefaultEnvValues.LogWriteToFile,
+	EnvKeys.DbFile:                DefaultEnvValues.DbFile,
+	EnvKeys.DbUrl:                 DefaultEnvValues.DbUrl,
+	EnvKeys.ServerHost:            DefaultEnvValues.ServerHost,
+	EnvKeys.ServerPort:            DefaultEnvValues.ServerPort,
+	EnvKeys.CsrfToken:             DefaultEnvValues.CsrfToken,
+	EnvKeys.FirebaseSecret:        DefaultEnvValues.FirebaseSecret,
+	EnvKeys.FirebaseApiKey:        DefaultEnvValues.FirebaseApiKey,
+	EnvKeys.UploaderMaxSize:       DefaultEnvValues.UploaderMaxSize,
+	EnvKeys.UploaderAuthenticate:  DefaultEnvValues.UploaderAuthenticate,
+	EnvKeys.UploaderSupportedMime: DefaultEnvValues.UploaderSupportedMime,
+	EnvKeys.UploaderFolder:        DefaultEnvValues.UploaderFolder,
+	EnvKeys.StaticPath:            DefaultEnvValues.StaticPath,
+	EnvKeys.Domain:                DefaultEnvValues.Domain,
+}
+
+type BuilderErrors struct {
+	LoggerNotInitialized       error
+	ConfigReaderNotInitialized error
+}
+
+var builderErr = BuilderErrors{
+	LoggerNotInitialized:       errors.New("logger not initialized"),
+	ConfigReaderNotInitialized: errors.New("config reader not initialized"),
+}
+
+var log *Logger          // Global variable for the logger instance
+var config *ConfigReader // Global variable for the config reader
 
 // Initializes the global logger instance with a default configuration.
 //
@@ -17,278 +111,199 @@ var log *Logger // Global variable for the logger instance
 func init() {
 	// Make sure the logger is initialized
 	var err error
-	log, err = NewLogger(nil)
+	log, err = NewLogger(&LoggerConfig{
+		LogLevel:    DefaultEnvValues.LogLevel,
+		WriteToFile: DefaultEnvValues.LogWriteToFile == "true",
+		LogFilePath: DefaultEnvValues.LogFilePath,
+	})
 	if err != nil {
 		fmt.Println("Error initializing logger:", err)
-		panic(err)
+		panic(builderErr.LoggerNotInitialized)
 	}
-}
 
-var (
-	ErrBuilderConfigNotProvided   = errors.New("builder configuration not provided")
-	ErrConfigReaderNotInitialized = errors.New("config reader not initialized")
-	ErrLoggerNotInitialized       = errors.New("logger not initialized")
-)
+	// Just read env variables for now
+	config, err = NewConfigReader(&ReaderConfig{
+		ReadEnv:  true,
+		ReadFile: false,
+	})
+	if err != nil {
+		fmt.Println("Error initializing config reader:", err)
+		panic(builderErr.ConfigReaderNotInitialized)
+	}
 
-// BuilderConfig defines a nested configuration structure for various aspects of the application.
-type BuilderConfig struct {
-	configFile     *ReaderConfig   // Embedded configuration for the config file (optional)
-	loggerConfig   *LoggerConfig   // Embedded configuration for the logger (optional)
-	dbConfig       *DBConfig       // Embedded configuration for the database (optional)
-	serverConfig   *ServerConfig   // Embedded configuration for the server (optional)
-	firebaseConfig *FirebaseConfig // Embedded configuration for firebase (optional)
-	UploaderConfig *UploaderConfig // Embedded configuration for the uploader (optional)
+	log.Info().
+		Str("version", builderVersion).
+		Str("env", config.GetString(EnvKeys.Environment)).
+		Msg("Running Builder")
 }
 
 // Builder defines a central configuration and management structure for building applications.
 type Builder struct {
-	Config   *BuilderConfig // Pointer to the main configuration object
-	reader   *ConfigReader  // Reference to the Viper instance used for configuration
-	logger   *Logger        // Reference to the application's logger instance
-	db       *Database      // Reference to the connected database instance (if applicable)
-	server   *Server        // Reference to the created Server instance (if applicable)
-	admin    *Admin         // Reference to the created Admin instance (if applicable)
-	firebase *FirebaseAdmin // Reference to the created Firebase instance (if applicable)
-	Url      string         // The base URL of the application
+	Admin    *Admin         // Reference to the created Admin instance
+	Config   *ConfigReader  // Reference to the Viper instance used for configuration
+	DB       *Database      // Reference to the connected database instance
+	Firebase *FirebaseAdmin // Reference to the created Firebase instance
+	Logger   *Logger        // Reference to the application's logger instance
+	Server   *Server        // Reference to the created Server instance
 }
 
 // NewBuilderInput defines the input parameters for the Builder constructor.
 type NewBuilderInput struct {
+	ReadConfigFromEnv  bool   // Whether to read the configuration from environment variables
 	ReadConfigFromFile bool   // Whether to read the configuration from a file
 	ConfigFilePath     string // Path to the configuration file
-	InitializeLogger   bool   // Whether to initialize the logger, needs readConfigFromFile to be true
-	InitiliazeDB       bool   // Whether to initialize the database, needs readConfigFromFile to be true
-	InitiliazeServer   bool   // Whether to initialize the server, needs readConfigFromFile to be true
-	InitiliazeAdmin    bool   // Whether to initialize the admin, needs readConfigFromFile to be true
-	InitiliazeFirebase bool   // Whether to initialize the firebase, needs readConfigFromFile to be true
-	InitiliazeUploader bool   // Whether to initialize the uploader
 }
 
 // NewBuilder creates a new Builder instance.
 func NewBuilder(input *NewBuilderInput) (*Builder, error) {
 
 	if input == nil {
-		return nil, ErrBuilderConfigNotProvided
+		input = &NewBuilderInput{}
 	}
 
-	builder := &Builder{
-		Config: &BuilderConfig{
-			configFile:     &ReaderConfig{},
-			loggerConfig:   &LoggerConfig{},
-			dbConfig:       &DBConfig{},
-			serverConfig:   &ServerConfig{},
-			firebaseConfig: &FirebaseConfig{},
-		},
-	}
+	builder := &Builder{}
 
-	if !input.ReadConfigFromFile {
-		return builder, nil
-	}
-
-	// Setup reader and read configuration data from file
-	builder.InitConfigReader(&ReaderConfig{ConfigPath: input.ConfigFilePath})
-	config, err := builder.GetConfigReader()
+	err := builder.InitConfigReader(input)
 	if err != nil {
-		return nil, err
+		log.Err(err).Msg("Error initializing config reader")
+		return nil, builderErr.ConfigReaderNotInitialized
 	}
+
+	// Make configurations available for other modules
+	config = builder.Config
 
 	// Logger
-	if input.InitializeLogger {
-		builder.InitLogger(&LoggerConfig{
-			LogLevel:    config.GetString("logLevel"),
-			WriteToFile: config.GetBool("logWriteToFile"),
-			LogFilePath: config.GetString("logfilePath"),
-		})
-	} else {
-		builder.InitLogger(nil) // Use default logger
+	err = builder.InitLogger()
+	if err != nil {
+		log.Err(err).Msg("Error initializing logger")
+		return nil, builderErr.LoggerNotInitialized
 	}
 
-	log, _ = builder.GetLogger()
-
-	log.Info().Msgf("Running Builder v%s", builderVersion)
+	// Make logger available for other modules
+	log = builder.Logger
 
 	// Database
-	if !input.InitiliazeDB {
-		return builder, nil
-	}
-
-	dbConfig := &DBConfig{
-		Path: config.GetString("dbFile"),
-		URL:  config.GetString("dbUrl"),
-	}
-	builder.InitDatabase(dbConfig)
-
-	db, err := builder.GetDatabase()
+	err = builder.InitDatabase()
 	if err != nil {
-		log.Error().Err(err).Msg("Error getting database")
+		log.Err(err).Msg("Error initializing database")
 		return nil, err
 	}
 
-	log.Info().Bool("db nil", db == nil).Interface("config", dbConfig).Msg("Database initialized")
-
 	// Server
-	if !input.InitiliazeServer {
-		return builder, nil
+	err = builder.InitServer()
+	if err != nil {
+		log.Err(err).Msg("Error initializing server")
+		return nil, err
 	}
-	builder.initServer(&ServerConfig{
-		Host:      config.GetString("serverHost"),
-		Port:      config.GetString("serverPort"),
-		CSRFToken: config.GetString("csrfToken"),
-		Builder:   builder,
-	})
-	builder.Url = fmt.Sprintf("http://%s", config.GetString("serverHost"))
 
 	// Admin
-	if input.InitiliazeAdmin {
-		builder.initAdmin()
-	}
+	builder.InitAdmin()
 
 	// Firebase
-	if input.InitiliazeFirebase {
-		builder.initFirebase(&FirebaseConfig{
-			Secret: config.GetString("firebaseSecret"),
-		})
-
-		builder.initAuth()
+	err = builder.InitFirebase()
+	if err != nil {
+		log.Err(err).Msg("Error initializing firebase")
+		return nil, err
 	}
+
+	builder.InitAuth()
 
 	// Uploader
-	if input.InitiliazeUploader {
-		builder.initUploader(&UploaderConfig{
-			MaxSize:            config.GetInt64("uploaderMaxSize"),
-			Authenticate:       config.GetBool("uploaderAuthenticate"),
-			SupportedMimeTypes: config.GetStringSlice("uploaderSupportedMimeTypes"),
-			Folder:             config.GetString("uploaderFolder"),
-		})
-	}
+	builder.InitUploader()
 
 	return builder, nil
 }
 
 // InitConfigReader initializes the configuration reader based on the provided configuration file.
-func (b *Builder) InitConfigReader(configFile *ReaderConfig) error {
-	b.Config.configFile = configFile
-	reader, err := NewConfigReader(b.Config.configFile)
+func (b *Builder) InitConfigReader(cfg *NewBuilderInput) error {
+	readerCfg := &ReaderConfig{
+		ConfigFilePath: cfg.ConfigFilePath,
+		ReadEnv:        cfg.ReadConfigFromEnv,
+		ReadFile:       cfg.ReadConfigFromFile,
+	}
+
+	reader, err := NewConfigReader(readerCfg)
 	if err != nil {
 		return err
 	}
-	b.reader = reader
+	b.Config = reader
 	return nil
 }
 
-// GetConfigReader returns the configuration reader.
-func (b *Builder) GetConfigReader() (*ConfigReader, error) {
-	if b.reader == nil {
-		return nil, ErrConfigReaderNotInitialized
-	}
-	return b.reader, nil
-}
-
 // InitLogger initializes the logger based on the provided configuration.
-func (b *Builder) InitLogger(config *LoggerConfig) error {
-	b.Config.loggerConfig = config
+func (b *Builder) InitLogger() error {
+	config := &LoggerConfig{
+		LogLevel:    config.GetString(EnvKeys.LogLevel),
+		LogFilePath: config.GetString(EnvKeys.LogFilePath),
+		WriteToFile: config.GetBool(EnvKeys.LogWriteToFile),
+	}
+
 	logger, err := NewLogger(config)
 	if err != nil {
 		return err
 	}
-	b.logger = logger
+	b.Logger = logger
 	return nil
-}
-
-// GetLogger returns the logger instance associated with the Builder.
-//
-// It checks if the logger is initialized and returns an error if not. Otherwise, it returns a pointer to the logger instance.
-func (b *Builder) GetLogger() (*Logger, error) {
-	if b.logger == nil {
-		return nil, ErrLoggerNotInitialized
-	}
-	return b.logger, nil
 }
 
 // InitDatabase initializes the database based on the provided configuration.
-func (b *Builder) InitDatabase(config *DBConfig) error {
-	log.Debug().Str("path", config.Path).Str("url", config.URL).Msg("Initializing database...")
+func (b *Builder) InitDatabase() error {
+	dbConfig := &DBConfig{}
 
-	b.Config.dbConfig = config
-	db, err := LoadDB(config)
+	env := config.GetString(EnvKeys.Environment)
+
+	if env == "development" || env == "test" {
+		dbConfig.Path = config.GetString(EnvKeys.DbFile)
+	} else {
+		dbConfig.URL = config.GetString(EnvKeys.DbUrl)
+	}
+
+	log.Info().Str("path", dbConfig.Path).Str("url", dbConfig.URL).Msg("Initializing database...")
+
+	db, err := LoadDB(dbConfig)
 	if err != nil {
 		return err
 	}
-	b.db = db
+	b.DB = db
 
-	log.Info().Bool("db nil", b.db == nil).Msg("Database initialized")
+	log.Info().Msg("Database initialized")
 	return nil
-}
-
-// GetDatabase returns the database instance associated with the Builder.
-//
-// It checks if the database is initialized and returns an error if not. Otherwise, it returns a pointer to the database instance.
-func (b *Builder) GetDatabase() (*Database, error) {
-	if b.db == nil {
-		return nil, ErrDBNotInitialized
-	}
-	return b.db, nil
 }
 
 // initServer initializes the server based on the provided configuration.
-func (b *Builder) initServer(config *ServerConfig) error {
-	b.Config.serverConfig = config
-	server, err := NewServer(config)
+func (b *Builder) InitServer() error {
+	server, err := NewServer(&ServerConfig{
+		Host:      config.GetString(EnvKeys.ServerHost),
+		Port:      config.GetString(EnvKeys.ServerPort),
+		CSRFToken: config.GetString(EnvKeys.CsrfToken),
+		Builder:   b,
+	})
 	if err != nil {
 		return err
 	}
-	b.server = server
+	b.Server = server
 	return nil
 }
 
-// GetServer returns the server instance associated with the Builder.
-//
-// It checks if the server is initialized and returns an error if not. Otherwise, it returns a pointer to the server instance.
-func (b *Builder) GetServer() (*Server, error) {
-	if b.server == nil {
-		return nil, ErrServerNotInitialized
-	}
-	return b.server, nil
-}
-
 // initAdmin initializes the admin based on the provided configuration.
-func (b *Builder) initAdmin() {
-	admin := NewAdmin(b.db, b.server, b)
-	b.admin = admin
-}
-
-// GetAdmin returns the admin instance associated with the Builder.
-//
-// It checks if the admin is initialized and returns an error if not. Otherwise, it returns a pointer to the admin instance.
-func (b *Builder) GetAdmin() (*Admin, error) {
-	if b.admin == nil {
-		return nil, ErrAdminNotInitialized
-	}
-	return b.admin, nil
+func (b *Builder) InitAdmin() {
+	b.Admin = NewAdmin(b)
 }
 
 // initFirebase initializes the Firebase Admin based on the provided configuration.
 //
 // It checks if the Firebase Admin is initialized and returns an error if not. Otherwise, it returns a pointer to the Firebase Admin instance.
-func (b *Builder) initFirebase(config *FirebaseConfig) error {
-	b.Config.firebaseConfig = config
-	fb, err := NewFirebaseAdmin(config)
+func (b *Builder) InitFirebase() error {
+	cfg := &FirebaseConfig{
+		Secret: config.GetString(EnvKeys.FirebaseSecret),
+	}
+	fb, err := NewFirebaseAdmin(cfg)
 	if err != nil {
 		return err
 	}
-	b.firebase = fb
+	b.Firebase = fb
 
 	return nil
-}
-
-// GetFirebase returns the Firebase Admin instance associated with the Builder.
-//
-// It checks if the Firebase Admin is initialized and returns an error if not. Otherwise, it returns a pointer to the Firebase Admin instance.
-func (b *Builder) GetFirebase() (*FirebaseAdmin, error) {
-	if b.firebase == nil {
-		return nil, ErrFirebaseNotInitialized
-	}
-	return b.firebase, nil
 }
 
 // initAuth initializes the auth system of the builder by registering the User app, and
@@ -300,8 +315,8 @@ func (b *Builder) GetFirebase() (*FirebaseAdmin, error) {
 // the path "/auth/register".
 //
 // If an error occurs while registering the User app, it logs the error and panics.
-func (b *Builder) initAuth() {
-	admin := b.admin
+func (b *Builder) InitAuth() {
+	admin := b.Admin
 	userApp, err := admin.Register(&User{}, true)
 	if err != nil {
 		log.Error().Err(err).Msg("Error registering user app")
@@ -311,7 +326,7 @@ func (b *Builder) initAuth() {
 	userApp.RegisterValidator("email", ValidatorsList{RequiredValidator, EmailValidator})
 	userApp.RegisterValidator("name", ValidatorsList{RequiredValidator})
 
-	svr := b.server
+	svr := b.Server
 	svr.AddRoute("/auth/register", b.RegisterUserController, "register", false)
 }
 
@@ -324,12 +339,16 @@ func (b *Builder) initAuth() {
 //   - GET /static/{path:.*}: For serving uploaded files
 //
 // If an error occurs while registering the Upload app, it logs the error and panics.
-func (b *Builder) initUploader(config *UploaderConfig) {
-	// Set the uploader configuration
-	b.Config.UploaderConfig = config
+func (b *Builder) InitUploader() {
+	cfg := &UploaderConfig{
+		MaxSize:            config.GetInt64("uploaderMaxSize"),
+		Authenticate:       config.GetBool("uploaderAuthenticate"),
+		SupportedMimeTypes: config.GetStringSlice("uploaderSupportedMimeTypes"),
+		Folder:             config.GetString("uploaderFolder"),
+	}
 
 	// Register the Upload app without authentication
-	_, err := b.admin.Register(&Upload{}, false)
+	_, err := b.Admin.Register(&Upload{}, false)
 	if err != nil {
 		log.Error().Err(err).Msg("Error registering upload app")
 		panic(err)
@@ -339,26 +358,26 @@ func (b *Builder) initUploader(config *UploaderConfig) {
 	route := "/file"
 
 	// Add route for uploading new files
-	b.server.AddRoute(
+	b.Server.AddRoute(
 		route,
-		b.GetUploadPostHandler(config),
+		b.GetUploadPostHandler(cfg),
 		"file-new",
 		true, // Requires authentication
 	)
 
 	// Add route for deleting files by ID
-	b.server.AddRoute(
+	b.Server.AddRoute(
 		route+"/{id}/delete",
-		b.GetUploadDeleteHandler(config),
+		b.GetUploadDeleteHandler(cfg),
 		"file-delete",
 		true, // Requires authentication
 	)
 
 	// Add route for serving uploaded files
-	b.server.AddRoute(
+	b.Server.AddRoute(
 		"/static/{path:.*}",
-		b.GetStaticHandler(config),
+		b.GetStaticHandler(cfg),
 		"file-static",
-		config.Authenticate, // Authentication based on config
+		cfg.Authenticate, // Authentication based on config
 	)
 }
