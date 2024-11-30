@@ -15,10 +15,13 @@ import (
 //   - The ConfigReader can successfully retrieve values from the configuration file.
 func TestNewConfigReader_Success(t *testing.T) {
 	// Define a test config path with valid data (replace with your actual data)
-	testConfigPath := "config.yaml"
+	testConfigPath := ".test.env"
 
 	// Create a ReaderConfig with the test path
-	config := &builder.ReaderConfig{ConfigFilePath: testConfigPath}
+	config := &builder.ReaderConfig{
+		ConfigFilePath: testConfigPath,
+		ReadFile:       true,
+	}
 
 	// Call NewConfigReader to create a ConfigReader instance
 	reader, err := builder.NewConfigReader(config)
@@ -28,7 +31,7 @@ func TestNewConfigReader_Success(t *testing.T) {
 
 	// Test getting values using the reader (replace with your actual keys)
 	value := reader.GetString("logLevel")
-	assert.Equal(t, "info", value)
+	assert.Equal(t, "debug", value)
 }
 
 func TestNewConfigReader_EmptyConfigPath(t *testing.T) {
