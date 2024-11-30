@@ -247,10 +247,10 @@ func (b *Builder) InitDatabase() error {
 
 	env := config.GetString(EnvKeys.Environment)
 
-	if env == "development" || env == "test" {
-		dbConfig.Path = config.GetString(EnvKeys.DbFile)
-	} else {
+	if env == "production" || env == "stage" || env == "docker" {
 		dbConfig.URL = config.GetString(EnvKeys.DbUrl)
+	} else {
+		dbConfig.Path = config.GetString(EnvKeys.DbFile)
 	}
 
 	log.Info().Str("path", dbConfig.Path).Str("url", dbConfig.URL).Msg("Initializing database...")

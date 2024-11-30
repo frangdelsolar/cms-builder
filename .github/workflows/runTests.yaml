@@ -22,21 +22,21 @@ jobs:
         working-directory: builder
         run: go mod download
     
-      - name: Create .cicd.env file
+      - name: Create .test.env file
         working-directory: builder
         run: |
-          echo "ENVIRONMENT=cicd" > .cicd.env
-          echo "LOG_LEVEL=debug" >> .cicd.env
-          echo "LOG_WRITE_TO_FILE=false" >> .cicd.env
-          echo "DB_FILE=${{ github.workspace }}/cicd.db" >> .cicd.env
-          echo "FIREBASE_SECRET=${{ secrets.FIREBASE_SECRET }}" >> .cicd.env
-          echo "FIREBASE_API_KEY=${{ secrets.FIREBASE_API_KEY }}" >> .cicd.env
-          echo "UPLOADER_MAX_SIZE=5000" >> .cicd.env
-          echo "UPLOADER_AUTHENTICATE=true" >> .cicd.env
-          echo "UPLOADER_SUPPORTED_MIME_TYPES=* >> .cicd.env
-          echo "UPLOADER_FOLDER=${{ github.workspace }}/test_output" >> .cicd.env
-          echo "STATIC_PATH=static" >> .cicd.env
-          echo "BASE_URL=http://localhost" >> .cicd.env
+          echo "ENVIRONMENT=cicd" > .test.env
+          echo "LOG_LEVEL=debug" >> .test.env
+          echo "LOG_WRITE_TO_FILE=false" >> .test.env
+          echo "DB_FILE=${{ github.workspace }}/cicd.db" >> .test.env
+          echo "FIREBASE_SECRET=${{ secrets.FIREBASE_SECRET }}" >> .test.env
+          echo "FIREBASE_API_KEY=${{ secrets.FIREBASE_API_KEY }}" >> .test.env
+          echo "UPLOADER_MAX_SIZE=5000" >> .test.env
+          echo "UPLOADER_AUTHENTICATE=true" >> .test.env
+          echo "UPLOADER_SUPPORTED_MIME_TYPES=* >> .test.env
+          echo "UPLOADER_FOLDER=${{ github.workspace }}/test_output" >> .test.env
+          echo "STATIC_PATH=static" >> .test.env
+          echo "BASE_URL=http://localhost" >> .test.env
 
       - name: Run tests
         working-directory: builder
