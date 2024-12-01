@@ -26,6 +26,9 @@ type ConfigKeys struct {
 	UploaderFolder        string `json:"uploaderFolder"`        // Uploader folder
 	StoreType             string `json:"storeType"`             // Uploader store type
 	AwsBucket             string `json:"awsBucket"`             // AWS bucket
+	AwsRegion             string `json:"awsRegion"`             // AWS region
+	AwsSecretAccessKey    string `json:"awsSecretAccessKey"`    // AWS secret access key
+	AwsAccessKeyId        string `json:"awsAccessKeyId"`        // AWS access key id
 	StaticPath            string `json:"staticPath"`            // Static path
 	BaseUrl               string `json:"baseUrl"`               // where the app is running
 }
@@ -49,6 +52,9 @@ var EnvKeys = ConfigKeys{
 	UploaderFolder:        "UPLOADER_FOLDER",
 	StoreType:             "STORE_TYPE",
 	AwsBucket:             "AWS_BUCKET",
+	AwsRegion:             "AWS_REGION",
+	AwsSecretAccessKey:    "AWS_SECRET_ACCESS_KEY",
+	AwsAccessKeyId:        "AWS_ACCESS_KEY_ID",
 	StaticPath:            "STATIC_PATH",
 	BaseUrl:               "BASE_URL",
 }
@@ -72,6 +78,9 @@ var DefaultEnvValues = ConfigKeys{
 	UploaderFolder:        "uploads",
 	StoreType:             "local",
 	AwsBucket:             "s3://something",
+	AwsRegion:             "us-east-1",
+	AwsSecretAccessKey:    "secretAccessKey",
+	AwsAccessKeyId:        "accessKeyId",
 	StaticPath:            "static",
 	BaseUrl:               "http://0.0.0.0:80",
 }
