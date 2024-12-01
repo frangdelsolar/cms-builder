@@ -23,6 +23,10 @@ type Store interface {
 
 type LocalStore struct{}
 
+// StoreFile stores the given file in the local file system. It returns the
+// FileData for the stored file, including the path to the file and the URL
+// at which the file can be accessed. If the file cannot be stored, an error
+// is returned.
 func (s *LocalStore) StoreFile(cfg *UploaderConfig, fileName string, file multipart.File) (fileData FileData, err error) {
 
 	fileData = FileData{}
@@ -85,25 +89,36 @@ type S3Store struct {
 	Client *AwsManager
 }
 
+// StoreFile uploads the given file to an S3 bucket using the provided configuration.
+// It reads the file bytes and calls the UploadFile method of the AwsManager client.
+// If successful, it returns a FileData object containing the file's name, path, and URL.
+// If there is an error at any step, it logs the error and returns the error.
 func (s *S3Store) StoreFile(cfg *UploaderConfig, fileName string, file multipart.File) (fileData FileData, err error) {
-	log.Info().Msg("Uploading file to S3.")
-
 	fileBytes, err := getFileBytes(file)
 	if err != nil {
 		log.Error().Err(err).Msg("Error getting file bytes")
 		return fileData, err
 	}
 
-	err = s.Client.UploadFile(fileName, fileBytes)
+	// Create the uploads directory if it doesn't exist
+	uploadsDir := defaultUploadFolder
+	if cfg.Folder != "" {
+		uploadsDir = cfg.Folder
+	}
+
+	err = s.Client.UploadFile(uploadsDir, fileName, fileBytes)
 	if err != nil {
 		log.Error().Err(err).Msg("Error uploading file to S3")
 		return fileData, err
 	}
 
+	path := filepath.Join(uploadsDir, fileName)
+	url := "https://" + config.GetString(EnvKeys.AwsBucket) + "/" + path
+
 	fileData = FileData{
 		Name: fileName,
-		Path: fileName,
-		Url:  fileName,
+		Path: path,
+		Url:  url,
 	}
 
 	return fileData, nil
@@ -122,9 +137,6 @@ func getFileBytes(file multipart.File) ([]byte, error) {
 }
 
 func (s *S3Store) DeleteFile(path string) error {
-	// Log the file path to be deleted
-	log.Warn().Msgf("Deleting file: %s. Not implemented yet", path)
-
 	err := s.Client.DeleteFile(path)
 	if err != nil {
 		log.Error().Err(err).Msg("Error deleting file from S3")
@@ -135,7 +147,6 @@ func (s *S3Store) DeleteFile(path string) error {
 }
 
 func NewS3Store() (*S3Store, error) {
-
 	client := AwsManager{
 		Bucket: config.GetString(EnvKeys.AwsBucket),
 	}

@@ -19,10 +19,9 @@ func TestAWSIsReady(t *testing.T) {
 
 	ready := manager.IsReady()
 	assert.True(t, ready, "AWS should be ready")
-
 }
 
-func TestAWSUploadFile(t *testing.T) {
+func TestAWSUploadDeleteFile(t *testing.T) {
 	e, err := th.GetDefaultEngine()
 	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 
@@ -30,30 +29,17 @@ func TestAWSUploadFile(t *testing.T) {
 		Bucket: e.Config.GetString(builder.EnvKeys.AwsBucket),
 	}
 
-	fileName := "test.json"
-	file, err := os.ReadFile(testFilePath)
-	assert.NoError(t, err, "ReadFile should not return an error")
-
-	err = manager.UploadFile(fileName, file)
-	assert.NoError(t, err, "UploadFile should not return an error")
-}
-
-func TestAWSDeleteFile(t *testing.T) {
-	e, err := th.GetDefaultEngine()
-	assert.NoError(t, err, "GetDefaultEngine should not return an error")
-
-	manager := builder.AwsManager{
-		Bucket: e.Config.GetString(builder.EnvKeys.AwsBucket),
-	}
-
-	fileName := "test-delete.json"
+	fileName := "test-upload.json"
+	directory := "test_output"
 
 	file, err := os.ReadFile(testFilePath)
 	assert.NoError(t, err, "ReadFile should not return an error")
 
-	err = manager.UploadFile(fileName, file)
+	t.Log("Testing S3 file upload")
+	err = manager.UploadFile(directory, fileName, file)
 	assert.NoError(t, err, "UploadFile should not return an error")
 
+	t.Log("Testing S3 file delete")
 	err = manager.DeleteFile(fileName)
 	assert.NoError(t, err, "DeleteFile should not return an error")
 }
