@@ -45,8 +45,8 @@ func (a AwsManager) GetClient() (*s3.Client, error) {
 	cfg := aws.Config{
 		Region: config.GetString(EnvKeys.AwsRegion),
 		Credentials: credentials.NewStaticCredentialsProvider(
-			config.GetString(EnvKeys.AwsSecretAccessKey),
 			config.GetString(EnvKeys.AwsAccessKeyId),
+			config.GetString(EnvKeys.AwsSecretAccessKey),
 			"",
 		),
 	}

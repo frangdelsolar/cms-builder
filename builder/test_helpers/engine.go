@@ -3,9 +3,11 @@ package test_helpers
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"testing"
 
 	"github.com/frangdelsolar/cms/builder"
+	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -54,10 +56,13 @@ type TestEngineServices struct {
 // The function also sets up a field validator for the "field" key on the MockStruct type.
 // The function returns the instances and a callback to be used to deregister the App after the test is finished.
 func GetDefaultEngine() (TestEngineServices, error) {
+
+	if os.Getenv("ENVIRONMENT") == "test" || os.Getenv("ENVIRONMENT") == "" {
+		godotenv.Load(".test.env")
+	}
+
 	input := &builder.NewBuilderInput{
-		ReadConfigFromEnv:    true,
-		ReadConfigFromFile:   true,
-		ReaderConfigFilePath: ".test.env",
+		ReadConfigFromEnv: true,
 	}
 
 	var err error
