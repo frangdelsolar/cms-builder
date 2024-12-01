@@ -1,17 +1,25 @@
 package builder_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/frangdelsolar/cms/builder"
+	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 )
 
 const testConfigFilePath = ".test.env"
 
 func TestNewBuilder_ConfigFile(t *testing.T) {
+
+	if os.Getenv("ENVIRONMENT") == "test" || os.Getenv("ENVIRONMENT") == "" {
+		godotenv.Load(testConfigFilePath)
+	}
+
 	input := &builder.NewBuilderInput{
-		ReadConfigFromFile:   true,
+		ReadConfigFromEnv:    true,
+		ReadConfigFromFile:   false,
 		ReaderConfigFilePath: testConfigFilePath,
 	}
 
