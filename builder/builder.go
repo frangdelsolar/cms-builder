@@ -371,7 +371,7 @@ func (b *Builder) InitStore() error {
 	case string(StoreLocal):
 		store = &LocalStore{}
 	default:
-		return errors.New("unknown store type")
+		return errors.New("unknown store type: " + config.GetString(EnvKeys.StoreType))
 	}
 
 	b.Store = store
