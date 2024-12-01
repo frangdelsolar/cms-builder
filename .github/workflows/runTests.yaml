@@ -36,7 +36,10 @@ jobs:
           echo "UPLOADER_SUPPORTED_MIME_TYPES=* >> .test.env
           echo "UPLOADER_FOLDER=${{ github.workspace }}/test_output" >> .test.env
           echo "STORE_TYPE=local" >> .test.env
-          echo "AWS_BUCKET=fileserver-test-5fe07c2485974f7385d6624-eba3330.divio-media.com" >> .test.env
+          echo "AWS_BUCKET={{ secrets.AWS_BUCKET }}" >> .test.env
+          echo "AWS_SECRET_ACCESS_KEY={{ secrets.AWS_SECRET_ACCESS_KEY }}" >> .test.env
+          echo "AWS_REGION={{ secrets.AWS_REGION }}" >> .test.env
+          echo "AWS_ACCESS_KEY_ID={{ secrets.AWS_ACCESS_KEY_ID }}" >> .test.env
           echo "STATIC_PATH=static" >> .test.env 
           echo "BASE_URL=http://localhost" >> .test.env
 
