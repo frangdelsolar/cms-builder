@@ -11,6 +11,25 @@ jobs:
     name: Test with Coverage
     runs-on: ubuntu-latest 
 
+    env:
+      ENVIRONMENT: test
+      LOG_LEVEL: debug
+      LOG_WRITE_TO_FILE: false
+      DB_FILE: ${{ github.workspace }}/cicd.db
+      FIREBASE_SECRET: ${{ secrets.FIREBASE_SECRET }}
+      FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+      UPLOADER_MAX_SIZE: 5000
+      UPLOADER_AUTHENTICATE: true
+      UPLOADER_SUPPORTED_MIME_TYPES: *
+      UPLOADER_FOLDER: ${{ github.workspace }}/test_output
+      STORE_TYPE: local
+      AWS_BUCKET: ${{ secrets.AWS_BUCKET }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      STATIC_PATH: static
+      BASE_URL: http://localhost
+
     steps:
       - uses: actions/checkout@v3 
 
@@ -22,27 +41,6 @@ jobs:
         working-directory: builder
         run: go mod download
     
-      - name: Create .test.env file
-        working-directory: builder
-        run: |
-          echo "ENVIRONMENT=test" > .test.env
-          echo "LOG_LEVEL=debug" >> .test.env
-          echo "LOG_WRITE_TO_FILE=false" >> .test.env
-          echo "DB_FILE=${{ github.workspace }}/cicd.db" >> .test.env
-          echo "FIREBASE_SECRET=${{ secrets.FIREBASE_SECRET }}" >> .test.env
-          echo "FIREBASE_API_KEY=${{ secrets.FIREBASE_API_KEY }}" >> .test.env
-          echo "UPLOADER_MAX_SIZE=5000" >> .test.env
-          echo "UPLOADER_AUTHENTICATE=true" >> .test.env
-          echo "UPLOADER_SUPPORTED_MIME_TYPES=* >> .test.env
-          echo "UPLOADER_FOLDER=${{ github.workspace }}/test_output" >> .test.env
-          echo "STORE_TYPE=local" >> .test.env
-          echo "AWS_BUCKET={{ secrets.AWS_BUCKET }}" >> .test.env
-          echo "AWS_SECRET_ACCESS_KEY={{ secrets.AWS_SECRET_ACCESS_KEY }}" >> .test.env
-          echo "AWS_REGION={{ secrets.AWS_REGION }}" >> .test.env
-          echo "AWS_ACCESS_KEY_ID={{ secrets.AWS_ACCESS_KEY_ID }}" >> .test.env
-          echo "STATIC_PATH=static" >> .test.env 
-          echo "BASE_URL=http://localhost" >> .test.env
-
       - name: Run tests
         working-directory: builder
         run: go test -v -race -covermode atomic -coverprofile=covprofile ./...
