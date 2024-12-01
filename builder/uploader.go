@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gorilla/mux"
 )
@@ -30,19 +32,6 @@ type UploaderConfig struct {
 	SupportedMimeTypes []string
 	Folder             string
 	StaticPath         string
-	StoreType          StoreType
-}
-
-func (c *UploaderConfig) GetStore() Store {
-	switch c.StoreType {
-	case StoreLocal:
-		return &LocalStore{}
-	case StoreS3:
-		// TODO: implement s3 store
-		return &S3Store{}
-	default:
-		return &LocalStore{}
-	}
 }
 
 // getUploadPostHandler returns a handler function that responds to POST requests
@@ -90,18 +79,17 @@ func (b *Builder) GetUploadPostHandler(cfg *UploaderConfig) HandlerFunc {
 			return
 		}
 
-		store := cfg.GetStore()
-		fileData, err := store.StoreFile(cfg, header, file)
-
+		fileName := randomizeFileName(header.Filename)
+		fileData, err := b.Store.StoreFile(cfg, fileName, file)
 		if err != nil {
-			handleUploadError(cfg, fileData, w, err)
+			handleUploadError(b.Store, fileData, w, err)
 			return
 		}
 
 		// Store filedata in db
 		uploadApp, err := b.Admin.GetApp("upload")
 		if err != nil {
-			handleUploadError(cfg, fileData, w, err)
+			handleUploadError(b.Store, fileData, w, err)
 			return
 		}
 
@@ -113,7 +101,7 @@ func (b *Builder) GetUploadPostHandler(cfg *UploaderConfig) HandlerFunc {
 
 		uploadData, err := json.Marshal(uploadRequestBody)
 		if err != nil {
-			handleUploadError(cfg, fileData, w, err)
+			handleUploadError(b.Store, fileData, w, err)
 			return
 		}
 
@@ -158,10 +146,9 @@ func (b *Builder) GetUploadDeleteHandler(cfg *UploaderConfig) HandlerFunc {
 			SendJsonResponse(w, http.StatusNotFound, nil, "File not found")
 			return
 		}
-		store := cfg.GetStore()
 
 		// Delete the file from disk
-		err = store.DeleteFile(instance.Path)
+		err = b.Store.DeleteFile(instance.Path)
 		if err != nil {
 			log.Error().Err(err).Msg("Error deleting file")
 		}
@@ -239,11 +226,9 @@ func validateContentType(contentType string, supportedMimeTypes []string) (bool,
 // handleUploadError takes a file path and a writer, and an error.
 // It logs the error, deletes the file from disk, and writes a JSON response
 // with the error message to the writer.
-func handleUploadError(cfg *UploaderConfig, fileData FileData, w http.ResponseWriter, err error) {
+func handleUploadError(store Store, fileData FileData, w http.ResponseWriter, err error) {
 	// Log the error at the error level
 	log.Error().Err(err).Msgf("Error uploading file: %s. Rolling back...", fileData.Name)
-
-	store := cfg.GetStore()
 
 	// Attempt to delete the file from disk
 	store.DeleteFile(fileData.Path)
@@ -251,4 +236,24 @@ func handleUploadError(cfg *UploaderConfig, fileData FileData, w http.ResponseWr
 	// Write a JSON response with the error message to the writer
 	// at the internal server error (500) status code.
 	SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+}
+
+// randomizeFileName takes a file name and returns a new file name that is
+// randomized using the current timestamp. The file name is also sanitized
+// to replace spaces, forward slashes, and backslashes with underscores.
+func randomizeFileName(fileName string) string {
+	// Replace spaces with underscores
+	fileName = strings.ReplaceAll(fileName, " ", "_")
+
+	// Replace forward slashes with underscores
+	fileName = strings.ReplaceAll(fileName, "/", "_")
+
+	// Replace backslashes with underscores
+	fileName = strings.ReplaceAll(fileName, "\\", "_")
+
+	// Add the current timestamp to the file name
+	now := strconv.FormatInt(time.Now().UnixNano(), 10)
+	fileName = now + "_" + fileName
+
+	return fileName
 }

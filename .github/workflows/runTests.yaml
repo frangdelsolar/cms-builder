@@ -35,6 +35,7 @@ jobs:
           echo "UPLOADER_AUTHENTICATE=true" >> .test.env
           echo "UPLOADER_SUPPORTED_MIME_TYPES=* >> .test.env
           echo "UPLOADER_FOLDER=${{ github.workspace }}/test_output" >> .test.env
+          echo "STORE_TYPE=local" >> .test.env
           echo "STATIC_PATH=static" >> .test.env
           echo "BASE_URL=http://localhost" >> .test.env
 

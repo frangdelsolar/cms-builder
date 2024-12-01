@@ -43,6 +43,7 @@ type TestEngineServices struct {
 	App      *builder.App
 	Log      *builder.Logger
 	Config   *builder.ConfigReader
+	Store    builder.Store
 }
 
 // GetDefaultEngine returns a default Builder instance, Admin, Database, Server, and App instances,
@@ -75,7 +76,7 @@ func GetDefaultEngine() (TestEngineServices, error) {
 	app.RegisterValidator("field", builder.ValidatorsList{FieldValidator})
 	defer admin.Unregister(app.Name())
 
-	return TestEngineServices{e, admin, e.DB, e.Server, e.Firebase, &app, e.Logger, e.Config}, nil
+	return TestEngineServices{e, admin, e.DB, e.Server, e.Firebase, &app, e.Logger, e.Config, e.Store}, nil
 }
 
 // createMockResource creates a new resource for the given user and returns the created resource, the user, and a function to roll back the resource creation.
