@@ -1,31 +1,110 @@
 package builder
 
-// FOR this to work you need to have aws cli installed
-// esto funciono en el cli
-// aws s3 cp test.txt s3://fileserver-test-5fe07c2485974f7385d6624-eba3330.divio-media.com/test.txt --acl public-read
-// fgs@MacBook-Pro-de-Francisco Downloads % aws s3 ls s3://fileserver-test-5fe07c2485974f7385d6624-eba3330.divio-media.com --recursive | awk '{print $4}'
-// uploads
-// xxx.env
+import (
+	"bytes"
+	"context"
+	"path/filepath"
 
-// aws s3 cp cors.json s3://fileserver-test-5fe07c2485974f7385d6624-eba3330.divio-media.com/cors.json
-// aws s3api put-bucket-cors --bucket fileserver-test-5fe07c2485974f7385d6624-eba3330.divio-media.com --cors-configuration file://cors.json
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsConfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+)
 
-// aws s3api get-bucket-cors --bucket fileserver-test-5fe07c2485974f7385d6624-eba3330.divio-media.com
+type AwsManager struct {
+	Bucket string
+}
 
-// aws s3api delete-object --bucket fileserver-test-5fe07c2485974f7385d6624-eba3330.divio-media.com --key test.txt
+// IsReady checks to see if the AWS setup is ready to be used.
+//
+// It does this by getting an S3 client and then trying to get the CORS
+// configuration of the bucket. If the client can't be created or the CORS
+// configuration can't be retrieved, it returns false. Otherwise, it returns
+// true.
+func (a AwsManager) IsReady() bool {
+	log.Info().Msg("Making sure AWS is ready.")
 
-// main uses the AWS SDK for Go V2 to create an Amazon Simple Sto
+	client, err := a.GetClient()
+	if err != nil {
+		log.Error().Err(err).Msg("Error getting client")
+		return false
+	}
+	_, err = client.GetBucketCors(context.TODO(), &s3.GetBucketCorsInput{Bucket: &a.Bucket})
+	if err != nil {
+		log.Error().Err(err).Msg("Error getting bucket cors")
+		return false
+	}
 
-// func awsReady() {
-// 	var stdout bytes.Buffer
-// 	var stderr bytes.Buffer
-// 	cmd := exec.Command(ShellToUse, "-c", command)
-// 	cmd.Stdout = &stdout
-// 	cmd.Stderr = &stderr
-// 	err := cmd.Run()
+	return true
+}
 
-// }
+// GetClient returns a new S3 client using the default AWS configuration with
+// the region set to us-east-1. If the default configuration can't be loaded,
+// it returns an error.
+func (a AwsManager) GetClient() (*s3.Client, error) {
+	cfg, err := awsConfig.LoadDefaultConfig(context.TODO(), awsConfig.WithRegion("us-east-1"))
+	if err != nil {
+		log.Error().Err(err).Msg("Error loading AWS config")
+		return nil, err
+	}
 
-// func execCommand(command string) {
-// 	// aws s3 cp test.txt s3://fileserver-test-5fe07c2485974f7385d6624-eba3330.divio-media.com/test.txt --acl public-read
-// }
+	return s3.NewFromConfig(cfg), nil
+}
+
+// UploadFile uploads the given file to the given bucket with the given key.
+// It uploads the file with public-read permissions. If there is an error
+// uploading the file, it logs an error and returns the error.
+func (a AwsManager) UploadFile(directory string, fileName string, file []byte) error {
+	log.Info().Str("fileName", fileName).Msg("Uploading file to S3.")
+
+	ctx := context.Background()
+	objectKey := aws.String(fileName)
+
+	client, err := a.GetClient()
+	if err != nil {
+		log.Error().Err(err).Msg("Error getting client")
+		return err
+	}
+
+	if directory != "" {
+		objectKey = aws.String(filepath.Join(directory, fileName))
+	}
+
+	_, err = client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket: aws.String(a.Bucket),
+		Key:    objectKey,
+		Body:   bytes.NewReader(file),
+		ACL:    types.ObjectCannedACL("public-read"),
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("Error uploading file to S3")
+		return err
+	}
+
+	return nil
+}
+
+// DeleteFile deletes the given file from the given bucket. It logs an error
+// and returns the error if there is an error deleting the file.
+func (a AwsManager) DeleteFile(fileName string) error {
+	log.Info().Str("fileName", fileName).Msg("Deleting file from S3.")
+
+	ctx := context.Background()
+	objectKey := aws.String(fileName)
+
+	client, err := a.GetClient()
+	if err != nil {
+		log.Error().Err(err).Msg("Error getting client")
+		return err
+	}
+	_, err = client.DeleteObject(ctx, &s3.DeleteObjectInput{
+		Bucket: aws.String(a.Bucket),
+		Key:    objectKey,
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("Error deleting file from S3")
+		return err
+	}
+
+	return nil
+}

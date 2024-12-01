@@ -1,13 +1,12 @@
 package builder
 
 import (
+	"bytes"
+	"fmt"
 	"io"
 	"mime/multipart"
 	"os"
 	"path/filepath"
-	"strconv"
-	"strings"
-	"time"
 )
 
 type StoreType string
@@ -18,13 +17,17 @@ const (
 )
 
 type Store interface {
-	StoreFile(cfg *UploaderConfig, header *multipart.FileHeader, file multipart.File) (fileData FileData, err error)
+	StoreFile(cfg *UploaderConfig, fileName string, file multipart.File) (fileData FileData, err error)
 	DeleteFile(path string) error
 }
 
 type LocalStore struct{}
 
-func (s *LocalStore) StoreFile(cfg *UploaderConfig, header *multipart.FileHeader, file multipart.File) (fileData FileData, err error) {
+// StoreFile stores the given file in the local file system. It returns the
+// FileData for the stored file, including the path to the file and the URL
+// at which the file can be accessed. If the file cannot be stored, an error
+// is returned.
+func (s *LocalStore) StoreFile(cfg *UploaderConfig, fileName string, file multipart.File) (fileData FileData, err error) {
 
 	fileData = FileData{}
 
@@ -43,7 +46,7 @@ func (s *LocalStore) StoreFile(cfg *UploaderConfig, header *multipart.FileHeader
 	}
 
 	// Create the file path
-	fileData.Name = randomizeFileName(header.Filename)
+	fileData.Name = fileName
 	fileData.Path = filepath.Join(uploadsDir, fileData.Name)
 
 	// Save the file to disk
@@ -82,36 +85,77 @@ func (s *LocalStore) DeleteFile(path string) error {
 	return nil
 }
 
-type S3Store struct{}
+type S3Store struct {
+	Client *AwsManager
+}
 
-func (s *S3Store) StoreFile(cfg *UploaderConfig, header *multipart.FileHeader, file multipart.File) (fileData FileData, err error) {
-	log.Info().Msg("Uploading file to S3. Not implemented yet")
+// StoreFile uploads the given file to an S3 bucket using the provided configuration.
+// It reads the file bytes and calls the UploadFile method of the AwsManager client.
+// If successful, it returns a FileData object containing the file's name, path, and URL.
+// If there is an error at any step, it logs the error and returns the error.
+func (s *S3Store) StoreFile(cfg *UploaderConfig, fileName string, file multipart.File) (fileData FileData, err error) {
+	fileBytes, err := getFileBytes(file)
+	if err != nil {
+		log.Error().Err(err).Msg("Error getting file bytes")
+		return fileData, err
+	}
+
+	// Create the uploads directory if it doesn't exist
+	uploadsDir := defaultUploadFolder
+	if cfg.Folder != "" {
+		uploadsDir = cfg.Folder
+	}
+
+	err = s.Client.UploadFile(uploadsDir, fileName, fileBytes)
+	if err != nil {
+		log.Error().Err(err).Msg("Error uploading file to S3")
+		return fileData, err
+	}
+
+	path := filepath.Join(uploadsDir, fileName)
+	url := "https://" + config.GetString(EnvKeys.AwsBucket) + "/" + path
+
+	fileData = FileData{
+		Name: fileName,
+		Path: path,
+		Url:  url,
+	}
+
 	return fileData, nil
 }
-func (s *S3Store) DeleteFile(path string) error {
-	// Log the file path to be deleted
-	log.Warn().Msgf("Deleting file: %s. Not implemented yet", path)
 
-	// Return nil if the file is successfully deleted
+func getFileBytes(file multipart.File) ([]byte, error) {
+	defer file.Close()
+
+	var buf bytes.Buffer
+	_, err := io.Copy(&buf, file)
+	if err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+func (s *S3Store) DeleteFile(path string) error {
+	err := s.Client.DeleteFile(path)
+	if err != nil {
+		log.Error().Err(err).Msg("Error deleting file from S3")
+		return err
+	}
+
 	return nil
 }
 
-// randomizeFileName takes a file name and returns a new file name that is
-// randomized using the current timestamp. The file name is also sanitized
-// to replace spaces, forward slashes, and backslashes with underscores.
-func randomizeFileName(fileName string) string {
-	// Replace spaces with underscores
-	fileName = strings.ReplaceAll(fileName, " ", "_")
+func NewS3Store() (*S3Store, error) {
+	client := AwsManager{
+		Bucket: config.GetString(EnvKeys.AwsBucket),
+	}
 
-	// Replace forward slashes with underscores
-	fileName = strings.ReplaceAll(fileName, "/", "_")
+	if !client.IsReady() {
+		return nil, fmt.Errorf("AWS not ready")
+	}
 
-	// Replace backslashes with underscores
-	fileName = strings.ReplaceAll(fileName, "\\", "_")
-
-	// Add the current timestamp to the file name
-	now := strconv.FormatInt(time.Now().UnixNano(), 10)
-	fileName = now + "_" + fileName
-
-	return fileName
+	return &S3Store{
+		Client: &client,
+	}, nil
 }

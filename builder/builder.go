@@ -24,6 +24,8 @@ type ConfigKeys struct {
 	UploaderAuthenticate  string `json:"uploaderAuthenticate"`  // Whether files will be public or private accessible
 	UploaderSupportedMime string `json:"uploaderSupportedMime"` // Supported mime types for uploaded files
 	UploaderFolder        string `json:"uploaderFolder"`        // Uploader folder
+	StoreType             string `json:"storeType"`             // Uploader store type
+	AwsBucket             string `json:"awsBucket"`             // AWS bucket
 	StaticPath            string `json:"staticPath"`            // Static path
 	BaseUrl               string `json:"baseUrl"`               // where the app is running
 }
@@ -45,6 +47,8 @@ var EnvKeys = ConfigKeys{
 	UploaderAuthenticate:  "UPLOADER_AUTHENTICATE",
 	UploaderSupportedMime: "UPLOADER_SUPPORTED_MIME_TYPES",
 	UploaderFolder:        "UPLOADER_FOLDER",
+	StoreType:             "STORE_TYPE",
+	AwsBucket:             "AWS_BUCKET",
 	StaticPath:            "STATIC_PATH",
 	BaseUrl:               "BASE_URL",
 }
@@ -66,6 +70,8 @@ var DefaultEnvValues = ConfigKeys{
 	UploaderAuthenticate:  "true",
 	UploaderSupportedMime: "image/*",
 	UploaderFolder:        "uploads",
+	StoreType:             "local",
+	AwsBucket:             "s3://something",
 	StaticPath:            "static",
 	BaseUrl:               "http://0.0.0.0:80",
 }
@@ -117,6 +123,7 @@ type Builder struct {
 	Firebase *FirebaseAdmin // Reference to the created Firebase instance
 	Logger   *Logger        // Reference to the application's logger instance
 	Server   *Server        // Reference to the created Server instance
+	Store    Store          // Reference to the created Store instance
 }
 
 // NewBuilderInput defines the input parameters for the Builder constructor.
@@ -189,6 +196,12 @@ func NewBuilder(input *NewBuilderInput) (*Builder, error) {
 		return nil, err
 	}
 
+	err = builder.InitStore()
+	if err != nil {
+		log.Err(err).Msg("Error initializing store")
+		return nil, err
+	}
+
 	// Uploader
 	err = builder.InitUploader()
 	if err != nil {
@@ -247,10 +260,10 @@ func (b *Builder) InitDatabase() error {
 
 	env := config.GetString(EnvKeys.Environment)
 
-	if env == "development" || env == "test" {
-		dbConfig.Path = config.GetString(EnvKeys.DbFile)
-	} else {
+	if env == "production" || env == "stage" || env == "docker" {
 		dbConfig.URL = config.GetString(EnvKeys.DbUrl)
+	} else {
+		dbConfig.Path = config.GetString(EnvKeys.DbFile)
 	}
 
 	log.Info().Str("path", dbConfig.Path).Str("url", dbConfig.URL).Msg("Initializing database...")
@@ -328,6 +341,31 @@ func (b *Builder) InitAuth() error {
 
 	svr := b.Server
 	svr.AddRoute("/auth/register", b.RegisterUserController, "register", false)
+	return nil
+}
+
+// InitStore initializes the store based on the provided configuration.
+//
+// It sets the configuration for the store, registers the correct store implementation,
+// and assigns the result to the Builder's Store field.
+// If an error occurs while initializing the store, it returns the error. On success, it returns nil.
+func (b *Builder) InitStore() error {
+	var store Store
+	switch config.GetString(EnvKeys.StoreType) {
+	case string(StoreS3):
+		s3Store, err := NewS3Store()
+		if err != nil {
+			log.Error().Err(err).Msg("Error initializing S3 store")
+			return err
+		}
+		store = s3Store
+	case string(StoreLocal):
+		store = &LocalStore{}
+	default:
+		return errors.New("unknown store type")
+	}
+
+	b.Store = store
 	return nil
 }
 

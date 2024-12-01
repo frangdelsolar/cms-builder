@@ -83,8 +83,8 @@ func TestAnonymousCanUploadAllowed(t *testing.T) {
 	assert.NotNil(t, result.Url, "Url should be something", result.Url)
 
 	// clean up
-	store := cfg.GetStore()
-	store.DeleteFile(result.Path)
+	err = e.Store.DeleteFile(result.Path)
+	assert.NoError(t, err, "DeleteFile should not return an error")
 }
 func TestAnonymousCanNotUploadForbidden(t *testing.T) {
 	e, err := th.GetDefaultEngine()

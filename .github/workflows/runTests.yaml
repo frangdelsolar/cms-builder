@@ -22,19 +22,22 @@ jobs:
         working-directory: builder
         run: go mod download
     
-      - name: Create config.yaml file
+      - name: Create .test.env file
         working-directory: builder
         run: |
-          echo "environment: cicd" > config.yaml
-          echo "logLevel: info" >> config.yaml
-          echo "logWriteToFile: false" >> config.yaml
-          echo "dbFile: ${{ github.workspace }}/cicd.db" >> config.yaml
-          echo "firebaseSecret: ${{ secrets.FIREBASE_SECRET }}" >> config.yaml
-          echo "firebaseApiKey: ${{ secrets.FIREBASE_API_KEY }}" >> config.yaml
-          echo "uploaderMaxSize: 5000" >> config.yaml
-          echo "uploaderAuthenticate: true" >> config.yaml
-          echo "uploaderSupportedMimeTypes: [\"*\"]" >> config.yaml
-          echo "uploaderFolder: ${{ github.workspace }}/test_output" >> config.yaml
+          echo "ENVIRONMENT=cicd" > .test.env
+          echo "LOG_LEVEL=debug" >> .test.env
+          echo "LOG_WRITE_TO_FILE=false" >> .test.env
+          echo "DB_FILE=${{ github.workspace }}/cicd.db" >> .test.env
+          echo "FIREBASE_SECRET=${{ secrets.FIREBASE_SECRET }}" >> .test.env
+          echo "FIREBASE_API_KEY=${{ secrets.FIREBASE_API_KEY }}" >> .test.env
+          echo "UPLOADER_MAX_SIZE=5000" >> .test.env
+          echo "UPLOADER_AUTHENTICATE=true" >> .test.env
+          echo "UPLOADER_SUPPORTED_MIME_TYPES=* >> .test.env
+          echo "UPLOADER_FOLDER=${{ github.workspace }}/test_output" >> .test.env
+          echo "STORE_TYPE=local" >> .test.env
+          echo "STATIC_PATH=static" >> .test.env
+          echo "BASE_URL=http://localhost" >> .test.env
 
       - name: Run tests
         working-directory: builder
