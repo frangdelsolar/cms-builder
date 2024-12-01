@@ -25,7 +25,7 @@ jobs:
       - name: Create .test.env file
         working-directory: builder
         run: |
-          echo "ENVIRONMENT=cicd" > .test.env
+          echo "ENVIRONMENT=test" > .test.env
           echo "LOG_LEVEL=debug" >> .test.env
           echo "LOG_WRITE_TO_FILE=false" >> .test.env
           echo "DB_FILE=${{ github.workspace }}/cicd.db" >> .test.env
