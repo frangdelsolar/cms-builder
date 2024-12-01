@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	awsConfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
@@ -42,12 +42,14 @@ func (a AwsManager) IsReady() bool {
 // the region set to us-east-1. If the default configuration can't be loaded,
 // it returns an error.
 func (a AwsManager) GetClient() (*s3.Client, error) {
-	cfg, err := awsConfig.LoadDefaultConfig(context.TODO(), awsConfig.WithRegion("us-east-1"))
-	if err != nil {
-		log.Error().Err(err).Msg("Error loading AWS config")
-		return nil, err
+	cfg := aws.Config{
+		Region: config.GetString(EnvKeys.AwsRegion),
+		Credentials: credentials.NewStaticCredentialsProvider(
+			config.GetString(EnvKeys.AwsSecretAccessKey),
+			config.GetString(EnvKeys.AwsAccessKeyId),
+			"",
+		),
 	}
-
 	return s3.NewFromConfig(cfg), nil
 }
 
