@@ -30,7 +30,7 @@ func TestNewConfigReader_Success(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Test getting values using the reader (replace with your actual keys)
-	value := reader.GetString("logLevel")
+	value := reader.GetString(builder.EnvKeys.LogLevel)
 	assert.Equal(t, "debug", value)
 }
 
