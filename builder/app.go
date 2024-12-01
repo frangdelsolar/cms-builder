@@ -42,9 +42,7 @@ func (a *App) PluralName() string {
 func (a *App) RegisterValidator(fieldName string, validators ValidatorsList) {
 	lowerFieldName := strings.ToLower(fieldName)
 
-	for _, validator := range validators {
-		a.validators[lowerFieldName] = append(a.validators[lowerFieldName], validator)
-	}
+	a.validators[lowerFieldName] = append(a.validators[lowerFieldName], validators...)
 }
 
 // GetValidatorForField returns the validator function associated with the given field name.
@@ -90,7 +88,7 @@ func (a *App) Validate(instance interface{}) ValidationResult {
 		return errors
 	}
 
-	for key, _ := range jsonData {
+	for key := range jsonData {
 		validators := a.GetValidatorsForField(key)
 
 		for _, validator := range validators {

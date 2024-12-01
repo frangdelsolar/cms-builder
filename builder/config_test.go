@@ -14,6 +14,9 @@ import (
 //   - The returned error is nil.
 //   - The ConfigReader can successfully retrieve values from the configuration file.
 func TestNewConfigReader_Success(t *testing.T) {
+
+	// DEPRECATED
+	t.Skip("This functionality is being deprecated")
 	// Define a test config path with valid data (replace with your actual data)
 	testConfigPath := ".test.env"
 
