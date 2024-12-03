@@ -126,13 +126,14 @@ func init() {
 
 // Builder defines a central configuration and management structure for building applications.
 type Builder struct {
-	Admin    *Admin         // Reference to the created Admin instance
-	Config   *ConfigReader  // Reference to the Viper instance used for configuration
-	DB       *Database      // Reference to the connected database instance
-	Firebase *FirebaseAdmin // Reference to the created Firebase instance
-	Logger   *Logger        // Reference to the application's logger instance
-	Server   *Server        // Reference to the created Server instance
-	Store    Store          // Reference to the created Store instance
+	Admin     *Admin         // Reference to the created Admin instance
+	Config    *ConfigReader  // Reference to the Viper instance used for configuration
+	DB        *Database      // Reference to the connected database instance
+	Firebase  *FirebaseAdmin // Reference to the created Firebase instance
+	Logger    *Logger        // Reference to the application's logger instance
+	Server    *Server        // Reference to the created Server instance
+	Store     Store          // Reference to the created Store instance
+	Scheduler *Scheduler     // Reference to the created Scheduler instance
 }
 
 // NewBuilderInput defines the input parameters for the Builder constructor.
@@ -215,6 +216,13 @@ func NewBuilder(input *NewBuilderInput) (*Builder, error) {
 	err = builder.InitUploader()
 	if err != nil {
 		log.Err(err).Msg("Error initializing uploader")
+		return nil, err
+	}
+
+	// Scheduler
+	err = builder.InitScheduler()
+	if err != nil {
+		log.Err(err).Msg("Error initializing scheduler")
 		return nil, err
 	}
 
@@ -433,6 +441,27 @@ func (b *Builder) InitUploader() error {
 		"file-static",
 		false, // Authentication based on config
 	)
+
+	return nil
+}
+
+func (b *Builder) InitScheduler() error {
+
+	jobApp, err := b.Admin.Register(&Job{}, false)
+	if err != nil {
+		log.Error().Err(err).Msg("Error registering job app")
+		return err
+	}
+
+	log.Debug().Interface("jobApp", jobApp).Msg("Scheduler initialized")
+
+	s, err := NewScheduler(b)
+	if err != nil {
+		log.Error().Err(err).Msg("Error creating scheduler")
+		return err
+	}
+
+	b.Scheduler = s
 
 	return nil
 }
