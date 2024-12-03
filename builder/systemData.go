@@ -39,21 +39,6 @@ func (s *SystemData) Keys() []string {
 	return keys
 }
 
-// func getFieldName(tag, key string, s interface{}) (fieldname string) {
-// 	rt := reflect.TypeOf(s)
-// 	if rt.Kind() != reflect.Struct {
-// 		panic("bad type")
-// 	}
-// 	for i := 0; i < rt.NumField(); i++ {
-// 		f := rt.Field(i)
-// 		v := strings.Split(f.Tag.Get(key), ",")[0] // use split to ignore tag "options" like omitempty, etc.
-// 		if v == tag {
-// 			return f.Name
-// 		}
-// 	}
-// 	return ""
-// }
-
 // ID returns the ID of the SystemData as a string.
 //
 // Returns:

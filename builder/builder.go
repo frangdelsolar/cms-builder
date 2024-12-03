@@ -447,13 +447,23 @@ func (b *Builder) InitUploader() error {
 
 func (b *Builder) InitScheduler() error {
 
-	jobApp, err := b.Admin.Register(&Job{}, false)
+	_, err := b.Admin.Register(&SchedulerJobDefinition{}, false)
 	if err != nil {
 		log.Error().Err(err).Msg("Error registering job app")
 		return err
 	}
 
-	log.Debug().Interface("jobApp", jobApp).Msg("Scheduler initialized")
+	_, err = b.Admin.Register(&JobFrequency{}, false)
+	if err != nil {
+		log.Error().Err(err).Msg("Error registering job app")
+		return err
+	}
+
+	_, err = b.Admin.Register(&SchedulerTask{}, false)
+	if err != nil {
+		log.Error().Err(err).Msg("Error registering job app")
+		return err
+	}
 
 	s, err := NewScheduler(b)
 	if err != nil {
