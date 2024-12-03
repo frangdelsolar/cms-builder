@@ -44,8 +44,7 @@ func (db *Database) FindAll(entity interface{}, pagination *Pagination) *gorm.DB
 
 	// Retrieve total number of records
 	db.DB.Model(entity).Count(&pagination.Total)
-
-	return db.DB.Limit(limit).Offset(offset).Model(entity)
+	return db.DB.Limit(limit).Offset(offset).Find(entity)
 }
 
 func (db *Database) FindAllByUserId(entity interface{}, userId string, pagination *Pagination) *gorm.DB {
