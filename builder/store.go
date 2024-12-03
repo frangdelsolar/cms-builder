@@ -17,11 +17,25 @@ const (
 )
 
 type Store interface {
+	GetPath() string
 	StoreFile(cfg *UploaderConfig, fileName string, file multipart.File) (fileData FileData, err error)
-	DeleteFile(path string) error
+	DeleteFile(file FileData) error
+	ListFiles() error
 }
 
-type LocalStore struct{}
+type LocalStore struct {
+	Path string
+}
+
+func NewLocalStore(folder string) *LocalStore {
+	return &LocalStore{
+		Path: folder,
+	}
+}
+
+func (s *LocalStore) GetPath() string {
+	return s.Path
+}
 
 // StoreFile stores the given file in the local file system. It returns the
 // FileData for the stored file, including the path to the file and the URL
@@ -32,10 +46,7 @@ func (s *LocalStore) StoreFile(cfg *UploaderConfig, fileName string, file multip
 	fileData = FileData{}
 
 	// Create the uploads directory if it doesn't exist
-	uploadsDir := defaultUploadFolder
-	if cfg.Folder != "" {
-		uploadsDir = cfg.Folder
-	}
+	uploadsDir := s.GetPath()
 
 	log.Warn().Interface("config", cfg).Str("uploadsDir", uploadsDir).Msg("Storing file")
 
@@ -70,12 +81,12 @@ func (s *LocalStore) StoreFile(cfg *UploaderConfig, fileName string, file multip
 
 // DeleteFile takes a file path and deletes the file from disk.
 // It returns an error if the file cannot be deleted.
-func (s *LocalStore) DeleteFile(path string) error {
+func (s *LocalStore) DeleteFile(file FileData) error {
 	// Log the file path to be deleted
-	log.Warn().Msgf("Deleting file: %s", path)
+	log.Warn().Msgf("Deleting file: %s", file.Path)
 
 	// Attempt to delete the file
-	if err := os.Remove(path); err != nil {
+	if err := os.Remove(file.Path); err != nil {
 		// Log the error if the file cannot be deleted
 		log.Println("Error deleting file:", err)
 		return err
@@ -85,8 +96,29 @@ func (s *LocalStore) DeleteFile(path string) error {
 	return nil
 }
 
+func (s *LocalStore) ListFiles() error {
+	// Log the file path to be deleted
+	log.Warn().Msgf("Listing files from %s", s.Path)
+
+	files, err := os.ReadDir(s.Path)
+	if err != nil {
+		log.Error().Err(err).Msg("Error listing files")
+		return err
+	}
+
+	for _, file := range files {
+		log.Info().Str("fileName", file.Name()).Msg("Listing files from local.")
+	}
+	return nil
+}
+
 type S3Store struct {
 	Client *AwsManager
+	Path   string
+}
+
+func (s *S3Store) GetPath() string {
+	return s.Path
 }
 
 // StoreFile uploads the given file to an S3 bucket using the provided configuration.
@@ -101,11 +133,7 @@ func (s *S3Store) StoreFile(cfg *UploaderConfig, fileName string, file multipart
 	}
 
 	// Create the uploads directory if it doesn't exist
-	uploadsDir := defaultUploadFolder
-	if cfg.Folder != "" {
-		uploadsDir = cfg.Folder
-	}
-
+	uploadsDir := s.GetPath()
 	err = s.Client.UploadFile(uploadsDir, fileName, fileBytes)
 	if err != nil {
 		log.Error().Err(err).Msg("Error uploading file to S3")
@@ -124,6 +152,27 @@ func (s *S3Store) StoreFile(cfg *UploaderConfig, fileName string, file multipart
 	return fileData, nil
 }
 
+// DeleteFile deletes a file from the S3 bucket using the provided file path.
+// It calls the DeleteFile method of the AwsManager client.
+// If an error occurs during the deletion, it logs the error and returns it.
+func (s *S3Store) DeleteFile(file FileData) error {
+	err := s.Client.DeleteFile(file.Url)
+	if err != nil {
+		log.Error().Err(err).Msg("Error deleting file from S3")
+		return err
+	}
+
+	return nil
+}
+
+func (s *S3Store) ListFiles() error {
+	s.Client.ListFiles()
+	return nil
+}
+
+// getFileBytes reads the contents of a multipart.File into a byte array.
+// It defers calling Close() on the file and returns an error if there is an
+// error copying the file's contents.
 func getFileBytes(file multipart.File) ([]byte, error) {
 	defer file.Close()
 
@@ -136,17 +185,9 @@ func getFileBytes(file multipart.File) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func (s *S3Store) DeleteFile(path string) error {
-	err := s.Client.DeleteFile(path)
-	if err != nil {
-		log.Error().Err(err).Msg("Error deleting file from S3")
-		return err
-	}
-
-	return nil
-}
-
-func NewS3Store() (*S3Store, error) {
+// NewS3Store creates a new S3Store, which is used to store files in an AWS S3 bucket.
+// It returns an error if the AWS configuration is not ready.
+func NewS3Store(folder string) (*S3Store, error) {
 	client := AwsManager{
 		Bucket: config.GetString(EnvKeys.AwsBucket),
 	}
@@ -157,5 +198,6 @@ func NewS3Store() (*S3Store, error) {
 
 	return &S3Store{
 		Client: &client,
+		Path:   folder,
 	}, nil
 }

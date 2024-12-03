@@ -83,7 +83,7 @@ func TestAnonymousCanUploadAllowed(t *testing.T) {
 	assert.NotNil(t, result.Url, "Url should be something", result.Url)
 
 	// clean up
-	err = e.Store.DeleteFile(result.Path)
+	err = e.Store.DeleteFile(*result.FileData)
 	assert.NoError(t, err, "DeleteFile should not return an error")
 }
 func TestAnonymousCanNotUploadForbidden(t *testing.T) {

@@ -148,7 +148,7 @@ func (b *Builder) GetUploadDeleteHandler(cfg *UploaderConfig) HandlerFunc {
 		}
 
 		// Delete the file from disk
-		err = b.Store.DeleteFile(instance.Path)
+		err = b.Store.DeleteFile(*instance.FileData)
 		if err != nil {
 			log.Error().Err(err).Msg("Error deleting file")
 		}
@@ -231,7 +231,7 @@ func handleUploadError(store Store, fileData FileData, w http.ResponseWriter, er
 	log.Error().Err(err).Msgf("Error uploading file: %s. Rolling back...", fileData.Name)
 
 	// Attempt to delete the file from disk
-	store.DeleteFile(fileData.Path)
+	store.DeleteFile(fileData)
 
 	// Write a JSON response with the error message to the writer
 	// at the internal server error (500) status code.

@@ -362,14 +362,14 @@ func (b *Builder) InitStore() error {
 	var store Store
 	switch config.GetString(EnvKeys.StoreType) {
 	case string(StoreS3):
-		s3Store, err := NewS3Store()
+		s3Store, err := NewS3Store(config.GetString(EnvKeys.UploaderFolder))
 		if err != nil {
 			log.Error().Err(err).Msg("Error initializing S3 store")
 			return err
 		}
 		store = s3Store
 	case string(StoreLocal):
-		store = &LocalStore{}
+		store = NewLocalStore(config.GetString(EnvKeys.UploaderFolder))
 	default:
 		return errors.New("unknown store type: " + config.GetString(EnvKeys.StoreType))
 	}
