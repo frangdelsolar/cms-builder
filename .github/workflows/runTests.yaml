@@ -12,7 +12,8 @@ jobs:
     runs-on: ubuntu-latest 
 
     env:
-      ENVIRONMENT: cicd
+      APP_NAME: test
+      ENVIRONMENT: test
       LOG_LEVEL: debug
       LOG_WRITE_TO_FILE: false
       DB_FILE: ${{ github.workspace }}/cicd.db
