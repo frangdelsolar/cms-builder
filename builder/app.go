@@ -82,7 +82,7 @@ func (a *App) Validate(instance interface{}) ValidationResult {
 		Errors: make([]ValidationError, 0),
 	}
 
-	jsonData, err := jsonifyInterface(instance)
+	jsonData, err := JsonifyInterface(instance)
 
 	if err != nil {
 		return errors
@@ -103,9 +103,9 @@ func (a *App) Validate(instance interface{}) ValidationResult {
 	return errors
 }
 
-// jsonifyInterface takes an interface{} and attempts to convert it to a map[string]interface{}
+// JsonifyInterface takes an interface{} and attempts to convert it to a map[string]interface{}
 // via JSON marshaling and unmarshaling. If the conversion fails, it returns an error.
-func jsonifyInterface(instance interface{}) (map[string]interface{}, error) {
+func JsonifyInterface(instance interface{}) (map[string]interface{}, error) {
 	jsonData, err := json.Marshal(instance)
 	if err != nil {
 		return nil, err
@@ -425,8 +425,10 @@ func (a *App) ApiDelete(db *Database) HandlerFunc {
 			return
 		}
 
+		log.Info().Msgf("Deleted %s with ID %s", a.Name(), instanceId)
+
 		// Send a 204 No Content response
-		SendJsonResponse(w, http.StatusNoContent, nil, a.Name()+" deleted")
+		SendJsonResponse(w, http.StatusOK, nil, a.Name()+" deleted")
 	}
 }
 

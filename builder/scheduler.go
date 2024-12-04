@@ -113,27 +113,26 @@ func (s *Scheduler) RegisterJob(name string, frequency JobFrequency, function an
 					s.Builder.DB.Save(&task)
 
 					schedulerLogger.Info().
-						Str("JobId", jobID.String()).
-						Str("JobName", task.JobDefinition.Name).
-						Str("TaskId", task.GetIDString()).
+						Interface("Task", task).
 						Msgf("Running task")
 				},
 			),
 
 			gocron.AfterJobRunsWithError(
-				func(jobID uuid.UUID, jobName string, err error) {
-					err = s.UpdateTaskStatus(jobID.String(), TaskStatusFailed, err.Error())
+				func(jobID uuid.UUID, jobName string, jobError error) {
+					err = s.UpdateTaskStatus(jobID.String(), TaskStatusFailed, jobError.Error())
 					if err != nil {
-						log.Error().Err(err).Msg("Error updating task status")
+						log.Error().Err(jobError).Msg("Error updating task status")
 					}
 
 					task := s.GetSchedulerTask(jobID.String())
+					task.JobDefinition = jobDefinition
+
 					schedulerLogger.Error().
-						Err(err).
-						Str("JobId", jobID.String()).
-						Str("JobName", task.JobDefinition.Name).
-						Str("TaskId", task.GetIDString()).
+						Err(jobError).
+						Interface("Task", task).
 						Msgf("Task failed")
+
 				},
 			),
 			gocron.AfterJobRuns(
@@ -143,11 +142,10 @@ func (s *Scheduler) RegisterJob(name string, frequency JobFrequency, function an
 						log.Error().Err(err).Msg("Error updating task status")
 					}
 					task := s.GetSchedulerTask(jobID.String())
+					task.JobDefinition = jobDefinition
 
 					schedulerLogger.Info().
-						Str("JobId", jobID.String()).
-						Str("JobName", task.JobDefinition.Name).
-						Str("TaskId", task.GetIDString()).
+						Interface("Task", task).
 						Msgf("Task completed")
 				},
 			),
@@ -174,7 +172,6 @@ func (s *Scheduler) GetSchedulerTask(id string) *SchedulerTask {
 	var task SchedulerTask
 	q := "cron_job_id = '" + id + "'"
 	s.Builder.DB.Find(&task, q)
-
 	return &task
 }
 
@@ -224,7 +221,7 @@ func NewScheduler(b *Builder) (*Scheduler, error) {
 
 	var schedulerUser User
 	email := "scheduler@" + config.GetString(EnvKeys.BaseUrl)
-	q := "email = ''" + email
+	q := "email = '" + email + "'"
 	b.DB.Find(&schedulerUser, q)
 
 	if schedulerUser.ID == 0 {

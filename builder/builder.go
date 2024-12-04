@@ -9,6 +9,7 @@ const builderVersion = "1.3.3"
 
 // ConfigKeys define the keys used in the configuration file
 type ConfigKeys struct {
+	AppName               string `json:"appName"`               // App name
 	Environment           string `json:"environment"`           // Environment where the app is running
 	LogLevel              string `json:"logLevel"`              // Log level
 	LogFilePath           string `json:"logFilePath"`           // File path for logging
@@ -35,6 +36,7 @@ type ConfigKeys struct {
 
 // EnvKeys are the keys used in the configuration file
 var EnvKeys = ConfigKeys{
+	AppName:               "APP_NAME",
 	Environment:           "ENVIRONMENT",
 	LogLevel:              "LOG_LEVEL",
 	LogFilePath:           "LOG_FILE_PATH",
@@ -61,6 +63,7 @@ var EnvKeys = ConfigKeys{
 
 // defaultConfig defines the default values for the configuration
 var DefaultEnvValues = ConfigKeys{
+	AppName:               "Builder",
 	Environment:           "development",
 	LogLevel:              "debug",
 	LogFilePath:           "logs/default.log",
