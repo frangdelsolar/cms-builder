@@ -76,14 +76,14 @@ type Scheduler struct {
 
 func (s *Scheduler) RegisterJob(name string, frequency JobFrequency, function any, parameters ...any) error {
 
-	log.Debug().Interface("Frequency", frequency).Str("Name", name).Msg("Registering job")
-
 	// Update the system data of the frequency
 	frequency.SystemData = &SystemData{
 		CreatedByID: s.User.ID,
 		CreatedBy:   s.User,
 	}
 	s.Builder.DB.Save(&frequency)
+
+	log.Debug().Interface("Frequency", frequency).Str("Name", name).Msg("Registering job")
 
 	jobDefinition, err := s.CreateJobDefinition(name, frequency)
 	if err != nil {
