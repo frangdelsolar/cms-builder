@@ -5,10 +5,11 @@ import (
 	"fmt"
 )
 
-const builderVersion = "1.3.1"
+const builderVersion = "1.3.3"
 
 // ConfigKeys define the keys used in the configuration file
 type ConfigKeys struct {
+	AppName               string `json:"appName"`               // App name
 	Environment           string `json:"environment"`           // Environment where the app is running
 	LogLevel              string `json:"logLevel"`              // Log level
 	LogFilePath           string `json:"logFilePath"`           // File path for logging
@@ -29,12 +30,12 @@ type ConfigKeys struct {
 	AwsRegion             string `json:"awsRegion"`             // AWS region
 	AwsSecretAccessKey    string `json:"awsSecretAccessKey"`    // AWS secret access key
 	AwsAccessKeyId        string `json:"awsAccessKeyId"`        // AWS access key id
-	StaticPath            string `json:"staticPath"`            // Static path
 	BaseUrl               string `json:"baseUrl"`               // where the app is running
 }
 
 // EnvKeys are the keys used in the configuration file
 var EnvKeys = ConfigKeys{
+	AppName:               "APP_NAME",
 	Environment:           "ENVIRONMENT",
 	LogLevel:              "LOG_LEVEL",
 	LogFilePath:           "LOG_FILE_PATH",
@@ -55,12 +56,12 @@ var EnvKeys = ConfigKeys{
 	AwsRegion:             "AWS_REGION",
 	AwsSecretAccessKey:    "AWS_SECRET_ACCESS_KEY",
 	AwsAccessKeyId:        "AWS_ACCESS_KEY_ID",
-	StaticPath:            "STATIC_PATH",
 	BaseUrl:               "BASE_URL",
 }
 
 // defaultConfig defines the default values for the configuration
 var DefaultEnvValues = ConfigKeys{
+	AppName:               "Builder",
 	Environment:           "development",
 	LogLevel:              "debug",
 	LogFilePath:           "logs/default.log",
@@ -81,7 +82,6 @@ var DefaultEnvValues = ConfigKeys{
 	AwsRegion:             "us-east-1",
 	AwsSecretAccessKey:    "secretAccessKey",
 	AwsAccessKeyId:        "accessKeyId",
-	StaticPath:            "static",
 	BaseUrl:               "http://0.0.0.0:80",
 }
 
@@ -126,13 +126,14 @@ func init() {
 
 // Builder defines a central configuration and management structure for building applications.
 type Builder struct {
-	Admin    *Admin         // Reference to the created Admin instance
-	Config   *ConfigReader  // Reference to the Viper instance used for configuration
-	DB       *Database      // Reference to the connected database instance
-	Firebase *FirebaseAdmin // Reference to the created Firebase instance
-	Logger   *Logger        // Reference to the application's logger instance
-	Server   *Server        // Reference to the created Server instance
-	Store    Store          // Reference to the created Store instance
+	Admin     *Admin         // Reference to the created Admin instance
+	Config    *ConfigReader  // Reference to the Viper instance used for configuration
+	DB        *Database      // Reference to the connected database instance
+	Firebase  *FirebaseAdmin // Reference to the created Firebase instance
+	Logger    *Logger        // Reference to the application's logger instance
+	Server    *Server        // Reference to the created Server instance
+	Store     Store          // Reference to the created Store instance
+	Scheduler *Scheduler     // Reference to the created Scheduler instance
 }
 
 // NewBuilderInput defines the input parameters for the Builder constructor.
@@ -140,6 +141,7 @@ type NewBuilderInput struct {
 	ReadConfigFromEnv    bool   // Whether to read the configuration from environment variables
 	ReadConfigFromFile   bool   // Whether to read the configuration from a file
 	ReaderConfigFilePath string // Path to the configuration file
+	InitializeScheduler  bool   // Whether to initialize the scheduler
 }
 
 // NewBuilder creates a new Builder instance.
@@ -216,6 +218,14 @@ func NewBuilder(input *NewBuilderInput) (*Builder, error) {
 	if err != nil {
 		log.Err(err).Msg("Error initializing uploader")
 		return nil, err
+	}
+
+	if input.InitializeScheduler {
+		err = builder.InitScheduler()
+		if err != nil {
+			log.Err(err).Msg("Error initializing scheduler")
+			return nil, err
+		}
 	}
 
 	return builder, nil
@@ -362,14 +372,14 @@ func (b *Builder) InitStore() error {
 	var store Store
 	switch config.GetString(EnvKeys.StoreType) {
 	case string(StoreS3):
-		s3Store, err := NewS3Store()
+		s3Store, err := NewS3Store(config.GetString(EnvKeys.UploaderFolder))
 		if err != nil {
 			log.Error().Err(err).Msg("Error initializing S3 store")
 			return err
 		}
 		store = s3Store
 	case string(StoreLocal):
-		store = &LocalStore{}
+		store = NewLocalStore(config.GetString(EnvKeys.UploaderFolder))
 	default:
 		return errors.New("unknown store type: " + config.GetString(EnvKeys.StoreType))
 	}
@@ -388,16 +398,10 @@ func (b *Builder) InitStore() error {
 //
 // If an error occurs while registering the Upload app, it logs the error and panics.
 func (b *Builder) InitUploader() error {
-	staticPath := config.GetString(EnvKeys.StaticPath)
-	if staticPath == "" {
-		staticPath = DefaultEnvValues.StaticPath
-	}
-
 	cfg := &UploaderConfig{
 		MaxSize:            config.GetInt64(config.GetString(EnvKeys.UploaderMaxSize)),
 		SupportedMimeTypes: config.GetStringSlice(EnvKeys.UploaderSupportedMime),
 		Folder:             config.GetString(config.GetString(EnvKeys.UploaderFolder)),
-		StaticPath:         staticPath,
 	}
 
 	// Register the Upload app without authentication
@@ -412,7 +416,7 @@ func (b *Builder) InitUploader() error {
 
 	// Add route for uploading new files
 	b.Server.AddRoute(
-		route,
+		route+"/upload",
 		b.GetUploadPostHandler(cfg),
 		"file-new",
 		true, // Requires authentication
@@ -426,13 +430,44 @@ func (b *Builder) InitUploader() error {
 		true, // Requires authentication
 	)
 
-	// Add route for serving uploaded files
+	// Download route
 	b.Server.AddRoute(
-		"/"+staticPath+"/{path:.*}",
+		route+"/{path:.*}",
 		b.GetStaticHandler(cfg),
 		"file-static",
-		false, // Authentication based on config
+		true, // Authentication based on config
 	)
+
+	return nil
+}
+
+func (b *Builder) InitScheduler() error {
+
+	_, err := b.Admin.Register(&SchedulerJobDefinition{}, false)
+	if err != nil {
+		log.Error().Err(err).Msg("Error registering job app")
+		return err
+	}
+
+	_, err = b.Admin.Register(&JobFrequency{}, false)
+	if err != nil {
+		log.Error().Err(err).Msg("Error registering job app")
+		return err
+	}
+
+	_, err = b.Admin.Register(&SchedulerTask{}, false)
+	if err != nil {
+		log.Error().Err(err).Msg("Error registering job app")
+		return err
+	}
+
+	s, err := NewScheduler(b)
+	if err != nil {
+		log.Error().Err(err).Msg("Error creating scheduler")
+		return err
+	}
+
+	b.Scheduler = s
 
 	return nil
 }

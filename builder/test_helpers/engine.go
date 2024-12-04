@@ -62,7 +62,8 @@ func GetDefaultEngine() (TestEngineServices, error) {
 	}
 
 	input := &builder.NewBuilderInput{
-		ReadConfigFromEnv: true,
+		ReadConfigFromEnv:   true,
+		InitializeScheduler: false,
 	}
 
 	var err error

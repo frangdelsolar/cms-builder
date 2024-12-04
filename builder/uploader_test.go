@@ -24,9 +24,9 @@ func TestUploaderGetsCreated(t *testing.T) {
 
 	t.Log("Testing Upload routes are registered")
 	expectedRoutes := []builder.RouteHandler{
-		builder.NewRouteHandler("/file", handler, "file-new", true),
+		builder.NewRouteHandler("/file/upload", handler, "file-new", true),
 		builder.NewRouteHandler("/file/{id}/delete", handler, "file-delete", true),
-		builder.NewRouteHandler("/static/{path:.*}", handler, "file-static", false), // static path is configurable as env var
+		builder.NewRouteHandler("/file/{path:.*}", handler, "file-static", true), // static path is configurable as env var
 	}
 
 	routes := e.Server.GetRoutes()
@@ -83,7 +83,7 @@ func TestAnonymousCanUploadAllowed(t *testing.T) {
 	assert.NotNil(t, result.Url, "Url should be something", result.Url)
 
 	// clean up
-	err = e.Store.DeleteFile(result.Path)
+	err = e.Store.DeleteFile(*result.FileData)
 	assert.NoError(t, err, "DeleteFile should not return an error")
 }
 func TestAnonymousCanNotUploadForbidden(t *testing.T) {

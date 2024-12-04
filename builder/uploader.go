@@ -148,7 +148,7 @@ func (b *Builder) GetUploadDeleteHandler(cfg *UploaderConfig) HandlerFunc {
 		}
 
 		// Delete the file from disk
-		err = b.Store.DeleteFile(instance.Path)
+		err = b.Store.DeleteFile(*instance.FileData)
 		if err != nil {
 			log.Error().Err(err).Msg("Error deleting file")
 		}
@@ -174,7 +174,7 @@ func (b *Builder) GetUploadDeleteHandler(cfg *UploaderConfig) HandlerFunc {
 // under the path "/public/static/" if config.Authenticate is false, or
 // "/private/static/" if config.Authenticate is true.
 func (b *Builder) GetStaticHandler(cfg *UploaderConfig) HandlerFunc {
-	prefix := config.GetString(EnvKeys.BaseUrl) + "/" + config.GetString(EnvKeys.StaticPath) + "/"
+	prefix := config.GetString(EnvKeys.BaseUrl) + "/file/"
 	handler := http.StripPrefix(prefix, http.FileServer(http.Dir(cfg.Folder)))
 	return func(w http.ResponseWriter, r *http.Request) {
 		handler.ServeHTTP(w, r)
@@ -231,7 +231,7 @@ func handleUploadError(store Store, fileData FileData, w http.ResponseWriter, er
 	log.Error().Err(err).Msgf("Error uploading file: %s. Rolling back...", fileData.Name)
 
 	// Attempt to delete the file from disk
-	store.DeleteFile(fileData.Path)
+	store.DeleteFile(fileData)
 
 	// Write a JSON response with the error message to the writer
 	// at the internal server error (500) status code.
