@@ -78,6 +78,13 @@ func (s *Scheduler) RegisterJob(name string, frequency JobFrequency, function an
 
 	log.Debug().Interface("Frequency", frequency).Str("Name", name).Msg("Registering job")
 
+	// Update the system data of the frequency
+	frequency.SystemData = &SystemData{
+		CreatedByID: s.User.ID,
+		CreatedBy:   s.User,
+	}
+	s.Builder.DB.Save(&frequency)
+
 	jobDefinition, err := s.CreateJobDefinition(name, frequency)
 	if err != nil {
 		log.Error().Err(err).Msg("Error creating job")
@@ -177,15 +184,13 @@ func (s *Scheduler) GetSchedulerTask(id string) *SchedulerTask {
 
 func (s *Scheduler) CreateJobDefinition(name string, frequency JobFrequency) (*SchedulerJobDefinition, error) {
 	db := s.Builder.DB
-	frequency.SystemData = &SystemData{
-		CreatedByID: s.User.ID,
-	}
 	localJob := &SchedulerJobDefinition{
 		SystemData: &SystemData{
 			CreatedByID: s.User.ID,
 		},
-		Name:      name,
-		Frequency: &frequency,
+		Name:        name,
+		Frequency:   &frequency,
+		FrequencyId: frequency.SystemData.GetIDString(),
 	}
 	if err := db.Create(&localJob).Error; err != nil {
 		return nil, err
