@@ -80,6 +80,8 @@ func (s *Scheduler) RegisterJob(name string, frequency JobFrequency, function an
 	frequency.SystemData = &SystemData{
 		CreatedByID: s.User.ID,
 		CreatedBy:   s.User,
+		UpdatedByID: s.User.ID,
+		UpdatedBy:   s.User,
 	}
 	s.Builder.DB.Save(&frequency)
 
@@ -110,6 +112,9 @@ func (s *Scheduler) RegisterJob(name string, frequency JobFrequency, function an
 					task := SchedulerTask{
 						SystemData: &SystemData{
 							CreatedByID: s.User.ID,
+							CreatedBy:   s.User,
+							UpdatedByID: s.User.ID,
+							UpdatedBy:   s.User,
 						},
 						JobDefinitionId: jobDefinition.GetIDString(),
 						JobDefinition:   jobDefinition,
@@ -187,6 +192,9 @@ func (s *Scheduler) CreateJobDefinition(name string, frequency JobFrequency) (*S
 	localJob := &SchedulerJobDefinition{
 		SystemData: &SystemData{
 			CreatedByID: s.User.ID,
+			CreatedBy:   s.User,
+			UpdatedByID: s.User.ID,
+			UpdatedBy:   s.User,
 		},
 		Name:        name,
 		Frequency:   &frequency,
