@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-const builderVersion = "1.3.3"
+const builderVersion = "1.3.4"
 
 // ConfigKeys define the keys used in the configuration file
 type ConfigKeys struct {
