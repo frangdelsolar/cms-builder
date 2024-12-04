@@ -1,4 +1,4 @@
-# Go App Builder v1.3.4
+# Go App Builder v1.3.6
 This is a Go library that provides a foundation for building applications. It offers functionalities for:
 
 - [**Configuration Management**](#configuration-management): Loads configuration options from a YAML file.
