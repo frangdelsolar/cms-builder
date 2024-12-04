@@ -24,9 +24,9 @@ func TestUploaderGetsCreated(t *testing.T) {
 
 	t.Log("Testing Upload routes are registered")
 	expectedRoutes := []builder.RouteHandler{
-		builder.NewRouteHandler("/file", handler, "file-new", true),
+		builder.NewRouteHandler("/file/upload", handler, "file-new", true),
 		builder.NewRouteHandler("/file/{id}/delete", handler, "file-delete", true),
-		builder.NewRouteHandler("/static/{path:.*}", handler, "file-static", false), // static path is configurable as env var
+		builder.NewRouteHandler("/file/{path:.*}", handler, "file-static", true), // static path is configurable as env var
 	}
 
 	routes := e.Server.GetRoutes()

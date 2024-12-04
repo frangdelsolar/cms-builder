@@ -146,11 +146,12 @@ func (a *AwsManager) DownloadFile(fileName string) ([]byte, error) {
 	return data, nil
 }
 
-func (a *AwsManager) ListFiles() {
+func (a *AwsManager) ListFiles() ([]string, error) {
+	output := []string{}
 	client, err := a.GetClient()
 	if err != nil {
 		log.Error().Err(err).Msg("Error getting client")
-		return
+		return output, err
 	}
 
 	ctx := context.Background()
@@ -159,10 +160,12 @@ func (a *AwsManager) ListFiles() {
 	})
 	if err != nil {
 		log.Error().Err(err).Msg("Error listing files from S3")
-		return
+		return output, err
 	}
 
 	for _, obj := range resp.Contents {
-		log.Info().Str("fileName", *obj.Key).Msg("Listing files from S3.")
+		output = append(output, *obj.Key)
 	}
+
+	return output, nil
 }

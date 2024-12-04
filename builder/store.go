@@ -20,7 +20,7 @@ type Store interface {
 	GetPath() string
 	StoreFile(cfg *UploaderConfig, fileName string, file multipart.File) (fileData FileData, err error)
 	DeleteFile(file FileData) error
-	ListFiles() error
+	ListFiles() ([]string, error)
 }
 
 type LocalStore struct {
@@ -74,7 +74,7 @@ func (s *LocalStore) StoreFile(cfg *UploaderConfig, fileName string, file multip
 		return fileData, err
 	}
 
-	fileData.Url = filepath.Join(config.GetString(EnvKeys.BaseUrl), cfg.StaticPath, fileData.Name)
+	fileData.Url = filepath.Join(config.GetString(EnvKeys.BaseUrl), "file", fileData.Name)
 
 	return fileData, nil
 }
@@ -96,20 +96,19 @@ func (s *LocalStore) DeleteFile(file FileData) error {
 	return nil
 }
 
-func (s *LocalStore) ListFiles() error {
-	// Log the file path to be deleted
+func (s *LocalStore) ListFiles() ([]string, error) {
 	log.Warn().Msgf("Listing files from %s", s.Path)
-
+	output := []string{}
 	files, err := os.ReadDir(s.Path)
 	if err != nil {
 		log.Error().Err(err).Msg("Error listing files")
-		return err
+		return output, err
 	}
 
 	for _, file := range files {
-		log.Info().Str("fileName", file.Name()).Msg("Listing files from local.")
+		output = append(output, file.Name())
 	}
-	return nil
+	return output, nil
 }
 
 type S3Store struct {
@@ -156,6 +155,7 @@ func (s *S3Store) StoreFile(cfg *UploaderConfig, fileName string, file multipart
 // It calls the DeleteFile method of the AwsManager client.
 // If an error occurs during the deletion, it logs the error and returns it.
 func (s *S3Store) DeleteFile(file FileData) error {
+	log.Warn().Interface("file", file).Msg("Deleting file from S3")
 	err := s.Client.DeleteFile(file.Url)
 	if err != nil {
 		log.Error().Err(err).Msg("Error deleting file from S3")
@@ -165,9 +165,8 @@ func (s *S3Store) DeleteFile(file FileData) error {
 	return nil
 }
 
-func (s *S3Store) ListFiles() error {
-	s.Client.ListFiles()
-	return nil
+func (s *S3Store) ListFiles() ([]string, error) {
+	return s.Client.ListFiles()
 }
 
 // getFileBytes reads the contents of a multipart.File into a byte array.

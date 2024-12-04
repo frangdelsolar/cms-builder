@@ -30,7 +30,6 @@ type ConfigKeys struct {
 	AwsRegion             string `json:"awsRegion"`             // AWS region
 	AwsSecretAccessKey    string `json:"awsSecretAccessKey"`    // AWS secret access key
 	AwsAccessKeyId        string `json:"awsAccessKeyId"`        // AWS access key id
-	StaticPath            string `json:"staticPath"`            // Static path
 	BaseUrl               string `json:"baseUrl"`               // where the app is running
 }
 
@@ -57,7 +56,6 @@ var EnvKeys = ConfigKeys{
 	AwsRegion:             "AWS_REGION",
 	AwsSecretAccessKey:    "AWS_SECRET_ACCESS_KEY",
 	AwsAccessKeyId:        "AWS_ACCESS_KEY_ID",
-	StaticPath:            "STATIC_PATH",
 	BaseUrl:               "BASE_URL",
 }
 
@@ -84,7 +82,6 @@ var DefaultEnvValues = ConfigKeys{
 	AwsRegion:             "us-east-1",
 	AwsSecretAccessKey:    "secretAccessKey",
 	AwsAccessKeyId:        "accessKeyId",
-	StaticPath:            "static",
 	BaseUrl:               "http://0.0.0.0:80",
 }
 
@@ -144,6 +141,7 @@ type NewBuilderInput struct {
 	ReadConfigFromEnv    bool   // Whether to read the configuration from environment variables
 	ReadConfigFromFile   bool   // Whether to read the configuration from a file
 	ReaderConfigFilePath string // Path to the configuration file
+	InitializeScheduler  bool   // Whether to initialize the scheduler
 }
 
 // NewBuilder creates a new Builder instance.
@@ -222,11 +220,12 @@ func NewBuilder(input *NewBuilderInput) (*Builder, error) {
 		return nil, err
 	}
 
-	// Scheduler
-	err = builder.InitScheduler()
-	if err != nil {
-		log.Err(err).Msg("Error initializing scheduler")
-		return nil, err
+	if input.InitializeScheduler {
+		err = builder.InitScheduler()
+		if err != nil {
+			log.Err(err).Msg("Error initializing scheduler")
+			return nil, err
+		}
 	}
 
 	return builder, nil
@@ -399,16 +398,10 @@ func (b *Builder) InitStore() error {
 //
 // If an error occurs while registering the Upload app, it logs the error and panics.
 func (b *Builder) InitUploader() error {
-	staticPath := config.GetString(EnvKeys.StaticPath)
-	if staticPath == "" {
-		staticPath = DefaultEnvValues.StaticPath
-	}
-
 	cfg := &UploaderConfig{
 		MaxSize:            config.GetInt64(config.GetString(EnvKeys.UploaderMaxSize)),
 		SupportedMimeTypes: config.GetStringSlice(EnvKeys.UploaderSupportedMime),
 		Folder:             config.GetString(config.GetString(EnvKeys.UploaderFolder)),
-		StaticPath:         staticPath,
 	}
 
 	// Register the Upload app without authentication
@@ -423,7 +416,7 @@ func (b *Builder) InitUploader() error {
 
 	// Add route for uploading new files
 	b.Server.AddRoute(
-		route,
+		route+"/upload",
 		b.GetUploadPostHandler(cfg),
 		"file-new",
 		true, // Requires authentication
@@ -437,12 +430,12 @@ func (b *Builder) InitUploader() error {
 		true, // Requires authentication
 	)
 
-	// Add route for serving uploaded files
+	// Download route
 	b.Server.AddRoute(
-		"/"+staticPath+"/{path:.*}",
+		route+"/{path:.*}",
 		b.GetStaticHandler(cfg),
 		"file-static",
-		false, // Authentication based on config
+		true, // Authentication based on config
 	)
 
 	return nil

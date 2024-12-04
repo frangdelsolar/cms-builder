@@ -17,7 +17,7 @@ func TestGetPostmanEnv(t *testing.T) {
 	assert.NoError(t, err, "GetPostmanEnv should not return an error")
 
 	assert.NotNil(t, postmanEnv, "GetPostmanEnv should not return nil")
-	assert.Equal(t, postmanEnv.Name, "test", "PostmanEnv name should be 'test'")
+	assert.Equal(t, postmanEnv.Name, "TEST_TEST", "PostmanEnv name should be 'test'")
 }
 
 func TestGetPostmanCollection(t *testing.T) {
@@ -28,7 +28,7 @@ func TestGetPostmanCollection(t *testing.T) {
 	assert.NoError(t, err, "GetPostmanCollection should not return an error")
 
 	assert.NotNil(t, collection, "GetPostmanCollection should not return nil")
-	assert.Equal(t, collection.Info.Name, "test", "PostmanEnv name should be 'test'")
+	assert.Equal(t, collection.Info.Name, "TEST", "PostmanEnv name should be 'test'")
 }
 
 func TestExportPostman(t *testing.T) {

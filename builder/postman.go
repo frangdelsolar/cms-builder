@@ -61,11 +61,19 @@ type PostmanRequestOptions struct {
 	Raw PostmanRequestOptionsRaw `json:"options"`
 }
 
+type PostmanFormDataItem struct {
+	Key   string `json:"key"`
+	Type  string `json:"type"`
+	Src   string `json:"src"`
+	Value string `json:"value"`
+}
+
 // PostmanRequestBody struct for request body content
 type PostmanRequestBody struct {
-	Mode    string                `json:"mode"`
-	Raw     string                `json:"raw"`
-	Options PostmanRequestOptions `json:"options"`
+	Mode     string                `json:"mode"`
+	Raw      string                `json:"raw"`
+	Options  PostmanRequestOptions `json:"options"`
+	FormData []PostmanFormDataItem `json:"formdata"`
 }
 
 type PostmanBearer struct {
@@ -254,6 +262,65 @@ func (b *Builder) GetPostmanCollection() (*PostmanCollection, error) {
 								Value: "{{" + keyFirebaseApiKey + "}}",
 							},
 						},
+					},
+				},
+				Response: []interface{}{},
+			},
+		},
+	})
+
+	// Files
+	collection.Item = append(collection.Item, PostmanCollectionItem{
+		Name: "File",
+		Item: []PostmanCollectionItemItem{
+			{
+				Name: "Upload File",
+				Request: PostmanCollectionItemItemRequest{
+					Method: "POST",
+					Header: []PostmanHeader{},
+					Body: PostmanRequestBody{
+						Mode: "formdata",
+						FormData: []PostmanFormDataItem{
+							{
+								Key:   "file",
+								Type:  "file",
+								Value: "<FILE_NAME>",
+							},
+						},
+					},
+					URL: PostmanRequestURL{
+						Raw:   "{{URL}}/private/files/upload",
+						Host:  []string{"{{URL}}"},
+						Path:  []string{"private", "files", "upload"},
+						Query: []PostmanQuery{},
+					},
+				},
+				Response: []interface{}{},
+			},
+			{
+				Name: "Download File",
+				Request: PostmanCollectionItemItemRequest{
+					Method: "GET",
+					Header: []PostmanHeader{},
+					URL: PostmanRequestURL{
+						Raw:   "{{URL}}/private/files/<FILE_NAME>",
+						Host:  []string{"{{URL}}"},
+						Path:  []string{"private", "files", "<FILE_NAME>"},
+						Query: []PostmanQuery{},
+					},
+				},
+				Response: []interface{}{},
+			},
+			{
+				Name: "Delete File",
+				Request: PostmanCollectionItemItemRequest{
+					Method: "DELETE",
+					Header: []PostmanHeader{},
+					URL: PostmanRequestURL{
+						Raw:   "{{URL}}/private/files/<FILE_NAME>",
+						Host:  []string{"{{URL}}"},
+						Path:  []string{"private", "files", "<FILE_NAME>"},
+						Query: []PostmanQuery{},
 					},
 				},
 				Response: []interface{}{},
