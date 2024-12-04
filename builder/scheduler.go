@@ -177,6 +177,7 @@ func (s *Scheduler) GetSchedulerTask(id string) *SchedulerTask {
 
 func (s *Scheduler) CreateJobDefinition(name string, frequency JobFrequency) (*SchedulerJobDefinition, error) {
 	db := s.Builder.DB
+	frequency.SystemData.CreatedByID = s.User.ID
 	localJob := &SchedulerJobDefinition{
 		SystemData: &SystemData{
 			CreatedByID: s.User.ID,
@@ -231,6 +232,8 @@ func NewScheduler(b *Builder) (*Scheduler, error) {
 		}
 		b.DB.Create(&schedulerUser)
 	}
+
+	log.Info().Interface("Scheduler user", schedulerUser).Msg("Scheduler user created")
 
 	s, err := gocron.NewScheduler(
 		gocron.WithLogger(gocron.NewLogger(gocron.LogLevelDebug)),
