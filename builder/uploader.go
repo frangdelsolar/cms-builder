@@ -12,10 +12,6 @@ import (
 	"github.com/gorilla/mux"
 )
 
-const (
-	defaultUploadFolder = "uploads"
-)
-
 type FileData struct {
 	Name string `json:"fileName"`
 	Path string `json:"filePath"` // relative path

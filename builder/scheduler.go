@@ -244,7 +244,7 @@ func NewScheduler(b *Builder) (*Scheduler, error) {
 		b.DB.Create(&schedulerUser)
 	}
 
-	log.Info().Interface("User user", schedulerUser).Msg("Scheduler")
+	log.Info().Interface("User", schedulerUser).Msg("Scheduler")
 
 	s, err := gocron.NewScheduler(
 		gocron.WithLogger(gocron.NewLogger(gocron.LogLevelDebug)),

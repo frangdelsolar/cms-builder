@@ -5,18 +5,92 @@ import (
 	"github.com/frangdelsolar/{{projectName}}"
 )
 
+
+var log *builder.Logger
+var config *builder.ConfigReader
+
 func main() {
-	engine, _ := builder.NewDefaultEngine()
+	prepareEnvironment()
 
-	log := engine.Log
-	log.Info().Msg("Builder initialized")
+	e, err := builder.NewBuilder(&builder.NewBuilderInput{
+		ReadConfigFromEnv:   true,
+		InitializeScheduler: true,
+	})
+	if err != nil {
+		panic(err)
+	}
 
-	svr := engine.Server
+	// Setup the config reader and the logger globally
+	log = e.Logger
+	config = e.Config
 
-	admin := engine.Admin
-	exampleApp, _ := admin.Register(&{{projectName}}.Example{}, false)
-	exampleApp.RegisterValidator("title", {{projectName}}.ExampleTitleValidator)
+	baseUrl := config.GetString(builder.EnvKeys.BaseUrl)
+
+	log.Info().Str("Base URL", baseUrl).Msg("Project initialized")
+
+
+	// Create the postman collection
+	err = e.ExportPostman()
+	if err != nil {
+		log.Error().Err(err).Msg("Error exporting postman files")
+	}
+
+	// Model registering example
+	exampleApp, _ := e.Admin.Register(&{{projectName}}.Example{}, false)
+	exampleApp.RegisterValidator("title", builder.ValidatorsList{builder.RequiredValidator, {{projectName}}.ExampleTitleValidator})
+
+	// Scheduler example
+	// Create a job that runs every day and cleans up the files
+	err = e.Scheduler.RegisterJob(
+		"clean-files",
+		// builder.JobFrequency{
+		// 	FrequencyType: builder.JobFrequencyTypeCron,
+		// 	CronExpr:      "55 22 * * *",
+		// },
+		builder.JobFrequency{
+			FrequencyType: builder.JobFrequencyTypeImmediate,
+		},
+		func (name string) error {
+			
+			log.Info().Msgf("Hello %s!", name)
+			return nil
+		},
+		"Your name goes here!",
+	)
+	if err != nil {
+		log.Error().Err(err).Msg("Error registering job")
+	}
 
 	log.Debug().Msg("Initializing server")
-	svr.Run()
+	e.Server.Run()
+
+}
+
+// This will be useful if using divio as a server.
+// Prepares the environment variables for the application.
+//
+// If the ENVIRONMENT variable is not set, it defaults to "development".
+// If the ENVIRONMENT variable is set to "stage" or "production", it loads
+// the environment variables from the system environment variables.
+// Otherwise, it loads the environment variables from a .env file with the
+// same name as the value of the ENVIRONMENT variable.
+func prepareEnvironment() {
+	environment := os.Getenv("ENVIRONMENT")
+	fmt.Printf("ENVIRONMENT: %s\n", environment)
+
+	if environment == "" {
+		environment = "development"
+	} else if environment == "stage" || environment == "production" {
+		os.Setenv("DB_URL", os.Getenv("DEFAULT_DATABASE_DSN"))
+		os.Setenv("AWS_BUCKET", os.Getenv("DEFAULT_STORAGE_BUCKET"))
+		os.Setenv("AWS_SECRET_ACCESS_KEY", os.Getenv("DEFAULT_STORAGE_SECRET_ACCESS_KEY"))
+		os.Setenv("AWS_REGION", os.Getenv("DEFAULT_STORAGE_REGION"))
+		os.Setenv("AWS_ACCESS_KEY_ID", os.Getenv("DEFAULT_STORAGE_ACCESS_KEY_ID"))
+		os.Setenv("CSRF_TOKEN", os.Getenv("SECRET_KEY"))
+	}
+
+	envFileName := "." + environment + ".env"
+	if environment == "development" || environment == "test" || environment == "cicd" {
+		godotenv.Load(envFileName)
+	}
 }

@@ -2,13 +2,13 @@ up:
 	docker-compose up
 
 build:
-	docker build . -t {{PROJECT_NAME}}
+	ENVIRONMENT=docker docker build . -t fileserver 
 
 run-docker:
-	docker run -p 8000:8000 {{PROJECT_NAME}}
+	ENVIRONMENT=docker docker run -p 8000:80 fileserver
 
 run:
-	go run cmd/main.go
+	ENVIRONMENT=development go run ./server/main.go
 
 test: 
 	$(MAKE) logs
@@ -28,8 +28,12 @@ clean:
 
 .PHONY: logs
 logs:
-	cd ../scripts && python3 find_logs.py
+	cd scripts && python3 find_logs.py
 
 .PHONY: fix
 fix:
-	cd ../scripts && python3 find_todos.py
+	cd scripts && python3 find_todos.py
+
+.PHONY: tidy
+tidy:
+	go mod tidy

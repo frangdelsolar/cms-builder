@@ -6,3 +6,8 @@ coverage.out
 covprofile
 
 /vendor*
+/uploads*
+/data*
+/tmp*
+/.aws*
+/postman*
