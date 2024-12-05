@@ -1,13 +1,15 @@
-*/logs*
+*.env*
 *.log
 *.db
-config.yaml
-coverage.out
-covprofile
 
+/logs*
 /vendor*
 /uploads*
 /data*
 /tmp*
 /.aws*
 /postman*
+
+# coveralls
+coverage.out
+covprofile

@@ -1,4 +1,4 @@
-package {{projectName}}
+package main
 
 import (
 	"fmt"

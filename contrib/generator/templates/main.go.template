@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 	"github.com/frangdelsolar/cms/builder"
-	"github.com/frangdelsolar/{{projectName}}"
+	"github.com/joho/godotenv"
 )
 
 
@@ -38,13 +38,13 @@ func main() {
 	}
 
 	// Model registering example
-	exampleApp, _ := e.Admin.Register(&{{projectName}}.Example{}, false)
-	exampleApp.RegisterValidator("title", builder.ValidatorsList{builder.RequiredValidator, {{projectName}}.ExampleTitleValidator})
+	exampleApp, _ := e.Admin.Register(&Example{}, false)
+	exampleApp.RegisterValidator("title", builder.ValidatorsList{builder.RequiredValidator, ExampleTitleValidator})
 
 	// Scheduler example
 	// Create a job that runs every day and cleans up the files
 	err = e.Scheduler.RegisterJob(
-		"clean-files",
+		"hello-you",
 		// builder.JobFrequency{
 		// 	FrequencyType: builder.JobFrequencyTypeCron,
 		// 	CronExpr:      "55 22 * * *",
