@@ -18,7 +18,7 @@ type Example struct {
 //
 // Returns:
 // - error: an error if the title is empty.
-func ExampleTitleValidator(fieldName string, instance map[string]interface{}, output *builder.FieldValidationError) *builder.FieldValidationError {
+func ExampleTitleValidator(fieldName string, instance builder.EntityData, output *builder.ValidationError) *builder.ValidationError {
 	title := fmt.Sprint(instance[fieldName])
 	if title == "" {
 		output.Error = fieldName + " cannot be empty"

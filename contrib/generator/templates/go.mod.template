@@ -1,4 +1,4 @@
-module github.com/frangdelsolar/fileServer
+module github.com/frangdelsolar/{{projectName}}
 
 go 1.23
 

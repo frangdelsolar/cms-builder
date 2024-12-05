@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"os"
 	"github.com/frangdelsolar/cms/builder"
 	"github.com/frangdelsolar/{{projectName}}"
 )
