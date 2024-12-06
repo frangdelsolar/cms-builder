@@ -475,7 +475,7 @@ func (b *Builder) GetPostmanEnv() (*PostmanEnv, error) {
 
 	environment := config.GetString(EnvKeys.Environment)
 	if environment == "" {
-		return nil, fmt.Errorf("Unable to get environment")
+		return nil, fmt.Errorf("unable to get environment")
 	}
 	envSchema := PostmanEnv{
 		PostmanVariableScope: PostmanVariableScope,

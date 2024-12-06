@@ -8,50 +8,23 @@ fi
 
 ## VARIABLES ##
 project_name="$1"
-
-base_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-templates_dir="templates"
-scripts_dir="$templates_dir/scripts"
-github_actions_dir="$templates_dir/.github/workflows"
-
-main_go="$templates_dir/main.go.template"
-example_go="$templates_dir/example.go.template"
-go_mod="$templates_dir/go.mod.template"
-go_sum="$templates_dir/go.sum.template"
-config_yaml="$templates_dir/config.yaml.template"
-dockerfile="$templates_dir/Dockerfile.template"
-dockercompose="$templates_dir/docker-compose.yaml.template"
-makefile="$templates_dir/Makefile.template"
-gitignore="$templates_dir/.gitignore.template"
-
-find_logs_py="$scripts_dir/find_logs.py.template"
-find_todos_py="$scripts_dir/find_todos.py.template"
-
-find_logs_yaml="$github_actions_dir/findLogs.yaml.template"
-find_todos_yaml="$github_actions_dir/findTodos.yaml.template"
-gofmt_yaml="$github_actions_dir/gofmt.yaml.template"
-run_tests_yaml="$github_actions_dir/runTests.yaml.template"
-
 output_dir="$project_name"
-output_script_dir="$project_name/scripts"
-output_github_actions_dir="$project_name/.github/workflows"
+base_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+templates_dir="$base_dir/templates"
+github_dir="$base_dir/templates/.github"
 
+dockerEnvFile="$templates_dir/.docker.env.template"
+developmentEnvFile="$templates_dir/.development.env.template"
+testEnvFile="$templates_dir/.test.env.template"
+gitignoreFile="$templates_dir/.gitignore.template"
 
-## HELPERS ##
-createFolders(){
-  mkdir -p "$output_dir" || { echo "Failed to create directory: $output_dir" >&2; exit 1; }
-  mkdir -p "$output_dir/cmd" || { echo "Failed to create directory: $output_dir" >&2; exit 1; }
-  mkdir -p "$output_script_dir" || { echo "Failed to create directory: $output_script_dir" >&2; exit 1; }
-  mkdir -p "$output_github_actions_dir" || { echo "Failed to create directory: $output_github_actions_dir" >&2; exit 1; }
-}
-
-updateGitIgnore(){
-  echo "*$project_name*" >> $base_dir/.gitignore
-}
-
-copyFile(){
+copyFileWithReplacements(){
   src_file="$1"
   dest_file="$2"
+  
+  # Remove the .template extension from the destination file name
+  dest_file="${dest_file%.template}"
+  
   cp -f "$src_file" "$dest_file" || { echo "Failed to copy file: $src_file to $dest_file" >&2; exit 1; }
   
   temp_file=$(mktemp)
@@ -65,29 +38,28 @@ copyFile(){
   echo "Copied: $src_file to $dest_file"
 }
 
+copyFolderStructure(){
+  source_dir="$1"
+  dest_dir="$2"
 
-copyFiles(){
-  copyFile "$main_go" "$output_dir/cmd/main.go"
-  copyFile "$go_mod" "$output_dir/go.mod"
-  copyFile "$go_sum" "$output_dir/go.sum"
-  copyFile "$example_go" "$output_dir/example.go"
-  copyFile "$config_yaml" "$output_dir/config.yaml"
-  copyFile "$dockerfile" "$output_dir/Dockerfile"
-  copyFile "$dockercompose" "$output_dir/docker-compose.yaml"
-  copyFile "$makefile" "$output_dir/Makefile"
-  copyFile "$gitignore" "$output_dir/.gitignore"
+  mkdir -p "$dest_dir" || { echo "Failed to create directory: $dest_dir" >&2; exit 1; }
+
+  # Loop through all items in the source directory, including hidden ones
+  for item in "$source_dir/"*; do
+    if [ -f "$item" ]; then
+      # Copy file with replacements (if needed)
+      dest_file="${dest_dir}/${item##*/}"
+      # Implement copyFileWithReplacements if needed
+      copyFileWithReplacements "$item" "$dest_file"
+    elif [ -d "$item" ]; then
+      mkdir -p "${dest_dir}/${item##*/}"
+      copyFolderStructure "$item" "${dest_dir}/${item##*/}"
+    fi
+  done
 }
 
-copyScripts(){
-  copyFile "$find_logs_py" "$output_script_dir/find_logs.py"
-  copyFile "$find_todos_py" "$output_script_dir/find_todos.py"
-}
-
-copyGithubActions(){
-  copyFile "$find_logs_yaml" "$output_github_actions_dir/findLogs.yaml"
-  copyFile "$find_todos_yaml" "$output_github_actions_dir/findTodos.yaml"
-  copyFile "$gofmt_yaml" "$output_github_actions_dir/gofmt.yaml"
-  copyFile "$run_tests_yaml" "$output_github_actions_dir/runTests.yaml"
+updateGitIgnore(){
+  echo "*$project_name*" >> $base_dir/.gitignore
 }
 
 initGit(){
@@ -96,15 +68,17 @@ initGit(){
   cd "$base_dir"
 }
 
+# Copy template directory structure
+copyFolderStructure "$templates_dir" "$output_dir"
 
-## SCRIPT ##
-createFolders
+# Hidden stuff to be copied
+copyFolderStructure "$github_dir" "$output_dir/.github"
+copyFileWithReplacements "$dockerEnvFile" "$output_dir/.docker.env"
+copyFileWithReplacements "$developmentEnvFile" "$output_dir/.development.env"
+copyFileWithReplacements "$testEnvFile" "$output_dir/.test.env"
+copyFileWithReplacements "$gitignoreFile" "$output_dir/.gitignore"
 
 updateGitIgnore
-copyFiles
-copyScripts
-copyGithubActions
-
 initGit
 
 echo "Project '$project_name' created successfully!"

@@ -79,9 +79,7 @@ func (s *Scheduler) RegisterJob(name string, frequency JobFrequency, function an
 	// Update the system data of the frequency
 	frequency.SystemData = &SystemData{
 		CreatedByID: s.User.ID,
-		CreatedBy:   s.User,
 		UpdatedByID: s.User.ID,
-		UpdatedBy:   s.User,
 	}
 	s.Builder.DB.Save(&frequency)
 
@@ -92,6 +90,8 @@ func (s *Scheduler) RegisterJob(name string, frequency JobFrequency, function an
 		log.Error().Err(err).Msg("Error creating job")
 		return err
 	}
+
+	log.Debug().Interface("Job definition", jobDefinition).Msg("Job definition created")
 
 	frequencyDefinition, err := getFrequencyDefinition(frequency)
 	if err != nil {
@@ -112,9 +112,7 @@ func (s *Scheduler) RegisterJob(name string, frequency JobFrequency, function an
 					task := SchedulerTask{
 						SystemData: &SystemData{
 							CreatedByID: s.User.ID,
-							CreatedBy:   s.User,
 							UpdatedByID: s.User.ID,
-							UpdatedBy:   s.User,
 						},
 						JobDefinitionId: jobDefinition.GetIDString(),
 						JobDefinition:   jobDefinition,
@@ -192,9 +190,7 @@ func (s *Scheduler) CreateJobDefinition(name string, frequency JobFrequency) (*S
 	localJob := &SchedulerJobDefinition{
 		SystemData: &SystemData{
 			CreatedByID: s.User.ID,
-			CreatedBy:   s.User,
 			UpdatedByID: s.User.ID,
-			UpdatedBy:   s.User,
 		},
 		Name:        name,
 		Frequency:   &frequency,
@@ -248,7 +244,7 @@ func NewScheduler(b *Builder) (*Scheduler, error) {
 		b.DB.Create(&schedulerUser)
 	}
 
-	log.Info().Interface("Scheduler user", schedulerUser).Msg("Scheduler user created")
+	log.Info().Interface("User", schedulerUser).Msg("Scheduler")
 
 	s, err := gocron.NewScheduler(
 		gocron.WithLogger(gocron.NewLogger(gocron.LogLevelDebug)),

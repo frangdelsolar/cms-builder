@@ -349,7 +349,7 @@ func (b *Builder) InitFirebase() error {
 // If an error occurs while registering the User app, it logs the error and panics.
 func (b *Builder) InitAuth() error {
 	admin := b.Admin
-	userApp, err := admin.Register(&User{}, true)
+	userApp, err := admin.Register(&User{}, false)
 	if err != nil {
 		log.Error().Err(err).Msg("Error registering user app")
 		return err
