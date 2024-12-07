@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+// TODO: Needs to figure out how to generate for those urls that are not comming from a model
+
 const (
 	PostmanSchemaFilePath = "postman/collection.json"
 	PostmanEnvFilePath    = "postman/environment.json"

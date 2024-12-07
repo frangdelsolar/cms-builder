@@ -2,7 +2,6 @@ package builder
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 
 	// "github.com/gorilla/csrf"
@@ -66,8 +65,6 @@ func NewServer(config *ServerConfig) (*Server, error) {
 
 	r := mux.NewRouter()
 
-	// adminRoutes := r.PathPrefix("/admin").Subrouter()
-
 	svr := &Server{
 		Server: &http.Server{
 			Addr:    config.Host + ":" + config.Port,
@@ -91,10 +88,14 @@ func NewServer(config *ServerConfig) (*Server, error) {
 	// r.Use(csrfMiddleware)
 
 	// Public Routes
-	// r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir(PUBLIC_DIR))))
-
 	svr.AddRoute("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "ok")
+		err := validateRequestMethod(r, "GET")
+		if err != nil {
+			SendJsonResponse(w, http.StatusMethodNotAllowed, err, err.Error())
+			return
+		}
+
+		SendJsonResponse(w, http.StatusOK, nil, "ok")
 	}, "healthz", false)
 
 	return svr, nil

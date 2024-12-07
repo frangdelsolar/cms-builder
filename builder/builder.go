@@ -349,6 +349,10 @@ func (b *Builder) InitFirebase() error {
 // If an error occurs while registering the User app, it logs the error and panics.
 func (b *Builder) InitAuth() error {
 	admin := b.Admin
+
+	// FIXME: Need a way to protect this and other models that may not have a createdBy field, so that they can be created by the admin.
+	// Scheduler solved it with a specific user for that case. Maybe I can have an admin user for that.
+
 	userApp, err := admin.Register(&User{}, false)
 	if err != nil {
 		log.Error().Err(err).Msg("Error registering user app")
