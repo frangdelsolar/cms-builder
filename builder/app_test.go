@@ -35,8 +35,10 @@ func TestRegisterApp(t *testing.T) {
 		Field string
 	}
 
+	permissions := builder.RolePermissionMap{}
+
 	t.Log("Testing RegisterApp")
-	app, err := e.Admin.Register(testStruct{}, false)
+	app, err := e.Admin.Register(testStruct{}, false, permissions)
 	assert.NoError(t, err, "Register should not return an error")
 	assert.NotNil(t, app, "Register should return a non-nil App")
 	assert.Equal(t, "teststruct", app.Name(), "App name should be 'teststruct'")
@@ -61,8 +63,10 @@ func TestRegisterAPIRoutes(t *testing.T) {
 		Field string
 	}
 
+	permissions := builder.RolePermissionMap{}
+
 	t.Log("Testing RegisterApp")
-	e.Admin.Register(Test{}, false)
+	e.Admin.Register(Test{}, false, permissions)
 
 	handler := func(w http.ResponseWriter, r *http.Request) {}
 

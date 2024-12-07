@@ -58,7 +58,7 @@ func TestRegisterUserController(t *testing.T) {
 	t.Log("Verifying user")
 	retrievedUser, err := e.Engine.VerifyUser(accessToken)
 	assert.NoError(t, err)
-	assert.Equal(t, createdUser.ID, retrievedUser.ID)
+	assert.Equal(t, createdUser.GetIDString(), retrievedUser.GetIDString())
 
 	t.Log("Rolling back user registration")
 	e.Firebase.RollbackUserRegistration(context.Background(), createdUser.FirebaseId)

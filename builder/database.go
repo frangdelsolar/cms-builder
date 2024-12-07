@@ -18,52 +18,112 @@ type Database struct {
 	DB *gorm.DB // Embedded GORM DB instance for database access
 }
 
-// FindById retrieves an entity by its ID from the database.
-func (db *Database) FindById(id string, entity interface{}, userId string, skipUserBinding bool) *gorm.DB {
-	// Queries
-	idQuery := "id = '" + id + "'"
-	createdByIdQuery := "created_by_id = '" + userId + "'"
-
-	if skipUserBinding {
-		return db.DB.Where(idQuery).First(entity)
-	} else {
-		return db.DB.Where(idQuery + " AND " + createdByIdQuery).First(entity)
+func (db *Database) FindById(id string, entity interface{}, permissions RolePermissionMap, permissionParams PermissionParams) *gorm.DB {
+	requestedBy := permissionParams[requestedByParamKey]
+	userRoles, err := db.GetUserRoles(requestedBy)
+	if err != nil {
+		log.Error().
+			Err(err).
+			Msg("Error getting user roles")
+		return nil
 	}
+
+	fullAccess, query, err := permissions.HasPermission(userRoles, PermissionRead, permissionParams)
+
+	if err != nil {
+		log.Error().
+			Err(err).
+			Str("user_id", requestedBy).
+			Interface("permission_params", permissionParams).
+			Interface("user_roles", userRoles).
+			Str("action", string(PermissionRead)).
+			Msg("Error getting query for user")
+		return nil
+	}
+
+	// Queries
+	filterByInstanceIdQuery := "id = '" + id + "'"
+
+	if !fullAccess {
+		if query == "" {
+			log.Error().Msg("User has no full access, yet no query was provided")
+			return nil
+		}
+		q := query + " AND " + filterByInstanceIdQuery
+		return db.DB.Where(q).First(entity)
+	}
+
+	return db.DB.Where(filterByInstanceIdQuery).First(entity)
 }
 
-// FindAll retrieves all entities from the database.
-func (db *Database) FindAll(entity interface{}, pagination *Pagination) *gorm.DB {
+func (db *Database) GetUserRoles(userId string) ([]Role, error) {
+	return []Role{VisitorRole}, nil
+}
 
-	if pagination == nil {
-		return db.DB.Find(entity)
+func (db *Database) Find(entity interface{}, query string, pagination *Pagination, permissions RolePermissionMap, permissionParams PermissionParams) *gorm.DB {
+
+	requestedBy := permissionParams[requestedByParamKey]
+	userRoles, err := db.GetUserRoles(requestedBy)
+	if err != nil {
+		log.Error().
+			Err(err).
+			Msg("Error getting user roles")
+		return nil
 	}
 
+	fullAccess, userFilter, err := permissions.HasPermission(userRoles, PermissionRead, permissionParams)
+
+	if err != nil {
+		log.Error().
+			Err(err).
+			Str("user_id", requestedBy).
+			Interface("permission_params", permissionParams).
+			Interface("user_roles", userRoles).
+			Str("action", string(PermissionRead)).
+			Msg("Error getting query for user")
+		return nil
+	}
+
+	if !fullAccess {
+		if userFilter == "" {
+			log.Error().Msg("User has no full access, yet no query was provided")
+			return nil
+		}
+
+		q := userFilter
+		if query != "" {
+			q += " AND " + query
+		}
+
+		if pagination == nil {
+			return db.DB.Where(q).Find(entity)
+		} else {
+
+			// Retrieve total number of records
+			db.DB.Model(entity).Where(q).Count(&pagination.Total)
+
+			// Apply pagination
+			filtered := db.DB.Where(q)
+			limit := pagination.Limit
+			offset := (pagination.Page - 1) * pagination.Limit
+
+			return filtered.Limit(limit).Offset(offset).Find(entity)
+		}
+	}
+
+	if pagination == nil {
+		return db.DB.Where(query).Find(entity)
+	}
+
+	// Retrieve total number of records
+	db.DB.Model(entity).Where(query).Count(&pagination.Total)
+
 	// Apply pagination
+	filtered := db.DB.Where(query)
 	limit := pagination.Limit
 	offset := (pagination.Page - 1) * pagination.Limit
 
-	// Retrieve total number of records
-	db.DB.Model(entity).Count(&pagination.Total)
-	return db.DB.Limit(limit).Offset(offset).Find(entity)
-}
-
-func (db *Database) FindAllByUserId(entity interface{}, userId string, pagination *Pagination) *gorm.DB {
-	// Queries
-	createdByIdQuery := "created_by_id = '" + userId + "'"
-
-	if pagination == nil {
-		return db.DB.Where(createdByIdQuery).Find(entity)
-	}
-
-	// Retrieve total number of records
-	db.DB.Model(entity).Where(createdByIdQuery).Count(&pagination.Total)
-
-	// Apply pagination
-	query := db.DB.Where(createdByIdQuery)
-	limit := pagination.Limit
-	offset := (pagination.Page - 1) * pagination.Limit
-
-	return query.Limit(limit).Offset(offset).Find(entity)
+	return filtered.Limit(limit).Offset(offset).Find(entity)
 }
 
 func (db *Database) Create(entity interface{}) *gorm.DB {
@@ -73,18 +133,9 @@ func (db *Database) Create(entity interface{}) *gorm.DB {
 func (db *Database) Delete(entity interface{}) *gorm.DB {
 	return db.DB.Delete(entity)
 }
+
 func (db *Database) Save(entity interface{}) *gorm.DB {
 	return db.DB.Save(entity)
-}
-
-// Find runs a query on the database using the provided query string and stores the
-// results in the provided entity.
-//
-// The query string should be a valid GORM query, such as "name = ?" or "id > ?".
-// The entity should be a pointer to a struct that matches the shape of the data
-// being queried.
-func (db *Database) Find(entity interface{}, query string) {
-	db.DB.Where(query).Find(entity)
 }
 
 // DBConfig defines the configuration options for connecting to a database.

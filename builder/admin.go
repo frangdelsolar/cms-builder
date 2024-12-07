@@ -53,13 +53,14 @@ func (a *Admin) GetApp(appName string) (App, error) {
 // Parameters:
 // - model: The model to register.
 // - skipUserBinding: Whether to skip user binding which is used for filtering db queries by userId
-func (a *Admin) Register(model interface{}, skipUserBinding bool) (App, error) {
+func (a *Admin) Register(model interface{}, skipUserBinding bool, permissions RolePermissionMap) (App, error) {
 
 	app := App{
 		model:           model,
 		skipUserBinding: skipUserBinding,
 		admin:           a,
 		validators:      make(ValidatorsMap),
+		permissions:     permissions,
 	}
 
 	// check the app is not already registered

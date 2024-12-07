@@ -7,10 +7,11 @@ import (
 )
 
 type User struct {
-	gorm.Model
+	*gorm.Model
 	Name       string `json:"name"`
-	Email      string `json:"email"`
+	Email      string `gorm:"unique" json:"email"`
 	FirebaseId string `json:"firebase_id"`
+	Roles      string `json:"roles"`
 }
 
 // ID returns the ID of the SystemData as a string.

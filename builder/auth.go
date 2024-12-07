@@ -3,10 +3,13 @@ package builder
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
+
+	"gorm.io/gorm"
 )
 
 // VerifyUser verifies the user based on the access token provided in the userIdToken parameter.
@@ -24,7 +27,7 @@ func (b *Builder) VerifyUser(userIdToken string) (*User, error) {
 	var localUser User
 
 	q := "firebase_id = '" + accessToken.UID + "'"
-	b.DB.Find(&localUser, q)
+	b.DB.DB.Where(q).First(&localUser)
 
 	// Create user if firebase has it but not in database
 	if localUser.ID == 0 {
@@ -32,8 +35,9 @@ func (b *Builder) VerifyUser(userIdToken string) (*User, error) {
 
 		// create user in database
 		localUser.Name = accessToken.Claims["name"].(string)
-		localUser.Email = accessToken.Claims["email"].(string)
+		localUser.Email = strings.ToLower(accessToken.Claims["email"].(string))
 		localUser.FirebaseId = accessToken.UID
+		localUser.Roles = string(VisitorRole)
 		b.DB.Create(&localUser)
 	}
 
@@ -124,8 +128,15 @@ func (b *Builder) RegisterUserController(w http.ResponseWriter, r *http.Request)
 	// Check if there is a user with the same fbUserId in the database
 	var existingUser User
 	q := "firebase_id = '" + fbUserId + "'"
-	b.DB.Find(&existingUser, q)
-	if existingUser.ID != 0 {
+	err = b.DB.DB.Where(q).First(&existingUser).Error
+	if err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			SendJsonResponse(w, http.StatusInternalServerError, nil, "Error getting user from database")
+			return
+		}
+	}
+
+	if existingUser != (User{}) {
 		log.Warn().Msg("User already exists in database.")
 		// Prevent sending the firebaseId to the client
 		existingUser.FirebaseId = ""
@@ -134,7 +145,12 @@ func (b *Builder) RegisterUserController(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Create user in database
-	user := User{Name: input.Name, Email: input.Email, FirebaseId: fbUserId}
+	user := User{
+		Name:       input.Name,
+		Email:      strings.ToLower(input.Email),
+		FirebaseId: fbUserId,
+		Roles:      string(VisitorRole),
+	}
 	b.DB.Create(&user)
 
 	if user.ID == 0 {

@@ -13,11 +13,18 @@ import (
 	"gorm.io/gorm"
 )
 
+type FieldName string
+
+func (f FieldName) S() string {
+	return string(f)
+}
+
 type App struct {
-	model           interface{}   // The model struct
-	skipUserBinding bool          // Means that theres a CreatedBy field in the model that will be used for filtering the database query to only include records created by the user
-	admin           *Admin        // The admin instance
-	validators      ValidatorsMap // A map of field names to validation functions
+	model           interface{}       // The model struct
+	skipUserBinding bool              // Means that theres a CreatedBy field in the model that will be used for filtering the database query to only include records created by the user
+	admin           *Admin            // The admin instance
+	validators      ValidatorsMap     // A map of field names to validation functions
+	permissions     RolePermissionMap // Key is Role name, value is permission
 }
 
 // Name returns the name of the model as a string, lowercased and without the package name.
@@ -39,8 +46,8 @@ func (a *App) PluralName() string {
 //
 // Returns:
 // - nothing
-func (a *App) RegisterValidator(fieldName string, validators ValidatorsList) {
-	lowerFieldName := strings.ToLower(fieldName)
+func (a *App) RegisterValidator(fieldName FieldName, validators ValidatorsList) {
+	lowerFieldName := strings.ToLower(string(fieldName))
 
 	a.validators[lowerFieldName] = append(a.validators[lowerFieldName], validators...)
 }
@@ -54,9 +61,9 @@ func (a *App) RegisterValidator(fieldName string, validators ValidatorsList) {
 //
 // Returns:
 // - FieldValidationFunc: the validator function associated with the given field name, or nil if none is associated.
-func (a *App) GetValidatorsForField(fieldName string) ValidatorsList {
+func (a *App) GetValidatorsForField(fieldName FieldName) ValidatorsList {
 
-	lowerFieldName := strings.ToLower(fieldName)
+	lowerFieldName := strings.ToLower(string(fieldName))
 	validators, ok := a.validators[lowerFieldName]
 	if !ok {
 		return nil
@@ -89,7 +96,7 @@ func (a *App) Validate(instance interface{}) ValidationResult {
 	}
 
 	for key := range jsonData {
-		validators := a.GetValidatorsForField(key)
+		validators := a.GetValidatorsForField(FieldName(key))
 
 		for _, validator := range validators {
 			output := NewFieldValidationError(key)
@@ -181,11 +188,10 @@ func (a *App) ApiList(db *Database) HandlerFunc {
 			Limit: limit,
 		}
 
-		if a.skipUserBinding {
-			result = db.FindAll(instances, pagination)
-		} else {
-			result = db.FindAllByUserId(instances, userId, pagination)
+		permissionParams := PermissionParams{
+			requestedByParamKey: userId,
 		}
+		result = db.Find(instances, "", pagination, a.permissions, permissionParams)
 
 		if result.Error != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, result.Error.Error())
@@ -221,12 +227,21 @@ func (a *App) ApiDetail(db *Database) HandlerFunc {
 		// Create a new instance of the model
 		instance := createInstanceForUndeterminedType(a.model)
 
+		permissionParams := PermissionParams{
+			requestedByParamKey: userId,
+		}
+
 		// Query the database to find the record by ID
-		result := db.FindById(instanceId, instance, userId, a.skipUserBinding)
+		result := db.FindById(instanceId, instance, a.permissions, permissionParams)
 		if result.Error != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, result.Error, "Failed to get "+a.Name()+" detail")
 			return
 		}
+
+		log.Debug().
+			Str("id", instanceId).
+			Interface("instance", instance).
+			Msg("Find by id")
 
 		SendJsonResponse(w, http.StatusOK, instance, a.Name()+" detail")
 	}
@@ -325,8 +340,12 @@ func (a *App) ApiUpdate(db *Database) HandlerFunc {
 		// Create a new instance of the model
 		instance := createInstanceForUndeterminedType(a.model)
 
+		permissionParams := PermissionParams{
+			requestedByParamKey: userId,
+		}
+
 		// Query the database to find the record by ID
-		result := db.FindById(instanceId, instance, userId, a.skipUserBinding)
+		result := db.FindById(instanceId, instance, a.permissions, permissionParams)
 		if result.Error != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, result.Error.Error())
 			return
@@ -345,7 +364,6 @@ func (a *App) ApiUpdate(db *Database) HandlerFunc {
 			return
 		}
 
-		// Update SystemData fields
 		if !a.skipUserBinding {
 			bodyBytes, err = appendUserDataToRequestBody(bodyBytes, r, false, a)
 			if err != nil {
@@ -411,8 +429,12 @@ func (a *App) ApiDelete(db *Database) HandlerFunc {
 		// Create a new instance of the model
 		instance := createInstanceForUndeterminedType(a.model)
 
+		permissionParams := PermissionParams{
+			requestedByParamKey: userId,
+		}
+
 		// Query the database to find the record by ID
-		dbResponse := db.FindById(instanceId, instance, userId, a.skipUserBinding)
+		dbResponse := db.FindById(instanceId, instance, a.permissions, permissionParams)
 		if dbResponse.Error != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, dbResponse.Error.Error())
 			return

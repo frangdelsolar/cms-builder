@@ -74,7 +74,12 @@ func GetDefaultEngine() (TestEngineServices, error) {
 
 	admin := e.Admin
 
-	app, err := admin.Register(MockStruct{}, false)
+	permission := builder.RolePermissionMap{
+		builder.AdminRole:   builder.AllAllowedAccess,
+		builder.VisitorRole: builder.OwnerAccess,
+	}
+
+	app, err := admin.Register(MockStruct{}, false, permission)
 	if err != nil {
 		return TestEngineServices{}, err
 	}

@@ -146,31 +146,30 @@ type NewBuilderInput struct {
 
 // NewBuilder creates a new Builder instance.
 func NewBuilder(input *NewBuilderInput) (*Builder, error) {
-
 	if input == nil {
 		return nil, builderErr.ConfigurationNotProvided
 	}
 
-	builder := &Builder{}
+	b := &Builder{}
 
-	err := builder.InitConfigReader(input)
+	err := b.InitConfigReader(input)
 	if err != nil {
 		log.Err(err).Msg("Error initializing config reader")
 		return nil, builderErr.ConfigReaderNotInitialized
 	}
 
 	// Make configurations available for other modules
-	config = builder.Config
+	config = b.Config
 
 	// Logger
-	err = builder.InitLogger()
+	err = b.InitLogger()
 	if err != nil {
 		log.Err(err).Msg("Error initializing logger")
 		return nil, builderErr.LoggerNotInitialized
 	}
 
 	// Make logger available for other modules
-	log = builder.Logger
+	log = b.Logger
 
 	log.Info().
 		Str("version", builderVersion).
@@ -178,57 +177,57 @@ func NewBuilder(input *NewBuilderInput) (*Builder, error) {
 		Msg("Running Builder")
 
 	// Database
-	err = builder.InitDatabase()
+	err = b.InitDatabase()
 	if err != nil {
 		log.Err(err).Msg("Error initializing database")
 		return nil, err
 	}
 
 	// Server
-	err = builder.InitServer()
+	err = b.InitServer()
 	if err != nil {
 		log.Err(err).Msg("Error initializing server")
 		return nil, err
 	}
 
 	// Admin
-	builder.InitAdmin()
+	b.InitAdmin()
 
 	// Firebase
-	err = builder.InitFirebase()
+	err = b.InitFirebase()
 	if err != nil {
 		log.Err(err).Msg("Error initializing firebase")
 		return nil, err
 	}
 
-	err = builder.InitAuth()
+	err = b.InitAuth()
 	if err != nil {
 		log.Err(err).Msg("Error initializing auth")
 		return nil, err
 	}
 
-	err = builder.InitStore()
+	err = b.InitStore()
 	if err != nil {
 		log.Err(err).Msg("Error initializing store")
 		return nil, err
 	}
 
 	// Uploader
-	err = builder.InitUploader()
+	err = b.InitUploader()
 	if err != nil {
 		log.Err(err).Msg("Error initializing uploader")
 		return nil, err
 	}
 
 	if input.InitializeScheduler {
-		err = builder.InitScheduler()
+		err = b.InitScheduler()
 		if err != nil {
 			log.Err(err).Msg("Error initializing scheduler")
 			return nil, err
 		}
 	}
 
-	return builder, nil
+	return b, nil
 }
 
 // InitConfigReader initializes the config reader based on the provided configuration.
@@ -353,7 +352,19 @@ func (b *Builder) InitAuth() error {
 	// FIXME: Need a way to protect this and other models that may not have a createdBy field, so that they can be created by the admin.
 	// Scheduler solved it with a specific user for that case. Maybe I can have an admin user for that.
 
-	userApp, err := admin.Register(&User{}, false)
+	permissions := RolePermissionMap{
+		AdminRole:   AllAllowedAccess,
+		VisitorRole: OwnerAccess,
+		AuthenticatorRole: ActionToPermission{
+			PermissionCreate: []PermissionFilter{
+				{
+					FullAccess: true,
+				},
+			},
+		},
+	}
+
+	userApp, err := admin.Register(&User{}, false, permissions)
 	if err != nil {
 		log.Error().Err(err).Msg("Error registering user app")
 		return err
@@ -408,8 +419,13 @@ func (b *Builder) InitUploader() error {
 		Folder:             config.GetString(config.GetString(EnvKeys.UploaderFolder)),
 	}
 
+	permissions := RolePermissionMap{
+		AdminRole:   AllAllowedAccess,
+		VisitorRole: OwnerAccess,
+	}
+
 	// Register the Upload app without authentication
-	_, err := b.Admin.Register(&Upload{}, false)
+	_, err := b.Admin.Register(&Upload{}, false, permissions)
 	if err != nil {
 		log.Error().Err(err).Msg("Error registering upload app")
 		return err
@@ -447,19 +463,24 @@ func (b *Builder) InitUploader() error {
 
 func (b *Builder) InitScheduler() error {
 
-	_, err := b.Admin.Register(&SchedulerJobDefinition{}, false)
+	permissions := RolePermissionMap{
+		AdminRole:     AllAllowedAccess,
+		SchedulerRole: AllAllowedAccess,
+	}
+
+	_, err := b.Admin.Register(&SchedulerJobDefinition{}, false, permissions)
 	if err != nil {
 		log.Error().Err(err).Msg("Error registering job app")
 		return err
 	}
 
-	_, err = b.Admin.Register(&JobFrequency{}, false)
+	_, err = b.Admin.Register(&JobFrequency{}, false, permissions)
 	if err != nil {
 		log.Error().Err(err).Msg("Error registering job app")
 		return err
 	}
 
-	_, err = b.Admin.Register(&SchedulerTask{}, false)
+	_, err = b.Admin.Register(&SchedulerTask{}, false, permissions)
 	if err != nil {
 		log.Error().Err(err).Msg("Error registering job app")
 		return err

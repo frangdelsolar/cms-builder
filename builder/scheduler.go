@@ -179,9 +179,21 @@ func (s *Scheduler) UpdateTaskStatus(id string, status TaskStatus, errMsg string
 }
 
 func (s *Scheduler) GetSchedulerTask(id string) *SchedulerTask {
+
+	stApp, err := s.Builder.Admin.GetApp("schedulertask")
+	if err != nil {
+		log.Error().Err(err).Msg("Error getting schedulertask app")
+		return nil
+	}
+
+	permissionParams := PermissionParams{
+		requestedByParamKey: s.User.GetIDString(),
+	}
+
 	var task SchedulerTask
+
 	q := "cron_job_id = '" + id + "'"
-	s.Builder.DB.Find(&task, q)
+	s.Builder.DB.Find(&task, q, nil, stApp.permissions, permissionParams)
 	return &task
 }
 
@@ -234,7 +246,7 @@ func NewScheduler(b *Builder) (*Scheduler, error) {
 	var schedulerUser User
 	email := "scheduler@" + config.GetString(EnvKeys.BaseUrl)
 	q := "email = '" + email + "'"
-	b.DB.Find(&schedulerUser, q)
+	b.DB.DB.Find(&schedulerUser).Where(q)
 
 	if schedulerUser.ID == 0 {
 		schedulerUser = User{

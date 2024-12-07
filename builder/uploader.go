@@ -132,7 +132,10 @@ func (b *Builder) GetUploadDeleteHandler(cfg *UploaderConfig) HandlerFunc {
 
 		var instance Upload
 		// Query the database to find the record by ID
-		result := b.DB.FindById(id, &instance, userId, true)
+		permissionParams := PermissionParams{
+			requestedByParamKey: userId,
+		}
+		result := b.DB.FindById(id, &instance, uploadApp.permissions, permissionParams)
 		if result.Error != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, result.Error.Error())
 			return
