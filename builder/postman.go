@@ -495,14 +495,14 @@ func (b *Builder) GetPostmanEnv() (*PostmanEnv, error) {
 	// Email
 	envSchema.Values = append(envSchema.Values, PostmanEnvValue{
 		Key:     keyEmail,
-		Value:   "admin@admin.com",
+		Value:   config.GetString(EnvKeys.AdminEmail),
 		Enabled: true,
 	})
 
 	// Password
 	envSchema.Values = append(envSchema.Values, PostmanEnvValue{
 		Key:     keyPassword,
-		Value:   "admin123",
+		Value:   config.GetString(EnvKeys.AdminPassword),
 		Enabled: true,
 	})
 

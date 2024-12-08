@@ -49,7 +49,6 @@ func (b *Builder) VerifyUser(userIdToken string) (*User, error) {
 // verification fails, it will return a 401 error. If the verification is
 // successful, it will continue to the next handler in the chain, setting a
 // "requested_by" header in the request with the ID of the verified user.
-
 func (b *Builder) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
@@ -89,7 +88,7 @@ func (b *Builder) AuthMiddleware(next http.Handler) http.Handler {
 //
 // The function will also set the requested_by header to the ID of the newly created
 // user.
-func (b *Builder) RegisterUserController(w http.ResponseWriter, r *http.Request) {
+func (b *Builder) RegisterVisitorController(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		SendJsonResponse(w, http.StatusMethodNotAllowed, nil, "Method not allowed")
 		return
@@ -110,23 +109,40 @@ func (b *Builder) RegisterUserController(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	user, err := b.CreateUserWithRole(input, VisitorRole)
+	if err != nil {
+		msg := fmt.Sprintf("Error creating user: %s", err.Error())
+		SendJsonResponse(w, http.StatusInternalServerError, nil, msg)
+		return
+	}
+
+	// Prevent sending the firebaseId to the client
+	user.FirebaseId = ""
+	SendJsonResponse(w, http.StatusOK, user, "User registered successfully")
+}
+
+// CreateUserWithRole creates a new user in Firebase with the given name, email, and password, and also
+// creates a new user in the local database with the given role. If the user already exists in Firebase,
+// it will add the user to the local database. If the user already exists in the local database, it will
+// return an error.
+func (b *Builder) CreateUserWithRole(input RegisterUserInput, role Role) (*User, error) {
+	ctx := context.Background()
 	var fbUserId string
-	fbUser, err := b.Firebase.RegisterUser(r.Context(), input)
+
+	fbUser, err := b.Firebase.RegisterUser(ctx, input)
 	if err != nil {
 		msg := fmt.Sprintf("Error registering user: %s", err.Error())
 
 		if strings.Contains(err.Error(), "EMAIL_EXISTS") {
-			existingFbUser, err := b.Firebase.Client.GetUserByEmail(r.Context(), input.Email)
+			existingFbUser, err := b.Firebase.Client.GetUserByEmail(ctx, input.Email)
 			if err != nil {
 				msg := fmt.Sprintf("Error getting user by email: %s", err.Error())
-				SendJsonResponse(w, http.StatusInternalServerError, nil, msg)
-				return
+				return nil, fmt.Errorf("%s", msg)
 			}
 			log.Warn().Msg("User already exists in Firebase. Will add it to database")
 			fbUserId = existingFbUser.UID
 		} else {
-			SendJsonResponse(w, http.StatusInternalServerError, nil, msg)
-			return
+			return nil, fmt.Errorf("%s", msg)
 		}
 	} else {
 		fbUserId = fbUser.UID
@@ -138,17 +154,13 @@ func (b *Builder) RegisterUserController(w http.ResponseWriter, r *http.Request)
 	err = b.DB.DB.Where(q).First(&existingUser).Error
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			SendJsonResponse(w, http.StatusInternalServerError, nil, "Error getting user from database")
-			return
+			return nil, fmt.Errorf("error getting user from database")
 		}
 	}
 
 	if existingUser != (User{}) {
 		log.Warn().Msg("User already exists in database.")
-		// Prevent sending the firebaseId to the client
-		existingUser.FirebaseId = ""
-		SendJsonResponse(w, http.StatusOK, existingUser, "User already registered")
-		return
+		return &existingUser, nil
 	}
 
 	// Create user in database
@@ -156,16 +168,13 @@ func (b *Builder) RegisterUserController(w http.ResponseWriter, r *http.Request)
 		Name:       input.Name,
 		Email:      strings.ToLower(input.Email),
 		FirebaseId: fbUserId,
-		Roles:      string(VisitorRole),
+		Roles:      string(role),
 	}
 	b.DB.Create(&user)
 
 	if user.ID == 0 {
-		SendJsonResponse(w, http.StatusInternalServerError, nil, "Error creating user in database")
-		return
+		return nil, fmt.Errorf("error creating user in database")
 	}
 
-	// Prevent sending the firebaseId to the client
-	user.FirebaseId = ""
-	SendJsonResponse(w, http.StatusOK, user, "User registered successfully")
+	return &user, nil
 }

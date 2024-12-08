@@ -6,12 +6,9 @@ const (
 	OperationUpdate CrudOperation = "update"
 	OperationRead   CrudOperation = "read"
 
-	AdminRole         Role = "admin"
-	VisitorRole       Role = "visitor"
-	SchedulerRole     Role = "scheduler"
-	AuthenticatorRole Role = "authenticator"
-
-	createdByIdField = "created_by_id"
+	AdminRole     Role = "admin"
+	VisitorRole   Role = "visitor"
+	SchedulerRole Role = "scheduler"
 )
 
 var AllAllowedAccess = []CrudOperation{

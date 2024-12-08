@@ -45,7 +45,7 @@ func TestHasPermission(t *testing.T) {
 		},
 		{
 			name:   "User has a role that is not in the permission map",
-			roles:  []builder.Role{builder.AuthenticatorRole},
+			roles:  []builder.Role{builder.Role("unknown")},
 			action: builder.OperationCreate,
 			permissionMap: builder.RolePermissionMap{
 				builder.AdminRole: []builder.CrudOperation{builder.OperationCreate},

@@ -161,7 +161,7 @@ func RegisterTestUser(newUserData *builder.RegisterUserInput) (*builder.User, fu
 		Body:   io.NopCloser(bytes.NewBuffer(bodyBytes)),
 	}
 
-	e.Engine.RegisterUserController(&responseWriter, registerUserRequest)
+	e.Engine.RegisterVisitorController(&responseWriter, registerUserRequest)
 
 	createdUser := builder.User{}
 	builder.ParseResponse(responseWriter.Buffer.Bytes(), &createdUser)

@@ -42,7 +42,7 @@ func TestRegisterUserController(t *testing.T) {
 	}
 
 	t.Log("Registering user")
-	e.Engine.RegisterUserController(&responseWriter, registerUserRequest)
+	e.Engine.RegisterVisitorController(&responseWriter, registerUserRequest)
 
 	t.Log("Testing Response")
 	createdUser := builder.User{}

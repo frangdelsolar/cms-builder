@@ -3,6 +3,8 @@ package builder
 import (
 	"errors"
 	"fmt"
+
+	"gorm.io/gorm"
 )
 
 const builderVersion = "1.3.6"
@@ -10,6 +12,9 @@ const builderVersion = "1.3.6"
 // ConfigKeys define the keys used in the configuration file
 type ConfigKeys struct {
 	AppName               string `json:"appName"`               // App name
+	AdminName             string `json:"adminName"`             // Admin name
+	AdminEmail            string `json:"adminEmail"`            // Admin email
+	AdminPassword         string `json:"adminPassword"`         // Admin password
 	Environment           string `json:"environment"`           // Environment where the app is running
 	LogLevel              string `json:"logLevel"`              // Log level
 	LogFilePath           string `json:"logFilePath"`           // File path for logging
@@ -36,6 +41,9 @@ type ConfigKeys struct {
 // EnvKeys are the keys used in the configuration file
 var EnvKeys = ConfigKeys{
 	AppName:               "APP_NAME",
+	AdminName:             "ADMIN_NAME",
+	AdminEmail:            "ADMIN_EMAIL",
+	AdminPassword:         "ADMIN_PASSWORD",
 	Environment:           "ENVIRONMENT",
 	LogLevel:              "LOG_LEVEL",
 	LogFilePath:           "LOG_FILE_PATH",
@@ -62,6 +70,9 @@ var EnvKeys = ConfigKeys{
 // defaultConfig defines the default values for the configuration
 var DefaultEnvValues = ConfigKeys{
 	AppName:               "Builder",
+	AdminName:             "Admin",
+	AdminEmail:            "admin@admin.com",
+	AdminPassword:         "admin123admin",
 	Environment:           "development",
 	LogLevel:              "debug",
 	LogFilePath:           "logs/default.log",
@@ -227,6 +238,12 @@ func NewBuilder(input *NewBuilderInput) (*Builder, error) {
 		}
 	}
 
+	err = b.RegisterAdminUser()
+	if err != nil {
+		log.Err(err).Msg("Error registering admin user")
+		return nil, err
+	}
+
 	return b, nil
 }
 
@@ -349,15 +366,9 @@ func (b *Builder) InitFirebase() error {
 func (b *Builder) InitAuth() error {
 	admin := b.Admin
 
-	// FIXME: Need a way to protect this and other models that may not have a createdBy field, so that they can be created by the admin.
-	// Scheduler solved it with a specific user for that case. Maybe I can have an admin user for that.
-
 	permissions := RolePermissionMap{
 		AdminRole:   AllAllowedAccess,
 		VisitorRole: AllAllowedAccess,
-		AuthenticatorRole: []CrudOperation{
-			OperationCreate,
-		},
 	}
 
 	userApp, err := admin.Register(&User{}, false, permissions)
@@ -366,11 +377,22 @@ func (b *Builder) InitAuth() error {
 		return err
 	}
 
+	userApp.api.List = func(input *ApiInput, db *Database, app *App) (*gorm.DB, error) {
+		query := ""
+		role := input.parameters.Roles[0]
+		if role == VisitorRole {
+			query = "id = '" + input.parameters.RequestedById + "'"
+		}
+
+		return db.Find(input.model, query, input.pagination), nil
+	}
+
 	userApp.RegisterValidator("email", ValidatorsList{RequiredValidator, EmailValidator})
 	userApp.RegisterValidator("name", ValidatorsList{RequiredValidator})
+	userApp.RegisterValidator("roles", ValidatorsList{RequiredValidator})
 
 	svr := b.Server
-	svr.AddRoute("/auth/register", b.RegisterUserController, "register", false)
+	svr.AddRoute("/auth/register", b.RegisterVisitorController, "register", false)
 	return nil
 }
 
@@ -489,6 +511,27 @@ func (b *Builder) InitScheduler() error {
 	}
 
 	b.Scheduler = s
+
+	return nil
+}
+
+func (b *Builder) RegisterAdminUser() error {
+	userData := &RegisterUserInput{
+		Name:     config.GetString(EnvKeys.AdminName),
+		Email:    config.GetString(EnvKeys.AdminEmail),
+		Password: config.GetString(EnvKeys.AdminPassword),
+	}
+
+	user, err := b.CreateUserWithRole(*userData, AdminRole)
+	if err != nil {
+		log.Error().Err(err).Msg("Error creating admin user")
+		return err
+	}
+
+	if user == nil {
+		log.Error().Msg("Error creating admin user")
+		return err
+	}
 
 	return nil
 }
