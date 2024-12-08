@@ -8,8 +8,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/gorilla/mux"
 )
 
 type FileData struct {
@@ -37,12 +35,25 @@ type UploaderConfig struct {
 // information in the database. It will also handle errors and return a 400
 // error if the request body is not valid JSON, or a 500 error if there is an
 // error storing the file or saving the file information to the database.
-func (b *Builder) GetUploadPostHandler(cfg *UploaderConfig) HandlerFunc {
+func (b *Builder) GetFilePostHandler(cfg *UploaderConfig) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Validate method
 		err := validateRequestMethod(r, http.MethodPost)
 		if err != nil {
 			SendJsonResponse(w, http.StatusMethodNotAllowed, nil, err.Error())
+			return
+		}
+
+		uploadApp, err := b.Admin.GetApp("upload")
+		if err != nil {
+			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+			return
+		}
+
+		params := formatRequestParameters(r, b)
+		isAllowed := uploadApp.permissions.HasPermission(params.Roles, OperationCreate)
+		if !isAllowed {
+			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to create this resource")
 			return
 		}
 
@@ -82,13 +93,6 @@ func (b *Builder) GetUploadPostHandler(cfg *UploaderConfig) HandlerFunc {
 			return
 		}
 
-		// Store filedata in db
-		uploadApp, err := b.Admin.GetApp("upload")
-		if err != nil {
-			handleUploadError(b.Store, fileData, w, err)
-			return
-		}
-
 		uploadRequestBody := map[string]interface{}{
 			"fileName": fileData.Name,
 			"filePath": fileData.Path,
@@ -120,22 +124,33 @@ func (b *Builder) GetUploadPostHandler(cfg *UploaderConfig) HandlerFunc {
 // database record is not found, it will return a 500 Internal Server Error
 // response. If the file is deleted successfully, it will return a 200 OK
 // response with a message saying "File deleted successfully".
-func (b *Builder) GetUploadDeleteHandler(cfg *UploaderConfig) HandlerFunc {
+func (b *Builder) GetFileDeleteHandler(cfg *UploaderConfig) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id := mux.Vars(r)["id"]
+
+		err := validateRequestMethod(r, http.MethodDelete)
+		if err != nil {
+			SendJsonResponse(w, http.StatusMethodNotAllowed, err, err.Error())
+			return
+		}
+
 		uploadApp, err := b.Admin.GetApp("upload")
 		if err != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
 		}
-		userId := getRequestUserId(r, &uploadApp)
+
+		params := formatRequestParameters(r, b)
+		isAllowed := uploadApp.permissions.HasPermission(params.Roles, OperationDelete)
+		if !isAllowed {
+			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to delete this resource")
+			return
+		}
 
 		var instance Upload
-		// Query the database to find the record by ID
-		permissionParams := RequestParameters{
-			requestedByParamKey: userId,
-		}
-		result := b.DB.FindById(id, &instance, uploadApp.permissions, permissionParams)
+
+		instanceId := getUrlParam("id", r)
+
+		result := b.DB.FindById(instanceId, &instance, "")
 		if result.Error != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, result.Error.Error())
 			return

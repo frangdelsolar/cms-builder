@@ -18,98 +18,38 @@ type Database struct {
 	DB *gorm.DB // Embedded GORM DB instance for database access
 }
 
-func (db *Database) FindById(id string, entity interface{}, permissions RolePermissionMap, params RequestParameters) *gorm.DB {
-	requestedBy := params[requestedByParamKey]
-	userRoles, err := db.GetUserRoles(requestedBy)
-	if err != nil {
-		log.Error().
-			Err(err).
-			Msg("Error getting user roles")
-		return nil
+// FindById retrieves a single record from the database that matches the provided ID.
+// It allows for an optional query extension to refine the search criteria.
+//
+// Parameters:
+//   - id: the unique identifier of the record to be retrieved.
+//   - entity: the destination where the result will be stored.
+//   - queryExtension: an optional additional query condition.
+//
+// Returns:
+//   - *gorm.DB: the result of the database query, which can be used to check for errors.
+func (db *Database) FindById(id string, entity interface{}, queryExtension string) *gorm.DB {
+	q := "id = '" + id + "'"
+
+	if queryExtension != "" {
+		q += " AND " + queryExtension
 	}
 
-	fullAccess, query, err := permissions.HasPermission(userRoles, PermissionRead, params)
-
-	if err != nil {
-		log.Error().
-			Err(err).
-			Str("user_id", requestedBy).
-			Interface("permission_params", params).
-			Interface("user_roles", userRoles).
-			Str("action", string(PermissionRead)).
-			Msg("Error getting query for user")
-		return nil
-	}
-
-	// Queries
-	filterByInstanceIdQuery := "id = '" + id + "'"
-
-	if !fullAccess {
-		if query == "" {
-			log.Error().Msg("User has no full access, yet no query was provided")
-			return nil
-		}
-		q := query + " AND " + filterByInstanceIdQuery
-		return db.DB.Where(q).First(entity)
-	}
-
-	return db.DB.Where(filterByInstanceIdQuery).First(entity)
+	return db.DB.Where(q).First(entity)
 }
 
-func (db *Database) GetUserRoles(userId string) ([]Role, error) {
-	return []Role{VisitorRole}, nil
-}
-
-func (db *Database) Find(entity interface{}, query string, pagination *Pagination, permissions RolePermissionMap, permissionParams RequestParameters) *gorm.DB {
-
-	requestedBy := permissionParams[requestedByParamKey]
-	userRoles, err := db.GetUserRoles(requestedBy)
-	if err != nil {
-		log.Error().
-			Err(err).
-			Msg("Error getting user roles")
-		return nil
-	}
-
-	fullAccess, userFilter, err := permissions.HasPermission(userRoles, PermissionRead, permissionParams)
-
-	if err != nil {
-		log.Error().
-			Err(err).
-			Str("user_id", requestedBy).
-			Interface("permission_params", permissionParams).
-			Interface("user_roles", userRoles).
-			Str("action", string(PermissionRead)).
-			Msg("Error getting query for user")
-		return nil
-	}
-
-	if !fullAccess {
-		if userFilter == "" {
-			log.Error().Msg("User has no full access, yet no query was provided")
-			return nil
-		}
-
-		q := userFilter
-		if query != "" {
-			q += " AND " + query
-		}
-
-		if pagination == nil {
-			return db.DB.Where(q).Find(entity)
-		} else {
-
-			// Retrieve total number of records
-			db.DB.Model(entity).Where(q).Count(&pagination.Total)
-
-			// Apply pagination
-			filtered := db.DB.Where(q)
-			limit := pagination.Limit
-			offset := (pagination.Page - 1) * pagination.Limit
-
-			return filtered.Limit(limit).Offset(offset).Find(entity)
-		}
-	}
+// Find retrieves records from the database based on the provided query.
+// If pagination is provided, the query will be limited to the specified number of records
+// and offset to the correct page.
+//
+// Parameters:
+//   - entity: the destination where the result will be stored.
+//   - query: the query to be executed, it can be a raw SQL query or a GORM query.
+//   - pagination: optional pagination information.
+//
+// Returns:
+//   - *gorm.DB: the result of the database query, which can be used to check for errors.
+func (db *Database) Find(entity interface{}, query string, pagination *Pagination) *gorm.DB {
 
 	if pagination == nil {
 		return db.DB.Where(query).Find(entity)
@@ -126,14 +66,35 @@ func (db *Database) Find(entity interface{}, query string, pagination *Paginatio
 	return filtered.Limit(limit).Offset(offset).Find(entity)
 }
 
+// Create creates a new record in the database.
+//
+// Parameters:
+//   - entity: the model instance to be created.
+//
+// Returns:
+//   - *gorm.DB: the result of the database query, which can be used to check for errors.
 func (db *Database) Create(entity interface{}) *gorm.DB {
 	return db.DB.Create(entity)
 }
 
+// Delete deletes the record in the database.
+//
+// Parameters:
+//   - entity: the model instance to be deleted.
+//
+// Returns:
+//   - *gorm.DB: the result of the database query, which can be used to check for errors.
 func (db *Database) Delete(entity interface{}) *gorm.DB {
 	return db.DB.Delete(entity)
 }
 
+// Save updates a record in the database if it already exists, or creates a new one if it does not.
+//
+// Parameters:
+//   - entity: the model instance to be saved.
+//
+// Returns:
+//   - *gorm.DB: the result of the database query, which can be used to check for errors.
 func (db *Database) Save(entity interface{}) *gorm.DB {
 	return db.DB.Save(entity)
 }

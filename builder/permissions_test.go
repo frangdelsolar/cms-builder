@@ -8,126 +8,83 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var TestRole builder.Role = "testRole"
-
-func TestGetQuery(t *testing.T) {
+func TestHasPermission(t *testing.T) {
 	tests := []struct {
-		name               string
-		roles              []builder.Role
-		action             builder.PermissionAction
-		params             builder.RequestParameters
-		expectedQuery      string
-		expectedFullAccess bool
-		expectedError      error
+		name          string
+		roles         []builder.Role
+		action        builder.CrudOperation
+		permissionMap builder.RolePermissionMap
+		expected      bool
 	}{
 		{
-			name:               "Role not found",
-			roles:              []builder.Role{"non-existent-role"},
-			action:             builder.PermissionRead,
-			params:             builder.RequestParameters{},
-			expectedQuery:      "",
-			expectedFullAccess: false,
-			expectedError:      fmt.Errorf("no rules were found for action: read and user roles: [non-existent-role]"),
+			name:   "User has a role with the requested permission",
+			roles:  []builder.Role{builder.AdminRole},
+			action: builder.OperationCreate,
+			permissionMap: builder.RolePermissionMap{
+				builder.AdminRole: []builder.CrudOperation{builder.OperationCreate},
+			},
+			expected: true,
 		},
 		{
-			name:               "Action not found",
-			roles:              []builder.Role{"test-role"},
-			action:             "non-existent-action",
-			params:             builder.RequestParameters{},
-			expectedQuery:      "",
-			expectedFullAccess: false,
-			expectedError:      fmt.Errorf("no rules were found for action: non-existent-action and user roles: [test-role]"),
+			name:   "User has multiple roles, one of which has the requested permission",
+			roles:  []builder.Role{builder.VisitorRole, builder.AdminRole},
+			action: builder.OperationCreate,
+			permissionMap: builder.RolePermissionMap{
+				builder.AdminRole: []builder.CrudOperation{builder.OperationCreate},
+			},
+			expected: true,
 		},
 		{
-			name:               "No filters found for action and role",
-			roles:              []builder.Role{"test-role"},
-			action:             builder.PermissionRead,
-			params:             builder.RequestParameters{},
-			expectedQuery:      "",
-			expectedFullAccess: false,
-			expectedError:      fmt.Errorf("no rules were found for action: read and user roles: [test-role]"),
+			name:   "User has multiple roles, none of which have the requested permission",
+			roles:  []builder.Role{builder.VisitorRole, builder.SchedulerRole},
+			action: builder.OperationCreate,
+			permissionMap: builder.RolePermissionMap{
+				builder.AdminRole: []builder.CrudOperation{builder.OperationCreate},
+			},
+			expected: false,
 		},
 		{
-			name:               "Multiple roles with permissions",
-			roles:              []builder.Role{"test-role-1", "test-role-2"},
-			action:             builder.PermissionRead,
-			params:             builder.RequestParameters{"user_id": "1"},
-			expectedQuery:      "user_id = '1'",
-			expectedFullAccess: false,
-			expectedError:      nil,
+			name:   "User has a role that is not in the permission map",
+			roles:  []builder.Role{builder.AuthenticatorRole},
+			action: builder.OperationCreate,
+			permissionMap: builder.RolePermissionMap{
+				builder.AdminRole: []builder.CrudOperation{builder.OperationCreate},
+			},
+			expected: false,
 		},
 		{
-			name:               "Single role with multiple permissions",
-			roles:              []builder.Role{"test-role"},
-			action:             builder.PermissionRead,
-			params:             builder.RequestParameters{"user_id": "1", "other_param": "2"},
-			expectedQuery:      "user_id = '1' AND other_param = '2'",
-			expectedFullAccess: false,
-			expectedError:      nil,
+			name:   "User has no roles",
+			roles:  []builder.Role{},
+			action: builder.OperationCreate,
+			permissionMap: builder.RolePermissionMap{
+				builder.AdminRole: []builder.CrudOperation{builder.OperationCreate},
+			},
+			expected: false,
 		},
 		{
-			name:               "Empty params",
-			roles:              []builder.Role{"test-role"},
-			action:             builder.PermissionRead,
-			params:             builder.RequestParameters{},
-			expectedQuery:      "",
-			expectedFullAccess: false,
-			expectedError:      fmt.Errorf("no rules were found for action: read and user roles: [test-role]"),
+			name:          "Permission map is empty",
+			roles:         []builder.Role{builder.AdminRole},
+			action:        builder.OperationCreate,
+			permissionMap: builder.RolePermissionMap{},
+			expected:      false,
 		},
 		{
-			name:               "Params with empty values",
-			roles:              []builder.Role{"test-role"},
-			action:             builder.PermissionRead,
-			params:             builder.RequestParameters{"user_id": "", "other_param": "2"},
-			expectedQuery:      "other_param = '2'",
-			expectedFullAccess: false,
-			expectedError:      nil,
+			name:   "Action is not in the permission map",
+			roles:  []builder.Role{builder.AdminRole},
+			action: "unknown",
+			permissionMap: builder.RolePermissionMap{
+				builder.AdminRole: []builder.CrudOperation{builder.OperationCreate},
+			},
+			expected: false,
 		},
 	}
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			permissionConfig := builder.RolePermissionMap{
-				"test-role": builder.ActionToPermission{
-					builder.PermissionRead: []builder.PermissionFilter{
-						{
-							FilteredFieldName: "user_id",
-							ParameterKey:      "user_id",
-						},
-						{
-							FilteredFieldName: "other_param",
-							ParameterKey:      "other_param",
-						},
-					},
-				},
-				"test-role-1": builder.ActionToPermission{
-					builder.PermissionRead: []builder.PermissionFilter{
-						{
-							FilteredFieldName: "user_id",
-							ParameterKey:      "user_id",
-						},
-					},
-				},
-				"test-role-2": builder.ActionToPermission{
-					builder.PermissionRead: []builder.PermissionFilter{
-						{
-							FilteredFieldName: "other_param",
-							ParameterKey:      "other_param",
-						},
-					},
-				},
+			actual := test.permissionMap.HasPermission(test.roles, test.action)
+			if actual != test.expected {
+				assert.Equal(t, test.expected, actual, fmt.Sprintf("expected: %v, actual: %v", test.expected, actual))
 			}
-
-			fullAccess, query, err := permissionConfig.HasPermission(test.roles, test.action, test.params)
-
-			if test.expectedError != nil {
-				assert.EqualError(t, err, test.expectedError.Error())
-			} else {
-				assert.NoError(t, err, "GetQuery should not return an error")
-			}
-
-			assert.Equal(t, test.expectedQuery, query, "GetQuery should return the expected query")
-			assert.Equal(t, test.expectedFullAccess, fullAccess, "GetQuery should return the expected hasPermission value")
-
 		})
 	}
 }

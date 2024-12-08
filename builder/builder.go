@@ -354,13 +354,9 @@ func (b *Builder) InitAuth() error {
 
 	permissions := RolePermissionMap{
 		AdminRole:   AllAllowedAccess,
-		VisitorRole: OwnerAccess,
-		AuthenticatorRole: ActionToPermission{
-			PermissionCreate: []PermissionFilter{
-				{
-					FullAccess: true,
-				},
-			},
+		VisitorRole: AllAllowedAccess,
+		AuthenticatorRole: []CrudOperation{
+			OperationCreate,
 		},
 	}
 
@@ -421,7 +417,7 @@ func (b *Builder) InitUploader() error {
 
 	permissions := RolePermissionMap{
 		AdminRole:   AllAllowedAccess,
-		VisitorRole: OwnerAccess,
+		VisitorRole: AllAllowedAccess,
 	}
 
 	// Register the Upload app without authentication
@@ -437,7 +433,7 @@ func (b *Builder) InitUploader() error {
 	// Add route for uploading new files
 	b.Server.AddRoute(
 		route+"/upload",
-		b.GetUploadPostHandler(cfg),
+		b.GetFilePostHandler(cfg),
 		"file-new",
 		true, // Requires authentication
 	)
@@ -445,7 +441,7 @@ func (b *Builder) InitUploader() error {
 	// Add route for deleting files by ID
 	b.Server.AddRoute(
 		route+"/{id}/delete",
-		b.GetUploadDeleteHandler(cfg),
+		b.GetFileDeleteHandler(cfg),
 		"file-delete",
 		true, // Requires authentication
 	)
@@ -470,19 +466,19 @@ func (b *Builder) InitScheduler() error {
 
 	_, err := b.Admin.Register(&SchedulerJobDefinition{}, false, permissions)
 	if err != nil {
-		log.Error().Err(err).Msg("Error registering job app")
+		log.Error().Err(err).Msg("Error registering job definition app")
 		return err
 	}
 
 	_, err = b.Admin.Register(&JobFrequency{}, false, permissions)
 	if err != nil {
-		log.Error().Err(err).Msg("Error registering job app")
+		log.Error().Err(err).Msg("Error registering job frequency app")
 		return err
 	}
 
 	_, err = b.Admin.Register(&SchedulerTask{}, false, permissions)
 	if err != nil {
-		log.Error().Err(err).Msg("Error registering job app")
+		log.Error().Err(err).Msg("Error registering scheduler task app")
 		return err
 	}
 

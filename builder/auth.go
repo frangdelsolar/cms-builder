@@ -55,7 +55,6 @@ func (b *Builder) AuthMiddleware(next http.Handler) http.Handler {
 
 		// Clear the headers in case someone else set them
 		deleteHeader(requestedByParamKey, r)
-		deleteHeader(rolesParamKey, r)
 		deleteHeader(authParamKey, r)
 
 		accessToken := GetAccessTokenFromRequest(r)
@@ -72,7 +71,6 @@ func (b *Builder) AuthMiddleware(next http.Handler) http.Handler {
 		}
 
 		setHeader(requestedByParamKey, localUser.GetIDString(), r)
-		setHeader(rolesParamKey, localUser.Roles, r)
 		setHeader(authParamKey, "true", r)
 
 		log.Info().Interface("User", localUser).Msg("Logging in user")

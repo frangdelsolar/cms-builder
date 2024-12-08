@@ -76,7 +76,7 @@ func GetDefaultEngine() (TestEngineServices, error) {
 
 	permission := builder.RolePermissionMap{
 		builder.AdminRole:   builder.AllAllowedAccess,
-		builder.VisitorRole: builder.OwnerAccess,
+		builder.VisitorRole: builder.AllAllowedAccess,
 	}
 
 	app, err := admin.Register(MockStruct{}, false, permission)

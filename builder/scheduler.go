@@ -83,15 +83,11 @@ func (s *Scheduler) RegisterJob(name string, frequency JobFrequency, function an
 	}
 	s.Builder.DB.Save(&frequency)
 
-	log.Debug().Interface("Frequency", frequency).Str("Name", name).Msg("Registering job")
-
 	jobDefinition, err := s.CreateJobDefinition(name, frequency)
 	if err != nil {
 		log.Error().Err(err).Msg("Error creating job")
 		return err
 	}
-
-	log.Debug().Interface("Job definition", jobDefinition).Msg("Job definition created")
 
 	frequencyDefinition, err := getFrequencyDefinition(frequency)
 	if err != nil {
@@ -179,21 +175,10 @@ func (s *Scheduler) UpdateTaskStatus(id string, status TaskStatus, errMsg string
 }
 
 func (s *Scheduler) GetSchedulerTask(id string) *SchedulerTask {
-
-	stApp, err := s.Builder.Admin.GetApp("schedulertask")
-	if err != nil {
-		log.Error().Err(err).Msg("Error getting schedulertask app")
-		return nil
-	}
-
-	permissionParams := RequestParameters{
-		requestedByParamKey: s.User.GetIDString(),
-	}
-
 	var task SchedulerTask
 
 	q := "cron_job_id = '" + id + "'"
-	s.Builder.DB.Find(&task, q, nil, stApp.permissions, permissionParams)
+	s.Builder.DB.Find(&task, q, nil)
 	return &task
 }
 

@@ -69,7 +69,7 @@ func TestAnonymousCanUploadAllowed(t *testing.T) {
 
 	response, err := th.ExecuteApiCall(
 		t,
-		e.Engine.GetUploadPostHandler(cfg),
+		e.Engine.GetFilePostHandler(cfg),
 		request,
 		&result,
 	)
@@ -111,14 +111,14 @@ func TestAnonymousCanNotUploadForbidden(t *testing.T) {
 
 	response, err := th.ExecuteApiCall(
 		t,
-		e.Engine.GetUploadPostHandler(cfg),
+		e.Engine.GetFilePostHandler(cfg),
 		request,
 		&result,
 	)
 
 	assert.NoError(t, err, "Upload should not return an error")
 	assert.Equal(t, response.Success, false, "Success should be false")
-	assert.Contains(t, response.Message, "user not authenticated", "Error should be user not authenticated")
+	assert.Contains(t, response.Message, "not allowed", "Error should contain not allowed")
 
 	assert.Equal(t, result, (builder.Upload{}), "Result should be nil", result)
 }

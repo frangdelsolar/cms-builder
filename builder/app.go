@@ -38,11 +38,23 @@ type API struct {
 
 var DefaultList ApiFunction = func(input *ApiInput, db *Database, app *App) (*gorm.DB, error) {
 	query := ""
-	return db.Find(input.model, query, input.pagination, app.permissions, input.parameters), nil
+	role := input.parameters.Roles[0]
+	if role == VisitorRole {
+		query = "created_by_id = '" + input.parameters.RequestedById + "'"
+	}
+
+	return db.Find(input.model, query, input.pagination), nil
 }
 
 var DefaultDetail ApiFunction = func(input *ApiInput, db *Database, app *App) (*gorm.DB, error) {
-	result := db.FindById(input.instanceId, input.model, app.permissions, input.parameters)
+	queryExtension := ""
+
+	role := input.parameters.Roles[0]
+	if role == VisitorRole {
+		queryExtension = "created_by_id = '" + input.parameters.RequestedById + "'"
+	}
+
+	result := db.FindById(input.instanceId, input.model, queryExtension)
 	return result, nil
 }
 
@@ -192,8 +204,12 @@ func (a *App) ApiList(db *Database) HandlerFunc {
 			return
 		}
 
-		requestedBy := getRequestUserId(r, a)
-		params := createRequestParameters(r, requestedBy)
+		params := formatRequestParameters(r, a.admin.builder)
+		isAllowed := a.permissions.HasPermission(params.Roles, OperationRead)
+		if !isAllowed {
+			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to read this resource")
+			return
+		}
 
 		limit, err := strconv.Atoi(getQueryParam("limit", r))
 		if err != nil {
@@ -259,8 +275,12 @@ func (a *App) ApiDetail(db *Database) HandlerFunc {
 			return
 		}
 
-		requestedBy := getRequestUserId(r, a)
-		params := createRequestParameters(r, requestedBy)
+		params := formatRequestParameters(r, a.admin.builder)
+		isAllowed := a.permissions.HasPermission(params.Roles, OperationRead)
+		if !isAllowed {
+			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to read this resource")
+			return
+		}
 
 		// Create a new instance of the model
 		instance := createInstanceForUndeterminedType(a.model)
@@ -302,8 +322,12 @@ func (a *App) ApiCreate(db *Database) HandlerFunc {
 			return
 		}
 
-		requestedBy := getRequestUserId(r, a)
-		params := createRequestParameters(r, requestedBy)
+		params := formatRequestParameters(r, a.admin.builder)
+		isAllowed := a.permissions.HasPermission(params.Roles, OperationCreate)
+		if !isAllowed {
+			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to create this resource")
+			return
+		}
 
 		// Will read bytes, append user data and pack the bytes again to be processed
 		bodyBytes, err := readRequestBody(r)
@@ -320,7 +344,7 @@ func (a *App) ApiCreate(db *Database) HandlerFunc {
 		}
 
 		// Update SystemData fields
-		bodyBytes, err = appendUserDataToRequestBody(bodyBytes, requestedBy, true)
+		bodyBytes, err = appendUserDataToRequestBody(bodyBytes, params.RequestedById, true)
 		if err != nil {
 			SendJsonResponse(w, http.StatusUnauthorized, err, err.Error())
 			return
@@ -381,8 +405,13 @@ func (a *App) ApiUpdate(db *Database) HandlerFunc {
 			SendJsonResponse(w, http.StatusMethodNotAllowed, nil, err.Error())
 			return
 		}
-		requestedBy := getRequestUserId(r, a)
-		params := createRequestParameters(r, requestedBy)
+
+		params := formatRequestParameters(r, a.admin.builder)
+		isAllowed := a.permissions.HasPermission(params.Roles, OperationUpdate)
+		if !isAllowed {
+			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to update this resource")
+			return
+		}
 
 		// Create a new instance of the model
 		instance := createInstanceForUndeterminedType(a.model)
@@ -417,7 +446,7 @@ func (a *App) ApiUpdate(db *Database) HandlerFunc {
 			return
 		}
 
-		bodyBytes, err = appendUserDataToRequestBody(bodyBytes, requestedBy, false)
+		bodyBytes, err = appendUserDataToRequestBody(bodyBytes, params.RequestedById, false)
 		if err != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
@@ -478,8 +507,12 @@ func (a *App) ApiDelete(db *Database) HandlerFunc {
 			return
 		}
 
-		requestedBy := getRequestUserId(r, a)
-		params := createRequestParameters(r, requestedBy)
+		params := formatRequestParameters(r, a.admin.builder)
+		isAllowed := a.permissions.HasPermission(params.Roles, OperationDelete)
+		if !isAllowed {
+			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to delete this resource")
+			return
+		}
 
 		// Create a new instance of the model
 		instance := createInstanceForUndeterminedType(a.model)
@@ -556,20 +589,6 @@ func removeSystemDataFieldsFromRequest(bodyBytes []byte) ([]byte, error) {
 	}
 
 	return modifiedBytes, nil
-}
-
-// getRequestUserId validates the access token in the Authorization header of the request.
-//
-// The function first retrieves the access token from the request header, then verifies it
-// by calling VerifyUser on the App's admin instance. If the verification fails, it returns
-// an empty string. Otherwise, it returns the ID of the verified user as a string.
-func getRequestUserId(r *http.Request, a *App) string {
-	accessToken := GetAccessTokenFromRequest(r)
-	user, err := a.admin.builder.VerifyUser(accessToken)
-	if err != nil {
-		return ""
-	}
-	return user.GetIDString()
 }
 
 // unmarshalRequestBody unmarshals the given byte slice into a map[string]interface{}.

@@ -294,16 +294,17 @@ func TestUserCanNotCreateDeniedResources(t *testing.T) {
 	assert.Nil(t, user, "User should be nil")
 
 	t.Log("Creating a resource without authentication")
-	var result []th.MockStruct
+	var result th.MockStruct
 	response, err := th.ExecuteApiCall(
 		t,
 		e.App.ApiCreate(e.DB),
 		request,
 		&result,
 	)
-	assert.Error(t, err, "ApiNew should return an error")
+	assert.Equal(t, result, th.MockStruct{}, "Result should be empty")
+	assert.NoError(t, err, "ApiNew should not return an error")
 	assert.NotNil(t, response, "ApiNew should return a non-nil response")
-	assert.Contains(t, response.Message, "user not authenticated", "The response should be an error message")
+	assert.Contains(t, response.Message, "not allowed", "The response should be an error message")
 }
 
 // TestUserCanUpdateAllowedResources tests that a user can update a resource if they have the correct permissions.

@@ -17,7 +17,12 @@ const (
 	pageParamKey        RequestParamKey = "page"
 )
 
-type RequestParameters map[RequestParamKey]string
+type RequestParameters struct {
+	RequestedById string
+	Auth          bool
+	User          *User
+	Roles         []Role
+}
 
 type RequestParamKey string
 
@@ -59,23 +64,39 @@ func getQueryParam(param string, r *http.Request) string {
 	return output
 }
 
-// createRequestParameters creates a RequestParameters map from the given HTTP request.
+// getRequestParameters creates a RequestParameters map from the given HTTP request.
 // It extracts all non-Authorization headers and query parameters from the request and
 // stores them in the map.
 // The requestedBy parameter is added to the map with the key "requested_by"
 // The function returns the populated RequestParameters map.
-func createRequestParameters(r *http.Request, requestedBy string) RequestParameters {
+func formatRequestParameters(r *http.Request, b *Builder) RequestParameters {
 	params := RequestParameters{}
-	for k, v := range r.Header {
-		if k == "Authorization" {
-			continue
-		}
-		params[RequestParamKey(k)] = strings.Join(v, ",")
+
+	user := getRequestUser(r, b)
+	if user == nil {
+		return params
 	}
 
-	params[requestedByParamKey] = requestedBy
+	params.User = user
+	params.RequestedById = user.GetIDString()
+	params.Roles = user.GetRoles()
+	params.Auth = true
 
 	return params
+}
+
+// getRequestUserId validates the access token in the Authorization header of the request.
+//
+// The function first retrieves the access token from the request header, then verifies it
+// by calling VerifyUser on the App's admin instance. If the verification fails, it returns
+// an empty string. Otherwise, it returns the ID of the verified user as a string.
+func getRequestUser(r *http.Request, b *Builder) *User {
+	accessToken := GetAccessTokenFromRequest(r)
+	user, err := b.VerifyUser(accessToken)
+	if err != nil {
+		return nil
+	}
+	return user
 }
 
 // GetAccessTokenFromRequest extracts the access token from the Authorization header of the given request.
