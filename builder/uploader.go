@@ -108,7 +108,7 @@ func (b *Builder) GetUploadPostHandler(cfg *UploaderConfig) HandlerFunc {
 		}
 
 		// This will send the response to the client
-		uploadApp.ApiNew(b.DB)(w, request)
+		uploadApp.ApiCreate(b.DB)(w, request)
 	}
 }
 
@@ -132,7 +132,7 @@ func (b *Builder) GetUploadDeleteHandler(cfg *UploaderConfig) HandlerFunc {
 
 		var instance Upload
 		// Query the database to find the record by ID
-		permissionParams := PermissionParams{
+		permissionParams := RequestParameters{
 			requestedByParamKey: userId,
 		}
 		result := b.DB.FindById(id, &instance, uploadApp.permissions, permissionParams)

@@ -15,7 +15,7 @@ func TestGetQuery(t *testing.T) {
 		name               string
 		roles              []builder.Role
 		action             builder.PermissionAction
-		params             builder.PermissionParams
+		params             builder.RequestParameters
 		expectedQuery      string
 		expectedFullAccess bool
 		expectedError      error
@@ -24,7 +24,7 @@ func TestGetQuery(t *testing.T) {
 			name:               "Role not found",
 			roles:              []builder.Role{"non-existent-role"},
 			action:             builder.PermissionRead,
-			params:             builder.PermissionParams{},
+			params:             builder.RequestParameters{},
 			expectedQuery:      "",
 			expectedFullAccess: false,
 			expectedError:      fmt.Errorf("no rules were found for action: read and user roles: [non-existent-role]"),
@@ -33,7 +33,7 @@ func TestGetQuery(t *testing.T) {
 			name:               "Action not found",
 			roles:              []builder.Role{"test-role"},
 			action:             "non-existent-action",
-			params:             builder.PermissionParams{},
+			params:             builder.RequestParameters{},
 			expectedQuery:      "",
 			expectedFullAccess: false,
 			expectedError:      fmt.Errorf("no rules were found for action: non-existent-action and user roles: [test-role]"),
@@ -42,7 +42,7 @@ func TestGetQuery(t *testing.T) {
 			name:               "No filters found for action and role",
 			roles:              []builder.Role{"test-role"},
 			action:             builder.PermissionRead,
-			params:             builder.PermissionParams{},
+			params:             builder.RequestParameters{},
 			expectedQuery:      "",
 			expectedFullAccess: false,
 			expectedError:      fmt.Errorf("no rules were found for action: read and user roles: [test-role]"),
@@ -51,7 +51,7 @@ func TestGetQuery(t *testing.T) {
 			name:               "Multiple roles with permissions",
 			roles:              []builder.Role{"test-role-1", "test-role-2"},
 			action:             builder.PermissionRead,
-			params:             builder.PermissionParams{"user_id": "1"},
+			params:             builder.RequestParameters{"user_id": "1"},
 			expectedQuery:      "user_id = '1'",
 			expectedFullAccess: false,
 			expectedError:      nil,
@@ -60,7 +60,7 @@ func TestGetQuery(t *testing.T) {
 			name:               "Single role with multiple permissions",
 			roles:              []builder.Role{"test-role"},
 			action:             builder.PermissionRead,
-			params:             builder.PermissionParams{"user_id": "1", "other_param": "2"},
+			params:             builder.RequestParameters{"user_id": "1", "other_param": "2"},
 			expectedQuery:      "user_id = '1' AND other_param = '2'",
 			expectedFullAccess: false,
 			expectedError:      nil,
@@ -69,7 +69,7 @@ func TestGetQuery(t *testing.T) {
 			name:               "Empty params",
 			roles:              []builder.Role{"test-role"},
 			action:             builder.PermissionRead,
-			params:             builder.PermissionParams{},
+			params:             builder.RequestParameters{},
 			expectedQuery:      "",
 			expectedFullAccess: false,
 			expectedError:      fmt.Errorf("no rules were found for action: read and user roles: [test-role]"),
@@ -78,7 +78,7 @@ func TestGetQuery(t *testing.T) {
 			name:               "Params with empty values",
 			roles:              []builder.Role{"test-role"},
 			action:             builder.PermissionRead,
-			params:             builder.PermissionParams{"user_id": "", "other_param": "2"},
+			params:             builder.RequestParameters{"user_id": "", "other_param": "2"},
 			expectedQuery:      "other_param = '2'",
 			expectedFullAccess: false,
 			expectedError:      nil,

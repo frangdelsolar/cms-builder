@@ -13,8 +13,7 @@ const (
 	SchedulerRole     Role = "scheduler"
 	AuthenticatorRole Role = "authenticator"
 
-	requestedByParamKey = "requested_by"
-	createdByIdField    = "created_by_id"
+	createdByIdField = "created_by_id"
 )
 
 var AllAllowedAccess = ActionToPermission{
@@ -70,29 +69,14 @@ type Role string
 type PermissionAction string
 
 type PermissionFilter struct {
-	FilteredFieldName FieldName `json:"filteredFieldName"`
-	ParameterKey      FieldName `json:"mapedFieldName"`
-	FullAccess        bool      `json:"fullAccess"`
+	FilteredFieldName FieldName       `json:"filteredFieldName"`
+	ParameterKey      RequestParamKey `json:"mapedFieldName"`
+	FullAccess        bool            `json:"fullAccess"`
 }
 type ActionToPermission map[PermissionAction][]PermissionFilter
 type RolePermissionMap map[Role]ActionToPermission
 
-func (r RolePermissionMap) FieldNames() []FieldName {
-	var fieldNames []FieldName
-
-	for _, actionMap := range r {
-		for _, filters := range actionMap {
-			for _, filter := range filters {
-				fieldNames = append(fieldNames, filter.ParameterKey)
-			}
-		}
-	}
-	return fieldNames
-}
-
-type PermissionParams map[FieldName]string
-
-func (p RolePermissionMap) HasPermission(userRoles []Role, action PermissionAction, params PermissionParams) (
+func (p RolePermissionMap) HasPermission(userRoles []Role, action PermissionAction, params RequestParameters) (
 	fullAccess bool, query string, err error) {
 
 	query = ""

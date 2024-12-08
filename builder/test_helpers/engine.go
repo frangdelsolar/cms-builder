@@ -103,7 +103,7 @@ func CreateMockResource(t *testing.T, db *builder.Database, app *builder.App, us
 	var createdItem MockStruct
 	response, err := ExecuteApiCall(
 		t,
-		app.ApiNew(db),
+		app.ApiCreate(db),
 		request,
 		&createdItem,
 	)

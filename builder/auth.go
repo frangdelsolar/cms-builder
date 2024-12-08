@@ -49,8 +49,14 @@ func (b *Builder) VerifyUser(userIdToken string) (*User, error) {
 // verification fails, it will return a 401 error. If the verification is
 // successful, it will continue to the next handler in the chain, setting a
 // "requested_by" header in the request with the ID of the verified user.
+
 func (b *Builder) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		// Clear the headers in case someone else set them
+		deleteHeader(requestedByParamKey, r)
+		deleteHeader(rolesParamKey, r)
+		deleteHeader(authParamKey, r)
 
 		accessToken := GetAccessTokenFromRequest(r)
 		localUser, err := b.VerifyUser(accessToken)
@@ -65,9 +71,12 @@ func (b *Builder) AuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		r.Header.Set("auth", "true") // this is set only for testing purposes
+		setHeader(requestedByParamKey, localUser.GetIDString(), r)
+		setHeader(rolesParamKey, localUser.Roles, r)
+		setHeader(authParamKey, "true", r)
 
 		log.Info().Interface("User", localUser).Msg("Logging in user")
+
 		next.ServeHTTP(w, r)
 	})
 }
@@ -161,18 +170,4 @@ func (b *Builder) RegisterUserController(w http.ResponseWriter, r *http.Request)
 	// Prevent sending the firebaseId to the client
 	user.FirebaseId = ""
 	SendJsonResponse(w, http.StatusOK, user, "User registered successfully")
-}
-
-// GetAccessTokenFromRequest extracts the access token from the Authorization header of the given request.
-// The header should be in the format "Bearer <token>".
-// If the token is not found, it returns an empty string.
-func GetAccessTokenFromRequest(r *http.Request) string {
-	header := r.Header.Get("Authorization")
-	if header != "" {
-		token := strings.Split(header, " ")[1]
-		if token != "" {
-			return token
-		}
-	}
-	return ""
 }

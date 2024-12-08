@@ -186,7 +186,7 @@ func (s *Scheduler) GetSchedulerTask(id string) *SchedulerTask {
 		return nil
 	}
 
-	permissionParams := PermissionParams{
+	permissionParams := RequestParameters{
 		requestedByParamKey: s.User.GetIDString(),
 	}
 

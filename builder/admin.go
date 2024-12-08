@@ -61,6 +61,13 @@ func (a *Admin) Register(model interface{}, skipUserBinding bool, permissions Ro
 		admin:           a,
 		validators:      make(ValidatorsMap),
 		permissions:     permissions,
+		api: API{
+			List:   DefaultList,
+			Detail: DefaultDetail,
+			Create: DefaultCreate,
+			Update: DefaultUpdate,
+			Delete: DefaultDelete,
+		},
 	}
 
 	// check the app is not already registered
@@ -130,7 +137,7 @@ func (a *Admin) registerAPIRoutes(app App) {
 
 	a.builder.Server.AddRoute(
 		baseRoute+"/new",
-		app.ApiNew(a.builder.DB),
+		app.ApiCreate(a.builder.DB),
 		app.Name()+"-new",
 		protectedRoute,
 	)

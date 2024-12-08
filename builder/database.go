@@ -18,8 +18,8 @@ type Database struct {
 	DB *gorm.DB // Embedded GORM DB instance for database access
 }
 
-func (db *Database) FindById(id string, entity interface{}, permissions RolePermissionMap, permissionParams PermissionParams) *gorm.DB {
-	requestedBy := permissionParams[requestedByParamKey]
+func (db *Database) FindById(id string, entity interface{}, permissions RolePermissionMap, params RequestParameters) *gorm.DB {
+	requestedBy := params[requestedByParamKey]
 	userRoles, err := db.GetUserRoles(requestedBy)
 	if err != nil {
 		log.Error().
@@ -28,13 +28,13 @@ func (db *Database) FindById(id string, entity interface{}, permissions RolePerm
 		return nil
 	}
 
-	fullAccess, query, err := permissions.HasPermission(userRoles, PermissionRead, permissionParams)
+	fullAccess, query, err := permissions.HasPermission(userRoles, PermissionRead, params)
 
 	if err != nil {
 		log.Error().
 			Err(err).
 			Str("user_id", requestedBy).
-			Interface("permission_params", permissionParams).
+			Interface("permission_params", params).
 			Interface("user_roles", userRoles).
 			Str("action", string(PermissionRead)).
 			Msg("Error getting query for user")
@@ -60,7 +60,7 @@ func (db *Database) GetUserRoles(userId string) ([]Role, error) {
 	return []Role{VisitorRole}, nil
 }
 
-func (db *Database) Find(entity interface{}, query string, pagination *Pagination, permissions RolePermissionMap, permissionParams PermissionParams) *gorm.DB {
+func (db *Database) Find(entity interface{}, query string, pagination *Pagination, permissions RolePermissionMap, permissionParams RequestParameters) *gorm.DB {
 
 	requestedBy := permissionParams[requestedByParamKey]
 	userRoles, err := db.GetUserRoles(requestedBy)

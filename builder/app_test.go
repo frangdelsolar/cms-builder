@@ -297,7 +297,7 @@ func TestUserCanNotCreateDeniedResources(t *testing.T) {
 	var result []th.MockStruct
 	response, err := th.ExecuteApiCall(
 		t,
-		e.App.ApiNew(e.DB),
+		e.App.ApiCreate(e.DB),
 		request,
 		&result,
 	)
@@ -500,7 +500,7 @@ func TestCreateCallsValidators(t *testing.T) {
 	var result th.MockStruct
 	response, err := th.ExecuteApiCall(
 		t,
-		e.App.ApiNew(e.DB),
+		e.App.ApiCreate(e.DB),
 		request,
 		&result,
 	)
@@ -564,7 +564,7 @@ func TestUserCanNotReplaceCreatedByIDOnCreate(t *testing.T) {
 	t.Log("Creating a resource")
 
 	var instance th.MockStruct
-	response, err := th.ExecuteApiCall(t, e.App.ApiNew(e.DB), request, &instance)
+	response, err := th.ExecuteApiCall(t, e.App.ApiCreate(e.DB), request, &instance)
 	assert.NoError(t, err, "ExecuteApiCall should not return an error")
 	assert.NotNil(t, response, "ApiNew should return a non-nil response")
 
