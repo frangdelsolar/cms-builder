@@ -19,6 +19,7 @@ type ConfigKeys struct {
 	LogLevel              string `json:"logLevel"`              // Log level
 	LogFilePath           string `json:"logFilePath"`           // File path for logging
 	LogWriteToFile        string `json:"logWriteToFile"`        // Write logs to file
+	Domain                string `json:"domain"`                // Domain
 	DbFile                string `json:"dbFile"`                // Database file
 	DbUrl                 string `json:"dbUrl"`                 // Database URL
 	ServerHost            string `json:"serverHost"`            // Server host
@@ -48,6 +49,7 @@ var EnvKeys = ConfigKeys{
 	LogLevel:              "LOG_LEVEL",
 	LogFilePath:           "LOG_FILE_PATH",
 	LogWriteToFile:        "LOG_WRITE_TO_FILE",
+	Domain:                "DOMAIN",
 	DbFile:                "DB_FILE",
 	DbUrl:                 "DB_URL",
 	ServerHost:            "SERVER_HOST",
@@ -77,6 +79,7 @@ var DefaultEnvValues = ConfigKeys{
 	LogLevel:              "debug",
 	LogFilePath:           "logs/default.log",
 	LogWriteToFile:        "true",
+	Domain:                "localhost",
 	DbFile:                "database.db",
 	DbUrl:                 "",
 	ServerHost:            "0.0.0.0",
@@ -377,19 +380,33 @@ func (b *Builder) InitAuth() error {
 		return err
 	}
 
-	userApp.api.List = func(input *ApiInput, db *Database, app *App) (*gorm.DB, error) {
+	userApp.Api.List = func(input *ApiInput, db *Database, app *App) (*gorm.DB, error) {
 		query := ""
-		role := input.parameters.Roles[0]
+		role := input.Parameters.Roles[0]
 		if role == VisitorRole {
-			query = "id = '" + input.parameters.RequestedById + "'"
+			query = "id = '" + input.Parameters.RequestedById + "'"
 		}
 
-		return db.Find(input.model, query, input.pagination), nil
+		return db.Find(input.Model, query, input.Pagination), nil
 	}
 
-	userApp.RegisterValidator("email", ValidatorsList{RequiredValidator, EmailValidator})
-	userApp.RegisterValidator("name", ValidatorsList{RequiredValidator})
-	userApp.RegisterValidator("roles", ValidatorsList{RequiredValidator})
+	err = userApp.RegisterValidator("email", ValidatorsList{RequiredValidator, EmailValidator})
+	if err != nil {
+		log.Error().Err(err).Msg("Error registering email validator")
+		return err
+	}
+
+	err = userApp.RegisterValidator("name", ValidatorsList{RequiredValidator})
+	if err != nil {
+		log.Error().Err(err).Msg("Error registering name validator")
+		return err
+	}
+
+	err = userApp.RegisterValidator("roles", ValidatorsList{RequiredValidator})
+	if err != nil {
+		log.Error().Err(err).Msg("Error registering roles validator")
+		return err
+	}
 
 	svr := b.Server
 	svr.AddRoute("/auth/register", b.RegisterVisitorController, "register", false)
@@ -522,7 +539,7 @@ func (b *Builder) RegisterAdminUser() error {
 		Password: config.GetString(EnvKeys.AdminPassword),
 	}
 
-	user, err := b.CreateUserWithRole(*userData, AdminRole)
+	user, err := b.CreateUserWithRole(*userData, AdminRole, true)
 	if err != nil {
 		log.Error().Err(err).Msg("Error creating admin user")
 		return err

@@ -109,7 +109,7 @@ func (b *Builder) RegisterVisitorController(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	user, err := b.CreateUserWithRole(input, VisitorRole)
+	user, err := b.CreateUserWithRole(input, VisitorRole, true)
 	if err != nil {
 		msg := fmt.Sprintf("Error creating user: %s", err.Error())
 		SendJsonResponse(w, http.StatusInternalServerError, nil, msg)
@@ -121,46 +121,127 @@ func (b *Builder) RegisterVisitorController(w http.ResponseWriter, r *http.Reque
 	SendJsonResponse(w, http.StatusOK, user, "User registered successfully")
 }
 
+// AppendRoleToUser appends a role to a user's roles field in the database.
+//
+// The method first retrieves the user from the database. If the user is not found,
+// it returns an error.
+//
+// If the user's roles field is empty, it sets the roles field to the given role.
+// Otherwise, it appends the given role to the list of roles, separated by a comma.
+// If the given role is already in the list of roles, it does not append it again.
+//
+// Finally, it saves the user back to the database. If there is an error saving the user,
+// it returns the error.
+func (b *Builder) AppendRoleToUser(userId string, role Role) error {
+	user := User{}
+	b.DB.DB.Where("id = ?", userId).First(&user)
+
+	if user == (User{}) {
+		return fmt.Errorf("User not found")
+	}
+
+	if user.Roles == "" {
+		user.Roles = string(role)
+	} else {
+		if strings.Contains(user.Roles, string(role)) {
+			log.Info().Msg("User already has role")
+			return nil
+		}
+		user.Roles += "," + string(role)
+	}
+
+	err := b.DB.DB.Save(&user).Error
+	if err != nil {
+		log.Error().Err(err).Msg("Error appending role to user")
+		return err
+	}
+	return nil
+}
+
+// RemoveRoleFromUser removes a role from a user's roles field in the database.
+//
+// The method first retrieves the user from the database. If the user is not found,
+// it returns an error.
+//
+// If the user's roles field does not contain the given role, it simply returns.
+// Otherwise, it removes the given role from the list of roles and saves the user
+// back to the database. If there is an error saving the user, it returns the error.
+func (b *Builder) RemoveRoleFromUser(userId string, role Role) error {
+
+	user := User{}
+	b.DB.DB.Where("id = ?", userId).First(&user)
+
+	if user == (User{}) {
+		return fmt.Errorf("User not found")
+	}
+
+	if !strings.Contains(user.Roles, string(role)) {
+		log.Info().Msg("User does not have role")
+		return nil
+	}
+	log.Info().Interface("user", user).Msg("user")
+	roles := strings.Split(user.Roles, ",")
+	log.Info().Interface("roles", roles).Msg("roles")
+	for i, r := range roles {
+		if r == string(role) {
+			roles = append(roles[:i], roles[i+1:]...)
+			break
+		}
+	}
+
+	user.Roles = strings.Join(roles, ",")
+
+	err := b.DB.DB.Save(&user).Error
+	if err != nil {
+		log.Error().Err(err).Msg("Error removing role from user")
+		return err
+	}
+
+	return nil
+}
+
 // CreateUserWithRole creates a new user in Firebase with the given name, email, and password, and also
 // creates a new user in the local database with the given role. If the user already exists in Firebase,
 // it will add the user to the local database. If the user already exists in the local database, it will
 // return an error.
-func (b *Builder) CreateUserWithRole(input RegisterUserInput, role Role) (*User, error) {
+func (b *Builder) CreateUserWithRole(input RegisterUserInput, role Role, registerFirebase bool) (*User, error) {
 	ctx := context.Background()
+
 	var fbUserId string
+	if registerFirebase {
+		fbUser, err := b.Firebase.RegisterUser(ctx, input)
+		if err != nil {
+			msg := fmt.Sprintf("Error registering user: %s", err.Error())
 
-	fbUser, err := b.Firebase.RegisterUser(ctx, input)
-	if err != nil {
-		msg := fmt.Sprintf("Error registering user: %s", err.Error())
-
-		if strings.Contains(err.Error(), "EMAIL_EXISTS") {
-			existingFbUser, err := b.Firebase.Client.GetUserByEmail(ctx, input.Email)
-			if err != nil {
-				msg := fmt.Sprintf("Error getting user by email: %s", err.Error())
+			if strings.Contains(err.Error(), "EMAIL_EXISTS") {
+				existingFbUser, err := b.Firebase.Client.GetUserByEmail(ctx, input.Email)
+				if err != nil {
+					msg := fmt.Sprintf("Error getting user by email: %s", err.Error())
+					return nil, fmt.Errorf("%s", msg)
+				}
+				log.Warn().Msg("User already exists in Firebase. Will add it to database")
+				fbUserId = existingFbUser.UID
+			} else {
 				return nil, fmt.Errorf("%s", msg)
 			}
-			log.Warn().Msg("User already exists in Firebase. Will add it to database")
-			fbUserId = existingFbUser.UID
 		} else {
-			return nil, fmt.Errorf("%s", msg)
+			fbUserId = fbUser.UID
 		}
-	} else {
-		fbUserId = fbUser.UID
-	}
 
-	// Check if there is a user with the same fbUserId in the database
-	var existingUser User
-	q := "firebase_id = '" + fbUserId + "'"
-	err = b.DB.DB.Where(q).First(&existingUser).Error
-	if err != nil {
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("error getting user from database")
+		// Check if there is a user with the same fbUserId in the database
+		var existingUser User
+		q := "firebase_id = '" + fbUserId + "'"
+		err = b.DB.DB.Where(q).First(&existingUser).Error
+		if err != nil {
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, fmt.Errorf("error getting user from database")
+			}
 		}
-	}
 
-	if existingUser != (User{}) {
-		log.Warn().Msg("User already exists in database.")
-		return &existingUser, nil
+		if existingUser != (User{}) {
+			log.Warn().Msg("User already exists in database.")
+			return &existingUser, nil
+		}
 	}
 
 	// Create user in database

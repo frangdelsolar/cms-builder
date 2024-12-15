@@ -12,7 +12,7 @@ type User struct {
 	Name       string `json:"name"`
 	Email      string `gorm:"unique" json:"email"`
 	FirebaseId string `json:"firebase_id"`
-	Roles      string `json:"roles"` // comma-separated list of roles
+	Roles      string `json:"roles"` // comma-separated list of roles e.g. "admin,visitor"
 }
 
 // ID returns the ID of the SystemData as a string.

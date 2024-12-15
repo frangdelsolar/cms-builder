@@ -69,7 +69,7 @@ func getQueryParam(param string, r *http.Request) string {
 // stores them in the map.
 // The requestedBy parameter is added to the map with the key "requested_by"
 // The function returns the populated RequestParameters map.
-func formatRequestParameters(r *http.Request, b *Builder) RequestParameters {
+func FormatRequestParameters(r *http.Request, b *Builder) RequestParameters {
 	params := RequestParameters{}
 
 	user := getRequestUser(r, b)

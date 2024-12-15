@@ -84,7 +84,10 @@ func GetDefaultEngine() (TestEngineServices, error) {
 		return TestEngineServices{}, err
 	}
 
-	app.RegisterValidator("field", builder.ValidatorsList{FieldValidator})
+	err = app.RegisterValidator("field", builder.ValidatorsList{FieldValidator})
+	if err != nil {
+		return TestEngineServices{}, err
+	}
 	defer admin.Unregister(app.Name())
 
 	return TestEngineServices{e, admin, e.DB, e.Server, e.Firebase, &app, e.Logger, e.Config, e.Store}, nil

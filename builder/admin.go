@@ -60,8 +60,8 @@ func (a *Admin) Register(model interface{}, skipUserBinding bool, permissions Ro
 		skipUserBinding: skipUserBinding,
 		admin:           a,
 		validators:      make(ValidatorsMap),
-		permissions:     permissions,
-		api: API{
+		Permissions:     permissions,
+		Api: API{
 			List:   DefaultList,
 			Detail: DefaultDetail,
 			Create: DefaultCreate,

@@ -18,10 +18,10 @@ func (f FieldName) S() string {
 }
 
 type ApiInput struct {
-	model      interface{}       // model where data will be stored
-	pagination *Pagination       // pagination object
-	parameters RequestParameters // request parameters
-	instanceId string            // instance id
+	Model      interface{}       // model where data will be stored
+	Pagination *Pagination       // pagination object
+	Parameters RequestParameters // request parameters
+	InstanceId string            // instance id
 }
 
 // ApiFunction is a function that takes an ApiInput, a *Database and an *App and returns a *gorm.DB.
@@ -38,38 +38,38 @@ type API struct {
 
 var DefaultList ApiFunction = func(input *ApiInput, db *Database, app *App) (*gorm.DB, error) {
 	query := ""
-	role := input.parameters.Roles[0]
+	role := input.Parameters.Roles[0]
 	if role == VisitorRole {
-		query = "created_by_id = '" + input.parameters.RequestedById + "'"
+		query = "created_by_id = '" + input.Parameters.RequestedById + "'"
 	}
 
-	return db.Find(input.model, query, input.pagination), nil
+	return db.Find(input.Model, query, input.Pagination), nil
 }
 
 var DefaultDetail ApiFunction = func(input *ApiInput, db *Database, app *App) (*gorm.DB, error) {
 	queryExtension := ""
 
-	role := input.parameters.Roles[0]
+	role := input.Parameters.Roles[0]
 	if role == VisitorRole {
-		queryExtension = "created_by_id = '" + input.parameters.RequestedById + "'"
+		queryExtension = "created_by_id = '" + input.Parameters.RequestedById + "'"
 	}
 
-	result := db.FindById(input.instanceId, input.model, queryExtension)
+	result := db.FindById(input.InstanceId, input.Model, queryExtension)
 	return result, nil
 }
 
 var DefaultCreate ApiFunction = func(input *ApiInput, db *Database, app *App) (*gorm.DB, error) {
-	result := db.Create(input.model)
+	result := db.Create(input.Model)
 	return result, nil
 }
 
 var DefaultUpdate ApiFunction = func(input *ApiInput, db *Database, app *App) (*gorm.DB, error) {
-	result := db.Save(input.model)
+	result := db.Save(input.Model)
 	return result, nil
 }
 
 var DefaultDelete ApiFunction = func(input *ApiInput, db *Database, app *App) (*gorm.DB, error) {
-	result := db.Delete(input.model)
+	result := db.Delete(input.Model)
 	return result, nil
 }
 
@@ -78,8 +78,8 @@ type App struct {
 	skipUserBinding bool              // Means that theres a CreatedBy field in the model that will be used for filtering the database query to only include records created by the user
 	admin           *Admin            // The admin instance
 	validators      ValidatorsMap     // A map of field names to validation functions
-	permissions     RolePermissionMap // Key is Role name, value is permission
-	api             API               // The API struct
+	Permissions     RolePermissionMap // Key is Role name, value is permission
+	Api             API               // The API struct
 }
 
 // Name returns the name of the model as a string, lowercased and without the package name.
@@ -92,19 +92,40 @@ func (a *App) PluralName() string {
 	return Pluralize(a.Name())
 }
 
-// RegisterValidator registers a validator function for the given field name.
+// RegisterValidator registers a list of validators for a specific field in the model.
 //
 // Parameters:
-//   - fieldName: The name of the field to register the validator for.
-//     Name should match what the json schema expects. Otherwise, the validator will not be running against it.
-//   - validator: The validator function to register.
+// - fieldName: the name of the field to register the validators for.
+// - validators: a list of validators to be registered for the specified field.
 //
 // Returns:
-// - nothing
-func (a *App) RegisterValidator(fieldName FieldName, validators ValidatorsList) {
-	lowerFieldName := strings.ToLower(string(fieldName))
+// - error: an error if the field is not found in the model.
+func (a *App) RegisterValidator(fieldName FieldName, validators ValidatorsList) error {
+	fieldNameLower := strings.ToLower(string(fieldName))
 
-	a.validators[lowerFieldName] = append(a.validators[lowerFieldName], validators...)
+	jsonData, err := JsonifyInterface(a.model)
+	if err != nil {
+		return err
+	}
+
+	// Check if the field exists in the model's JSON representation
+	fieldExists := false
+	for k := range jsonData {
+		if strings.ToLower(k) == fieldNameLower {
+			fieldExists = true
+			break
+		}
+	}
+
+	// If the field is not found, return an error
+	if !fieldExists {
+		return fmt.Errorf("field %s not found in model", fieldName)
+	}
+
+	// Append the provided validators to the existing list of validators for that field
+	a.validators[fieldNameLower] = append(a.validators[fieldNameLower], validators...)
+
+	return nil
 }
 
 // GetValidatorForField returns the validator function associated with the given field name.
@@ -204,8 +225,8 @@ func (a *App) ApiList(db *Database) HandlerFunc {
 			return
 		}
 
-		params := formatRequestParameters(r, a.admin.builder)
-		isAllowed := a.permissions.HasPermission(params.Roles, OperationRead)
+		params := FormatRequestParameters(r, a.admin.builder)
+		isAllowed := a.Permissions.HasPermission(params.Roles, OperationRead)
 		if !isAllowed {
 			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to read this resource")
 			return
@@ -237,12 +258,12 @@ func (a *App) ApiList(db *Database) HandlerFunc {
 		}
 
 		listInput := ApiInput{
-			model:      instances,
-			pagination: pagination,
-			parameters: params,
+			Model:      instances,
+			Pagination: pagination,
+			Parameters: params,
 		}
 
-		result, err := a.api.List(&listInput, db, a)
+		result, err := a.Api.List(&listInput, db, a)
 		if err != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
@@ -253,7 +274,7 @@ func (a *App) ApiList(db *Database) HandlerFunc {
 			return
 		}
 
-		SendJsonResponseWithPagination(w, http.StatusOK, listInput.model, a.Name()+" list", listInput.pagination)
+		SendJsonResponseWithPagination(w, http.StatusOK, listInput.Model, a.Name()+" list", listInput.Pagination)
 	}
 }
 
@@ -275,8 +296,8 @@ func (a *App) ApiDetail(db *Database) HandlerFunc {
 			return
 		}
 
-		params := formatRequestParameters(r, a.admin.builder)
-		isAllowed := a.permissions.HasPermission(params.Roles, OperationRead)
+		params := FormatRequestParameters(r, a.admin.builder)
+		isAllowed := a.Permissions.HasPermission(params.Roles, OperationRead)
 		if !isAllowed {
 			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to read this resource")
 			return
@@ -286,12 +307,12 @@ func (a *App) ApiDetail(db *Database) HandlerFunc {
 		instance := createInstanceForUndeterminedType(a.model)
 
 		detailInput := ApiInput{
-			model:      instance,
-			parameters: params,
-			instanceId: getUrlParam("id", r),
+			Model:      instance,
+			Parameters: params,
+			InstanceId: getUrlParam("id", r),
 		}
 
-		result, err := a.api.Detail(&detailInput, db, a)
+		result, err := a.Api.Detail(&detailInput, db, a)
 		if err != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
@@ -322,8 +343,8 @@ func (a *App) ApiCreate(db *Database) HandlerFunc {
 			return
 		}
 
-		params := formatRequestParameters(r, a.admin.builder)
-		isAllowed := a.permissions.HasPermission(params.Roles, OperationCreate)
+		params := FormatRequestParameters(r, a.admin.builder)
+		isAllowed := a.Permissions.HasPermission(params.Roles, OperationCreate)
 		if !isAllowed {
 			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to create this resource")
 			return
@@ -368,11 +389,11 @@ func (a *App) ApiCreate(db *Database) HandlerFunc {
 		}
 
 		createInput := ApiInput{
-			model:      instance,
-			parameters: params,
+			Model:      instance,
+			Parameters: params,
 		}
 
-		result, err := a.api.Create(&createInput, db, a)
+		result, err := a.Api.Create(&createInput, db, a)
 		if err != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
@@ -406,8 +427,8 @@ func (a *App) ApiUpdate(db *Database) HandlerFunc {
 			return
 		}
 
-		params := formatRequestParameters(r, a.admin.builder)
-		isAllowed := a.permissions.HasPermission(params.Roles, OperationUpdate)
+		params := FormatRequestParameters(r, a.admin.builder)
+		isAllowed := a.Permissions.HasPermission(params.Roles, OperationUpdate)
 		if !isAllowed {
 			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to update this resource")
 			return
@@ -417,12 +438,12 @@ func (a *App) ApiUpdate(db *Database) HandlerFunc {
 		instance := createInstanceForUndeterminedType(a.model)
 
 		apiInput := ApiInput{
-			model:      instance,
-			parameters: params,
-			instanceId: getUrlParam("id", r),
+			Model:      instance,
+			Parameters: params,
+			InstanceId: getUrlParam("id", r),
 		}
 
-		result, err := a.api.Detail(&apiInput, db, a)
+		result, err := a.Api.Detail(&apiInput, db, a)
 		if err != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
@@ -474,7 +495,7 @@ func (a *App) ApiUpdate(db *Database) HandlerFunc {
 		}
 
 		// Update the record in the database
-		result, err = a.api.Update(&apiInput, db, a)
+		result, err = a.Api.Update(&apiInput, db, a)
 		if err != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
@@ -507,8 +528,8 @@ func (a *App) ApiDelete(db *Database) HandlerFunc {
 			return
 		}
 
-		params := formatRequestParameters(r, a.admin.builder)
-		isAllowed := a.permissions.HasPermission(params.Roles, OperationDelete)
+		params := FormatRequestParameters(r, a.admin.builder)
+		isAllowed := a.Permissions.HasPermission(params.Roles, OperationDelete)
 		if !isAllowed {
 			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to delete this resource")
 			return
@@ -518,12 +539,12 @@ func (a *App) ApiDelete(db *Database) HandlerFunc {
 		instance := createInstanceForUndeterminedType(a.model)
 
 		apiInput := ApiInput{
-			model:      instance,
-			parameters: params,
-			instanceId: getUrlParam("id", r),
+			Model:      instance,
+			Parameters: params,
+			InstanceId: getUrlParam("id", r),
 		}
 
-		result, err := a.api.Detail(&apiInput, db, a)
+		result, err := a.Api.Detail(&apiInput, db, a)
 		if err != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
@@ -535,7 +556,7 @@ func (a *App) ApiDelete(db *Database) HandlerFunc {
 		}
 
 		// Delete the record by ID
-		result, err = a.api.Delete(&apiInput, db, a)
+		result, err = a.Api.Delete(&apiInput, db, a)
 		if err != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
@@ -545,7 +566,7 @@ func (a *App) ApiDelete(db *Database) HandlerFunc {
 			return
 		}
 
-		log.Info().Msgf("Deleted %s with ID %s", a.Name(), apiInput.instanceId)
+		log.Info().Msgf("Deleted %s with ID %s", a.Name(), apiInput.InstanceId)
 
 		// Send a 204 No Content response
 		SendJsonResponse(w, http.StatusOK, nil, a.Name()+" deleted")

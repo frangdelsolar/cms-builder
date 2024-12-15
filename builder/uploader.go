@@ -50,8 +50,8 @@ func (b *Builder) GetFilePostHandler(cfg *UploaderConfig) HandlerFunc {
 			return
 		}
 
-		params := formatRequestParameters(r, b)
-		isAllowed := uploadApp.permissions.HasPermission(params.Roles, OperationCreate)
+		params := FormatRequestParameters(r, b)
+		isAllowed := uploadApp.Permissions.HasPermission(params.Roles, OperationCreate)
 		if !isAllowed {
 			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to create this resource")
 			return
@@ -139,8 +139,8 @@ func (b *Builder) GetFileDeleteHandler(cfg *UploaderConfig) HandlerFunc {
 			return
 		}
 
-		params := formatRequestParameters(r, b)
-		isAllowed := uploadApp.permissions.HasPermission(params.Roles, OperationDelete)
+		params := FormatRequestParameters(r, b)
+		isAllowed := uploadApp.Permissions.HasPermission(params.Roles, OperationDelete)
 		if !isAllowed {
 			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to delete this resource")
 			return
