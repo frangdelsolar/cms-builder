@@ -140,15 +140,7 @@ func (b *Builder) AppendRoleToUser(userId string, role Role) error {
 		return fmt.Errorf("User not found")
 	}
 
-	if user.Roles == "" {
-		user.Roles = string(role)
-	} else {
-		if strings.Contains(user.Roles, string(role)) {
-			log.Info().Msg("User already has role")
-			return nil
-		}
-		user.Roles += "," + string(role)
-	}
+	user.SetRole(role)
 
 	err := b.DB.DB.Save(&user).Error
 	if err != nil {
@@ -175,21 +167,7 @@ func (b *Builder) RemoveRoleFromUser(userId string, role Role) error {
 		return fmt.Errorf("User not found")
 	}
 
-	if !strings.Contains(user.Roles, string(role)) {
-		log.Info().Msg("User does not have role")
-		return nil
-	}
-	log.Info().Interface("user", user).Msg("user")
-	roles := strings.Split(user.Roles, ",")
-	log.Info().Interface("roles", roles).Msg("roles")
-	for i, r := range roles {
-		if r == string(role) {
-			roles = append(roles[:i], roles[i+1:]...)
-			break
-		}
-	}
-
-	user.Roles = strings.Join(roles, ",")
+	user.RemoveRole(role)
 
 	err := b.DB.DB.Save(&user).Error
 	if err != nil {

@@ -37,3 +37,31 @@ func (u *User) GetRoles() []Role {
 	}
 	return roles
 }
+
+// SetRole adds a role to the User's Roles field. If the role is already present,
+// it does nothing. If the Roles field is empty, it sets the field to the given role.
+//
+// Parameters:
+// - role: the Role to be added to the User's Roles field.
+func (u *User) SetRole(role Role) {
+	if u.Roles == "" {
+		u.Roles = string(role)
+	} else {
+		if strings.Contains(u.Roles, string(role)) {
+			return
+		}
+		u.Roles += "," + string(role)
+	}
+}
+
+// RemoveRole removes a role from the User's Roles field. If the role is not present, it has no effect.
+func (u *User) RemoveRole(role Role) {
+	roles := strings.Split(u.Roles, ",")
+	for i, r := range roles {
+		if r == string(role) {
+			roles = append(roles[:i], roles[i+1:]...)
+			break
+		}
+	}
+	u.Roles = strings.Join(roles, ",")
+}
