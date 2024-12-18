@@ -58,8 +58,8 @@ func (a *Admin) Register(model interface{}, skipUserBinding bool, permissions Ro
 	app := App{
 		model:           model,
 		skipUserBinding: skipUserBinding,
-		admin:           a,
-		validators:      make(ValidatorsMap),
+		Admin:           a,
+		Validators:      make(ValidatorsMap),
 		Permissions:     permissions,
 		Api: &API{
 			List:   DefaultList,

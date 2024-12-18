@@ -52,7 +52,5 @@ func (c *CsvParser) Parse(path string, dataSlice interface{}) error {
 	jsonString = jsonString[:len(jsonString)-1]
 	jsonString += "]"
 
-	json.Unmarshal([]byte(jsonString), dataSlice)
-
-	return nil
+	return json.Unmarshal([]byte(jsonString), dataSlice)
 }

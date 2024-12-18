@@ -385,11 +385,11 @@ func (b *Builder) InitAuth() error {
 		query := ""
 		for _, role := range input.Parameters.Roles {
 			if role == AdminRole {
-				return db.Find(input.Model, query, input.Pagination), nil
+				return db.Find(input.Instance, query, input.Pagination), nil
 			}
 		}
 		query = "id = '" + input.Parameters.RequestedById + "'"
-		return db.Find(input.Model, query, input.Pagination), nil
+		return db.Find(input.Instance, query, input.Pagination), nil
 	}
 
 	// Admin can see all users, others can only see their own
@@ -397,12 +397,12 @@ func (b *Builder) InitAuth() error {
 		query := ""
 		for _, role := range input.Parameters.Roles {
 			if role == AdminRole {
-				return db.FindById(input.InstanceId, input.Model, query), nil
+				return db.FindById(input.InstanceId, input.Instance, query), nil
 			}
 		}
 
 		query = "id = '" + input.Parameters.RequestedById + "'"
-		return db.FindById(input.InstanceId, input.Model, query), nil
+		return db.FindById(input.InstanceId, input.Instance, query), nil
 	}
 
 	err = userApp.RegisterValidator("email", ValidatorsList{RequiredValidator, EmailValidator})

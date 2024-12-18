@@ -18,7 +18,7 @@ func (f FieldName) S() string {
 }
 
 type RequestData struct {
-	Model      interface{}            // model where data will be stored
+	Instance   interface{}            // instance where data will be stored
 	Pagination *Pagination            // pagination object
 	Parameters RequestParameters      // request parameters
 	InstanceId string                 // instance id
@@ -74,6 +74,70 @@ func (a *RequestData) GetBodyBytes() ([]byte, error) {
 	return bodyBytes, nil
 }
 
+// SetInstanceData sets the values of the instance fields with the given map of values.
+//
+// This function takes one parameter, values, which is a map of field names to values.
+// The function sets the value of each field in the instance that matches a key in the map.
+// If a field does not match a key in the map, its value is left unchanged.
+// If a field does match a key in the map but is not a string, the function returns an error.
+// The function returns an error if the instance is not a struct.
+func (a *RequestData) SetInstanceData(values map[string]string) error {
+	errMsg := ""
+
+	v := reflect.ValueOf(a.Instance).Elem()
+	if v.Kind() != reflect.Struct {
+		return fmt.Errorf("instance is not a struct")
+	}
+
+	for key, value := range values {
+		field := v.FieldByName(key)
+		if field.IsValid() && field.CanSet() {
+			switch field.Kind() {
+			case reflect.String:
+				field.SetString(value)
+			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+				i, err := strconv.ParseInt(value, 10, 64)
+				if err != nil {
+					errMsg += fmt.Sprintf("error parsing %s as int: %s\n", value, err)
+				}
+				field.SetInt(i)
+			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+				u, err := strconv.ParseUint(value, 10, 64)
+				if err != nil {
+					errMsg += fmt.Sprintf("error parsing %s as uint: %s\n", value, err)
+				}
+				field.SetUint(u)
+			case reflect.Bool:
+				b, err := strconv.ParseBool(value)
+				if err != nil {
+					errMsg += fmt.Sprintf("error parsing %s as bool: %s\n", value, err)
+				}
+				field.SetBool(b)
+			case reflect.Float32, reflect.Float64:
+				f, err := strconv.ParseFloat(value, 64)
+				if err != nil {
+					errMsg += fmt.Sprintf("error parsing %s as float: %s\n", value, err)
+				}
+				field.SetFloat(f)
+
+			default:
+				errMsg += fmt.Sprintf("field %s is not a supported type\n", key)
+			}
+		} else {
+			errMsg += fmt.Sprintf("field %s not found in instance\n", key)
+		}
+
+	}
+
+	a.Instance = v.Interface()
+
+	if errMsg != "" {
+		return fmt.Errorf("error setting instance data: %s", errMsg)
+	}
+
+	return nil
+}
+
 // ApiFunction is a function that takes an ApiInput, a *Database and an *App and returns a *gorm.DB.
 // The ApiFunction is used to define the behavior of the API endpoints.
 type ApiFunction func(input *RequestData, db *Database, app *App) (*gorm.DB, error)
@@ -90,12 +154,12 @@ var DefaultList ApiFunction = func(input *RequestData, db *Database, app *App) (
 	query := ""
 	for _, role := range input.Parameters.Roles {
 		if role == AdminRole {
-			return db.Find(input.Model, query, input.Pagination), nil
+			return db.Find(input.Instance, query, input.Pagination), nil
 		}
 	}
 
 	query = "created_by_id = '" + input.Parameters.RequestedById + "'"
-	result := db.Find(input.Model, query, input.Pagination)
+	result := db.Find(input.Instance, query, input.Pagination)
 
 	return result, nil
 }
@@ -105,34 +169,49 @@ var DefaultDetail ApiFunction = func(input *RequestData, db *Database, app *App)
 
 	for _, role := range input.Parameters.Roles {
 		if role == AdminRole {
-			return db.FindById(input.InstanceId, input.Model, queryExtension), nil
+			return db.FindById(input.InstanceId, input.Instance, queryExtension), nil
 		}
 	}
 
 	queryExtension = "created_by_id = '" + input.Parameters.RequestedById + "'"
-	return db.FindById(input.InstanceId, input.Model, queryExtension), nil
+	return db.FindById(input.InstanceId, input.Instance, queryExtension), nil
 }
 
 var DefaultCreate ApiFunction = func(input *RequestData, db *Database, app *App) (*gorm.DB, error) {
-	result := db.Create(input.Model)
+	err := input.SetInstanceData(map[string]string{
+		"UpdatedByID": input.Parameters.RequestedById,
+		"CreatedByID": input.Parameters.RequestedById,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	result := db.Create(input.Instance)
 	return result, nil
 }
 
 var DefaultUpdate ApiFunction = func(input *RequestData, db *Database, app *App) (*gorm.DB, error) {
-	result := db.Save(input.Model)
+	err := input.SetInstanceData(map[string]string{
+		"UpdatedByID": input.Parameters.RequestedById,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	result := db.Save(input.Instance)
 	return result, nil
 }
 
 var DefaultDelete ApiFunction = func(input *RequestData, db *Database, app *App) (*gorm.DB, error) {
-	result := db.Delete(input.Model)
+	result := db.Delete(input.Instance)
 	return result, nil
 }
 
 type App struct {
 	model           interface{}       // The model struct
 	skipUserBinding bool              // Means that theres a CreatedBy field in the model that will be used for filtering the database query to only include records created by the user
-	admin           *Admin            // The admin instance
-	validators      ValidatorsMap     // A map of field names to validation functions
+	Admin           *Admin            // The admin instance
+	Validators      ValidatorsMap     // A map of field names to validation functions
 	Permissions     RolePermissionMap // Key is Role name, value is permission
 	Api             *API              // The API struct
 }
@@ -178,7 +257,7 @@ func (a *App) RegisterValidator(fieldName FieldName, validators ValidatorsList) 
 	}
 
 	// Append the provided validators to the existing list of validators for that field
-	a.validators[fieldNameLower] = append(a.validators[fieldNameLower], validators...)
+	a.Validators[fieldNameLower] = append(a.Validators[fieldNameLower], validators...)
 
 	return nil
 }
@@ -195,7 +274,7 @@ func (a *App) RegisterValidator(fieldName FieldName, validators ValidatorsList) 
 func (a *App) GetValidatorsForField(fieldName FieldName) ValidatorsList {
 
 	lowerFieldName := strings.ToLower(string(fieldName))
-	validators, ok := a.validators[lowerFieldName]
+	validators, ok := a.Validators[lowerFieldName]
 	if !ok {
 		return nil
 	}
@@ -280,7 +359,7 @@ func (a *App) ApiList(db *Database) HandlerFunc {
 			return
 		}
 
-		params := FormatRequestParameters(r, a.admin.builder)
+		params := FormatRequestParameters(r, a.Admin.builder)
 		isAllowed := a.Permissions.HasPermission(params.Roles, OperationRead)
 		if !isAllowed {
 			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to read this resource")
@@ -313,7 +392,7 @@ func (a *App) ApiList(db *Database) HandlerFunc {
 		}
 
 		listInput := RequestData{
-			Model:      instances,
+			Instance:   instances,
 			Pagination: pagination,
 			Parameters: params,
 			Body:       FormatRequestBody(r),
@@ -330,7 +409,7 @@ func (a *App) ApiList(db *Database) HandlerFunc {
 			return
 		}
 
-		SendJsonResponseWithPagination(w, http.StatusOK, listInput.Model, a.Name()+" list", listInput.Pagination)
+		SendJsonResponseWithPagination(w, http.StatusOK, listInput.Instance, a.Name()+" list", listInput.Pagination)
 	}
 }
 
@@ -352,7 +431,7 @@ func (a *App) ApiDetail(db *Database) HandlerFunc {
 			return
 		}
 
-		params := FormatRequestParameters(r, a.admin.builder)
+		params := FormatRequestParameters(r, a.Admin.builder)
 		isAllowed := a.Permissions.HasPermission(params.Roles, OperationRead)
 		if !isAllowed {
 			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to read this resource")
@@ -363,7 +442,7 @@ func (a *App) ApiDetail(db *Database) HandlerFunc {
 		instance := createInstanceForUndeterminedType(a.model)
 
 		detailInput := RequestData{
-			Model:      instance,
+			Instance:   instance,
 			Parameters: params,
 			InstanceId: GetUrlParam("id", r),
 			Body:       FormatRequestBody(r),
@@ -400,7 +479,7 @@ func (a *App) ApiCreate(db *Database) HandlerFunc {
 			return
 		}
 
-		params := FormatRequestParameters(r, a.admin.builder)
+		params := FormatRequestParameters(r, a.Admin.builder)
 		isAllowed := a.Permissions.HasPermission(params.Roles, OperationCreate)
 		if !isAllowed {
 			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to create this resource")
@@ -411,7 +490,7 @@ func (a *App) ApiCreate(db *Database) HandlerFunc {
 		instance := createInstanceForUndeterminedType(a.model)
 
 		createInput := RequestData{
-			Model:      instance,
+			Instance:   instance,
 			Parameters: params,
 			Body:       FormatRequestBody(r),
 		}
@@ -478,8 +557,7 @@ func (a *App) ApiUpdate(db *Database) HandlerFunc {
 			return
 		}
 
-		params := FormatRequestParameters(r, a.admin.builder)
-		log.Info().Interface("params", params).Msg("params")
+		params := FormatRequestParameters(r, a.Admin.builder)
 
 		isAllowed := a.Permissions.HasPermission(params.Roles, OperationUpdate)
 		if !isAllowed {
@@ -491,13 +569,11 @@ func (a *App) ApiUpdate(db *Database) HandlerFunc {
 		instance := createInstanceForUndeterminedType(a.model)
 
 		apiInput := RequestData{
-			Model:      instance,
+			Instance:   instance,
 			Parameters: params,
 			InstanceId: GetUrlParam("id", r),
 			Body:       FormatRequestBody(r),
 		}
-
-		log.Info().Interface("apiInput", apiInput).Msg("apiInput")
 
 		result, err := a.Api.Detail(&apiInput, db, a)
 		if err != nil {
@@ -579,7 +655,7 @@ func (a *App) ApiDelete(db *Database) HandlerFunc {
 			return
 		}
 
-		params := FormatRequestParameters(r, a.admin.builder)
+		params := FormatRequestParameters(r, a.Admin.builder)
 		isAllowed := a.Permissions.HasPermission(params.Roles, OperationDelete)
 		if !isAllowed {
 			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to delete this resource")
@@ -590,7 +666,7 @@ func (a *App) ApiDelete(db *Database) HandlerFunc {
 		instance := createInstanceForUndeterminedType(a.model)
 
 		apiInput := RequestData{
-			Model:      instance,
+			Instance:   instance,
 			Parameters: params,
 			InstanceId: GetUrlParam("id", r),
 			Body:       FormatRequestBody(r),

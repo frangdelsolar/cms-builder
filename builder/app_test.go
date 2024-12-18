@@ -1,7 +1,6 @@
 package builder_test
 
 import (
-	"fmt"
 	"net/http"
 	"testing"
 
@@ -185,8 +184,9 @@ func TestUserCanListAllowedResources(t *testing.T) {
 
 	// Create two resource for some user
 	instanceA, user, userRollback := th.CreateMockResource(t, e.DB, e.App, nil)
-	instanceB, _, _ := th.CreateMockResource(t, e.DB, e.App, user)
+	instanceB, _, userbRollback := th.CreateMockResource(t, e.DB, e.App, user)
 	defer userRollback()
+	defer userbRollback()
 
 	// Create a helper request to get the list
 	request, _, _ := th.NewRequest(
@@ -283,13 +283,14 @@ func TestUserCanNotCreateDeniedResources(t *testing.T) {
 	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 
 	// Create a resource without authentication
-	request, user, _ := th.NewRequest(
+	request, user, userRollback := th.NewRequest(
 		http.MethodPost,
 		`{"field": "test"}`,
 		false,
 		nil,
 		nil,
 	)
+	defer userRollback()
 
 	assert.Nil(t, user, "User should be nil")
 
@@ -569,8 +570,8 @@ func TestUserCanNotReplaceCreatedByIDOnCreate(t *testing.T) {
 	assert.NoError(t, err, "ExecuteApiCall should not return an error")
 	assert.NotNil(t, response, "ApiNew should return a non-nil response")
 
-	assert.Equal(t, user.GetIDString(), fmt.Sprintf("%d", instance.CreatedByID), "CreatedByID should be the logged in user")
-	assert.Equal(t, user.GetIDString(), fmt.Sprintf("%d", instance.UpdatedByID), "UpdatedByID should be the logged in user")
+	assert.Equal(t, user.ID, instance.CreatedByID, "CreatedByID should be the logged in user")
+	assert.Equal(t, user.ID, instance.UpdatedByID, "UpdatedByID should be the logged in user")
 }
 
 // TestUserCanNotReplaceCreatedByIDOnUpdate tests that a user cannot update a resource with a createdById or updatedById that is not their own user ID.
@@ -600,8 +601,8 @@ func TestUserCanNotReplaceCreatedByIDOnUpdate(t *testing.T) {
 
 	// Verify the update was successful
 	assert.Equal(t, instance.ID, updatedInstance.ID, "ID should be the same")
-	assert.Equal(t, user.GetIDString(), fmt.Sprintf("%d", updatedInstance.CreatedByID), "CreatedByID should be the logged in user")
-	assert.Equal(t, user.GetIDString(), fmt.Sprintf("%d", updatedInstance.UpdatedByID), "UpdatedByID should be the logged in user")
+	assert.Equal(t, user.ID, updatedInstance.CreatedByID, "CreatedByID should be the logged in user")
+	assert.Equal(t, user.ID, updatedInstance.UpdatedByID, "UpdatedByID should be the logged in user")
 }
 
 // TestUserCanNotReplaceInstanceIDOnUpdate tests that a user cannot update a resource with an instance ID that is not the same as the one in the request.
@@ -628,6 +629,6 @@ func TestUserCanNotReplaceInstanceIDOnUpdate(t *testing.T) {
 	assert.Equal(t, true, response.Success, "ApiUpdate should return a success response")
 	// Verify the update was successful
 	assert.Equal(t, instance.GetIDString(), updatedInstance.GetIDString(), "ID should remain the same")
-	assert.Equal(t, user.GetIDString(), fmt.Sprintf("%d", updatedInstance.CreatedByID), "CreatedByID should be the logged in user")
-	assert.Equal(t, user.GetIDString(), fmt.Sprintf("%d", updatedInstance.UpdatedByID), "UpdatedByID should be the logged in user")
+	assert.Equal(t, user.ID, updatedInstance.CreatedByID, "CreatedByID should be the logged in user")
+	assert.Equal(t, user.ID, updatedInstance.UpdatedByID, "UpdatedByID should be the logged in user")
 }
