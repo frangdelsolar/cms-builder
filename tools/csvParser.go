@@ -3,21 +3,18 @@ package tools
 import (
 	"encoding/csv"
 	"encoding/json"
+	"fmt"
 	"os"
+	"reflect"
 )
 
 type CsvParser struct{}
 
-// Parse reads a CSV file from the given path and unmarshals it into the given dataSlice.
-//
-// The CSV file is expected to have a header row with keys, and each subsequent row
-// is a value for each key.
-//
-// The dataSlice must be a pointer to a slice of structs, where each field in the struct
-// corresponds to a key in the CSV header row.
-//
-// For example, if the CSV file has a header row with keys "Name", "Age", and "Email",
-// the dataSlice should be a pointer to a slice of structs with fields Name, Age, and Email.
+// Parse reads a CSV file and fills a slice of structs with the data.
+// The CSV header must match the field names in the struct.
+// The CSV data is JSON encoded and then unmarshaled into the slice.
+// Validation is done on the CSV header and the struct fields to ensure
+// all fields are present.
 func (c *CsvParser) Parse(path string, dataSlice interface{}) error {
 
 	file, err := os.Open(path)
@@ -52,5 +49,45 @@ func (c *CsvParser) Parse(path string, dataSlice interface{}) error {
 	jsonString = jsonString[:len(jsonString)-1]
 	jsonString += "]"
 
-	return json.Unmarshal([]byte(jsonString), dataSlice)
+	keyMap := make(map[string]int)
+	for i := 0; i < len(keys); i++ {
+		keyMap[keys[i]] = i
+	}
+
+	// Validate keys in JSON with struct fields (and map them)
+	structValue := reflect.ValueOf(dataSlice).Elem() // Dereference slice pointer
+	structType := structValue.Type().Elem()          // Get underlying struct type
+
+	// Map CSV header names to struct field names
+	fieldMap := make(map[string]int)
+	for i := 0; i < structType.NumField(); i++ {
+		field := structType.Field(i)
+		if !field.IsExported() {
+			continue
+		}
+		jsonTag, ok := field.Tag.Lookup("json")
+		if !ok {
+			jsonTag = field.Name
+		}
+		fieldMap[jsonTag] = i
+	}
+
+	for k := range keyMap {
+		if _, ok := fieldMap[k]; !ok {
+			return fmt.Errorf("key %s not found in struct", k)
+		}
+	}
+
+	for k := range fieldMap {
+		if _, ok := keyMap[k]; !ok {
+			return fmt.Errorf("key %s not found in CSV header", k)
+		}
+	}
+
+	err = json.Unmarshal([]byte(jsonString), dataSlice)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
