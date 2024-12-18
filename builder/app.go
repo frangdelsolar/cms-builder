@@ -3,21 +3,138 @@ package builder
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"reflect"
 	"strconv"
 	"strings"
 
-	"github.com/gorilla/mux"
 	"gorm.io/gorm"
 )
 
+type FieldName string
+
+func (f FieldName) S() string {
+	return string(f)
+}
+
+type RequestData struct {
+	Model      interface{}            // model where data will be stored
+	Pagination *Pagination            // pagination object
+	Parameters RequestParameters      // request parameters
+	InstanceId string                 // instance id
+	Body       map[string]interface{} // request body
+}
+
+// CleanBody removes system data fields from the request body.
+//
+// This function takes no parameters and returns no values.
+//
+// It iterates over the keys of the SystemData struct and removes any key-value pair
+// from the request body where the key matches a key from the SystemData struct.
+func (a *RequestData) CleanBody() {
+	systemDataInstance := SystemData{}
+
+	for _, key := range systemDataInstance.Keys() {
+		delete(a.Body, key)
+	}
+}
+
+// SetSystemData adds the system data fields to the request body.
+//
+// The function takes two parameters, isNewRecord and requestedBy.
+// isNewRecord is a boolean indicating whether the request is to create a new record or update an existing one.
+// requestedBy is the ID of the user making the request.
+//
+// If isNewRecord is true, the function adds the CreatedById field to the request body with the value of requestedBy.
+// The function always adds the UpdatedById field to the request body with the value of requestedBy.
+//
+// The function returns an error if there is an error converting requestedBy to an unsigned integer.
+func (a *RequestData) SetSystemData(isNewRecord bool, requestedBy string) error {
+	convertedUserId, err := strconv.ParseUint(requestedBy, 10, 64)
+	if err != nil {
+		log.Error().Err(err).Msgf("Error converting userId")
+		return err
+	}
+	if isNewRecord {
+		a.Body["CreatedById"] = convertedUserId
+	}
+	a.Body["UpdatedById"] = convertedUserId
+	return nil
+}
+
+// GetBodyBytes takes the request body as a map[string]interface{} and returns a byte slice representing the JSON encoded body.
+//
+// If there is an error marshaling the request body, the function returns an error.
+func (a *RequestData) GetBodyBytes() ([]byte, error) {
+	bodyBytes, err := json.Marshal(a.Body)
+	if err != nil {
+		log.Error().Err(err).Msgf("Error marshalling request body for creation")
+		return nil, err
+	}
+	return bodyBytes, nil
+}
+
+// ApiFunction is a function that takes an ApiInput, a *Database and an *App and returns a *gorm.DB.
+// The ApiFunction is used to define the behavior of the API endpoints.
+type ApiFunction func(input *RequestData, db *Database, app *App) (*gorm.DB, error)
+
+type API struct {
+	List   ApiFunction // List is a function that takes an ApiInput, a *Database and an *App and returns a *gorm.DB will be called on GET endpoints (e.g. /api/users)
+	Detail ApiFunction // Detail is a function that takes an ApiInput, a *Database and an *App and returns a *gorm.DB will be called on GET endpoints (e.g. /api/users/{id})
+	Create ApiFunction // Create is a function that takes an ApiInput, a *Database and an *App and returns a *gorm.DB will be called on POST endpoints (e.g. /api/users/new)
+	Update ApiFunction // Update is a function that takes an ApiInput, a *Database and an *App and returns a *gorm.DB will be called on PUT endpoints (e.g. /api/users/{id}/update)
+	Delete ApiFunction // Delete is a function that takes an ApiInput, a *Database and an *App and returns a *gorm.DB will be called on DELETE endpoints (e.g. /api/users/{id}/delete)
+}
+
+var DefaultList ApiFunction = func(input *RequestData, db *Database, app *App) (*gorm.DB, error) {
+	query := ""
+	for _, role := range input.Parameters.Roles {
+		if role == AdminRole {
+			return db.Find(input.Model, query, input.Pagination), nil
+		}
+	}
+
+	query = "created_by_id = '" + input.Parameters.RequestedById + "'"
+	result := db.Find(input.Model, query, input.Pagination)
+
+	return result, nil
+}
+
+var DefaultDetail ApiFunction = func(input *RequestData, db *Database, app *App) (*gorm.DB, error) {
+	queryExtension := ""
+
+	for _, role := range input.Parameters.Roles {
+		if role == AdminRole {
+			return db.FindById(input.InstanceId, input.Model, queryExtension), nil
+		}
+	}
+
+	queryExtension = "created_by_id = '" + input.Parameters.RequestedById + "'"
+	return db.FindById(input.InstanceId, input.Model, queryExtension), nil
+}
+
+var DefaultCreate ApiFunction = func(input *RequestData, db *Database, app *App) (*gorm.DB, error) {
+	result := db.Create(input.Model)
+	return result, nil
+}
+
+var DefaultUpdate ApiFunction = func(input *RequestData, db *Database, app *App) (*gorm.DB, error) {
+	result := db.Save(input.Model)
+	return result, nil
+}
+
+var DefaultDelete ApiFunction = func(input *RequestData, db *Database, app *App) (*gorm.DB, error) {
+	result := db.Delete(input.Model)
+	return result, nil
+}
+
 type App struct {
-	model           interface{}   // The model struct
-	skipUserBinding bool          // Means that theres a CreatedBy field in the model that will be used for filtering the database query to only include records created by the user
-	admin           *Admin        // The admin instance
-	validators      ValidatorsMap // A map of field names to validation functions
+	model           interface{}       // The model struct
+	skipUserBinding bool              // Means that theres a CreatedBy field in the model that will be used for filtering the database query to only include records created by the user
+	admin           *Admin            // The admin instance
+	validators      ValidatorsMap     // A map of field names to validation functions
+	Permissions     RolePermissionMap // Key is Role name, value is permission
+	Api             *API              // The API struct
 }
 
 // Name returns the name of the model as a string, lowercased and without the package name.
@@ -30,19 +147,40 @@ func (a *App) PluralName() string {
 	return Pluralize(a.Name())
 }
 
-// RegisterValidator registers a validator function for the given field name.
+// RegisterValidator registers a list of validators for a specific field in the model.
 //
 // Parameters:
-//   - fieldName: The name of the field to register the validator for.
-//     Name should match what the json schema expects. Otherwise, the validator will not be running against it.
-//   - validator: The validator function to register.
+// - fieldName: the name of the field to register the validators for.
+// - validators: a list of validators to be registered for the specified field.
 //
 // Returns:
-// - nothing
-func (a *App) RegisterValidator(fieldName string, validators ValidatorsList) {
-	lowerFieldName := strings.ToLower(fieldName)
+// - error: an error if the field is not found in the model.
+func (a *App) RegisterValidator(fieldName FieldName, validators ValidatorsList) error {
+	fieldNameLower := strings.ToLower(string(fieldName))
 
-	a.validators[lowerFieldName] = append(a.validators[lowerFieldName], validators...)
+	jsonData, err := JsonifyInterface(a.model)
+	if err != nil {
+		return err
+	}
+
+	// Check if the field exists in the model's JSON representation
+	fieldExists := false
+	for k := range jsonData {
+		if strings.ToLower(k) == fieldNameLower {
+			fieldExists = true
+			break
+		}
+	}
+
+	// If the field is not found, return an error
+	if !fieldExists {
+		return fmt.Errorf("field %s not found in model", fieldName)
+	}
+
+	// Append the provided validators to the existing list of validators for that field
+	a.validators[fieldNameLower] = append(a.validators[fieldNameLower], validators...)
+
+	return nil
 }
 
 // GetValidatorForField returns the validator function associated with the given field name.
@@ -54,9 +192,9 @@ func (a *App) RegisterValidator(fieldName string, validators ValidatorsList) {
 //
 // Returns:
 // - FieldValidationFunc: the validator function associated with the given field name, or nil if none is associated.
-func (a *App) GetValidatorsForField(fieldName string) ValidatorsList {
+func (a *App) GetValidatorsForField(fieldName FieldName) ValidatorsList {
 
-	lowerFieldName := strings.ToLower(fieldName)
+	lowerFieldName := strings.ToLower(string(fieldName))
 	validators, ok := a.validators[lowerFieldName]
 	if !ok {
 		return nil
@@ -89,7 +227,7 @@ func (a *App) Validate(instance interface{}) ValidationResult {
 	}
 
 	for key := range jsonData {
-		validators := a.GetValidatorsForField(key)
+		validators := a.GetValidatorsForField(FieldName(key))
 
 		for _, validator := range validators {
 			output := NewFieldValidationError(key)
@@ -136,36 +274,30 @@ func JsonifyInterface(instance interface{}) (map[string]interface{}, error) {
 // - A HandlerFunc that responds to GET requests on the list endpoint.
 func (a *App) ApiList(db *Database) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-
-		// Retrieve parameters from the request
-		param_limit := "10"
-
-		if r.URL != nil && r.URL.Query().Get("limit") != "" {
-			param_limit = r.URL.Query().Get("limit")
-		}
-		param_page := "1"
-
-		if r.URL != nil && r.URL.Query().Get("page") != "" {
-			param_page = r.URL.Query().Get("page")
-		}
-
-		limit, err := strconv.Atoi(param_limit)
-		if err != nil {
-			limit = 10
-		}
-
-		page, err := strconv.Atoi(param_page)
-		if err != nil {
-			page = 1
-		}
-
-		err = validateRequestMethod(r, http.MethodGet)
+		err := ValidateRequestMethod(r, http.MethodGet)
 		if err != nil {
 			SendJsonResponse(w, http.StatusMethodNotAllowed, nil, err.Error())
 			return
 		}
 
-		userId := getRequestUserId(r, a)
+		params := FormatRequestParameters(r, a.admin.builder)
+		isAllowed := a.Permissions.HasPermission(params.Roles, OperationRead)
+		if !isAllowed {
+			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to read this resource")
+			return
+		}
+
+		limit, err := strconv.Atoi(GetQueryParam("limit", r))
+		if err != nil {
+			log.Error().Err(err).Msgf("Error converting limit")
+			limit = 10
+		}
+
+		page, err := strconv.Atoi(GetQueryParam("page", r))
+		if err != nil {
+			log.Error().Err(err).Msgf("Error converting page")
+			page = 1
+		}
 
 		// Create slice to store the model instances.
 		instances, err := createSliceForUndeterminedType(a.model)
@@ -174,17 +306,23 @@ func (a *App) ApiList(db *Database) HandlerFunc {
 			return
 		}
 
-		var result *gorm.DB
 		pagination := &Pagination{
 			Total: 0,
 			Page:  page,
 			Limit: limit,
 		}
 
-		if a.skipUserBinding {
-			result = db.FindAll(instances, pagination)
-		} else {
-			result = db.FindAllByUserId(instances, userId, pagination)
+		listInput := RequestData{
+			Model:      instances,
+			Pagination: pagination,
+			Parameters: params,
+			Body:       FormatRequestBody(r),
+		}
+
+		result, err := a.Api.List(&listInput, db, a)
+		if err != nil {
+			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+			return
 		}
 
 		if result.Error != nil {
@@ -192,7 +330,7 @@ func (a *App) ApiList(db *Database) HandlerFunc {
 			return
 		}
 
-		SendJsonResponseWithPagination(w, http.StatusOK, instances, a.Name()+" list", pagination)
+		SendJsonResponseWithPagination(w, http.StatusOK, listInput.Model, a.Name()+" list", listInput.Pagination)
 	}
 }
 
@@ -208,21 +346,34 @@ func (a *App) ApiList(db *Database) HandlerFunc {
 func (a *App) ApiDetail(db *Database) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		err := validateRequestMethod(r, http.MethodGet)
+		err := ValidateRequestMethod(r, http.MethodGet)
 		if err != nil {
 			SendJsonResponse(w, http.StatusMethodNotAllowed, err, err.Error())
 			return
 		}
 
-		// Retrieve parameters from the request
-		instanceId := mux.Vars(r)["id"]
-		userId := getRequestUserId(r, a)
+		params := FormatRequestParameters(r, a.admin.builder)
+		isAllowed := a.Permissions.HasPermission(params.Roles, OperationRead)
+		if !isAllowed {
+			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to read this resource")
+			return
+		}
 
 		// Create a new instance of the model
 		instance := createInstanceForUndeterminedType(a.model)
 
-		// Query the database to find the record by ID
-		result := db.FindById(instanceId, instance, userId, a.skipUserBinding)
+		detailInput := RequestData{
+			Model:      instance,
+			Parameters: params,
+			InstanceId: GetUrlParam("id", r),
+			Body:       FormatRequestBody(r),
+		}
+
+		result, err := a.Api.Detail(&detailInput, db, a)
+		if err != nil {
+			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+			return
+		}
 		if result.Error != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, result.Error, "Failed to get "+a.Name()+" detail")
 			return
@@ -240,43 +391,47 @@ func (a *App) ApiDetail(db *Database) HandlerFunc {
 //
 // It will also handle errors and return a 500 Internal Server Error if the
 // error is not a gorm.ErrRecordNotFound.
-func (a *App) ApiNew(db *Database) HandlerFunc {
+func (a *App) ApiCreate(db *Database) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		err := validateRequestMethod(r, http.MethodPost)
+		err := ValidateRequestMethod(r, http.MethodPost)
 		if err != nil {
 			SendJsonResponse(w, http.StatusMethodNotAllowed, nil, err.Error())
 			return
 		}
 
-		// Will read bytes, append user data and pack the bytes again to be processed
-		bodyBytes, err := readRequestBody(r)
-		if err != nil {
-			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+		params := FormatRequestParameters(r, a.admin.builder)
+		isAllowed := a.Permissions.HasPermission(params.Roles, OperationCreate)
+		if !isAllowed {
+			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to create this resource")
 			return
-		}
-
-		// Make sure user is not attempting to modify system data fields
-		bodyBytes, err = removeSystemDataFieldsFromRequest(bodyBytes)
-		if err != nil {
-			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
-			return
-		}
-
-		// Update SystemData fields
-		if !a.skipUserBinding {
-			bodyBytes, err = appendUserDataToRequestBody(bodyBytes, r, true, a)
-			if err != nil {
-				SendJsonResponse(w, http.StatusUnauthorized, err, err.Error())
-				return
-			}
 		}
 
 		// Create a new instance of the model
 		instance := createInstanceForUndeterminedType(a.model)
 
+		createInput := RequestData{
+			Model:      instance,
+			Parameters: params,
+			Body:       FormatRequestBody(r),
+		}
+
+		createInput.CleanBody()
+
+		err = createInput.SetSystemData(true, params.RequestedById)
+		if err != nil {
+			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+			return
+		}
+
+		data, err := createInput.GetBodyBytes()
+		if err != nil {
+			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+			return
+		}
+
 		// Unmarshal the updated bytes into the instance
-		err = json.Unmarshal(bodyBytes, instance)
+		err = json.Unmarshal(data, instance)
 		if err != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
@@ -289,8 +444,13 @@ func (a *App) ApiNew(db *Database) HandlerFunc {
 			return
 		}
 
+		result, err := a.Api.Create(&createInput, db, a)
+		if err != nil {
+			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+			return
+		}
+
 		// Perform database operation
-		result := db.Create(instance)
 		if result.Error != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, result.Error.Error())
 			return
@@ -312,50 +472,60 @@ func (a *App) ApiNew(db *Database) HandlerFunc {
 func (a *App) ApiUpdate(db *Database) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		err := validateRequestMethod(r, http.MethodPut)
+		err := ValidateRequestMethod(r, http.MethodPut)
 		if err != nil {
 			SendJsonResponse(w, http.StatusMethodNotAllowed, nil, err.Error())
 			return
 		}
 
-		// Retrieve parameters from the request
-		instanceId := mux.Vars(r)["id"]
-		userId := getRequestUserId(r, a)
+		params := FormatRequestParameters(r, a.admin.builder)
+		log.Info().Interface("params", params).Msg("params")
+
+		isAllowed := a.Permissions.HasPermission(params.Roles, OperationUpdate)
+		if !isAllowed {
+			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to update this resource")
+			return
+		}
 
 		// Create a new instance of the model
 		instance := createInstanceForUndeterminedType(a.model)
 
-		// Query the database to find the record by ID
-		result := db.FindById(instanceId, instance, userId, a.skipUserBinding)
+		apiInput := RequestData{
+			Model:      instance,
+			Parameters: params,
+			InstanceId: GetUrlParam("id", r),
+			Body:       FormatRequestBody(r),
+		}
+
+		log.Info().Interface("apiInput", apiInput).Msg("apiInput")
+
+		result, err := a.Api.Detail(&apiInput, db, a)
+		if err != nil {
+			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+			return
+		}
+
 		if result.Error != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, result.Error.Error())
 			return
 		}
 
-		bodyBytes, err := readRequestBody(r)
+		apiInput.CleanBody()
+
+		err = apiInput.SetSystemData(false, params.RequestedById)
 		if err != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
 		}
 
-		// Make sure user is not attempting to modify system data fields
-		bodyBytes, err = removeSystemDataFieldsFromRequest(bodyBytes)
+		data, err := apiInput.GetBodyBytes()
 		if err != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
-		}
-
-		// Update SystemData fields
-		if !a.skipUserBinding {
-			bodyBytes, err = appendUserDataToRequestBody(bodyBytes, r, false, a)
-			if err != nil {
-				SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
-				return
-			}
 		}
 
 		// Unmarshal the updated bytes into the instance
-		err = json.Unmarshal(bodyBytes, instance)
+		err = json.Unmarshal(data, instance)
 		if err != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
@@ -376,7 +546,12 @@ func (a *App) ApiUpdate(db *Database) HandlerFunc {
 		}
 
 		// Update the record in the database
-		result = db.Save(instance)
+		result, err = a.Api.Update(&apiInput, db, a)
+		if err != nil {
+			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+			return
+		}
+
 		if result.Error != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, result.Error.Error())
 			return
@@ -398,158 +573,56 @@ func (a *App) ApiUpdate(db *Database) HandlerFunc {
 func (a *App) ApiDelete(db *Database) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		err := validateRequestMethod(r, http.MethodDelete)
+		err := ValidateRequestMethod(r, http.MethodDelete)
 		if err != nil {
 			SendJsonResponse(w, http.StatusMethodNotAllowed, nil, err.Error())
 			return
 		}
 
-		// Retrieve parameters from the request
-		instanceId := mux.Vars(r)["id"]
-		userId := getRequestUserId(r, a)
+		params := FormatRequestParameters(r, a.admin.builder)
+		isAllowed := a.Permissions.HasPermission(params.Roles, OperationDelete)
+		if !isAllowed {
+			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to delete this resource")
+			return
+		}
 
 		// Create a new instance of the model
 		instance := createInstanceForUndeterminedType(a.model)
 
-		// Query the database to find the record by ID
-		dbResponse := db.FindById(instanceId, instance, userId, a.skipUserBinding)
-		if dbResponse.Error != nil {
-			SendJsonResponse(w, http.StatusInternalServerError, nil, dbResponse.Error.Error())
+		apiInput := RequestData{
+			Model:      instance,
+			Parameters: params,
+			InstanceId: GetUrlParam("id", r),
+			Body:       FormatRequestBody(r),
+		}
+
+		result, err := a.Api.Detail(&apiInput, db, a)
+		if err != nil {
+			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
 		}
 
-		// Delete the record by ID
-		result := db.Delete(instance)
 		if result.Error != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, result.Error.Error())
 			return
 		}
 
-		log.Info().Msgf("Deleted %s with ID %s", a.Name(), instanceId)
+		// Delete the record by ID
+		result, err = a.Api.Delete(&apiInput, db, a)
+		if err != nil {
+			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+			return
+		}
+		if result.Error != nil {
+			SendJsonResponse(w, http.StatusInternalServerError, nil, result.Error.Error())
+			return
+		}
+
+		log.Info().Msgf("Deleted %s with ID %s", a.Name(), apiInput.InstanceId)
 
 		// Send a 204 No Content response
 		SendJsonResponse(w, http.StatusOK, nil, a.Name()+" deleted")
 	}
-}
-
-/*
-	REQUEST HELPERS
-*/
-
-// removeSystemDataFieldsFromRequest takes a JSON request body as a byte slice and returns a new byte slice with the system data fields removed.
-//
-// It takes a JSON request body, unmarshals it into a map[string]interface{}, removes the system data fields from the map, marshals the modified map back into JSON, and returns it as a byte slice.
-//
-// If the unmarshaling or marshaling fails, it returns an error.
-//
-// Parameters:
-// - bodyBytes: the JSON request body as a byte slice
-//
-// Returns:
-// - []byte: the modified JSON request body as a byte slice
-// - error: an error if the unmarshaling or marshaling failed
-func removeSystemDataFieldsFromRequest(bodyBytes []byte) ([]byte, error) {
-
-	var data map[string]interface{}
-	err := json.Unmarshal(bodyBytes, &data)
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal request body: %w", err)
-	}
-
-	systemDataInstance := SystemData{}
-
-	for _, key := range systemDataInstance.Keys() {
-		delete(data, key)
-	}
-
-	modifiedBytes, err := json.Marshal(data)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal modified data: %w", err)
-	}
-
-	return modifiedBytes, nil
-}
-
-// validateRequestMethod returns an error if the request method does not match the given
-// method string. The error message will include the actual request method.
-func validateRequestMethod(r *http.Request, method string) error {
-	if r.Method != method {
-		return fmt.Errorf("invalid request method: %s", r.Method)
-	}
-	return nil
-}
-
-// getRequestUserId validates the access token in the Authorization header of the request.
-//
-// The function first retrieves the access token from the request header, then verifies it
-// by calling VerifyUser on the App's admin instance. If the verification fails, it returns
-// an empty string. Otherwise, it returns the ID of the verified user as a string.
-func getRequestUserId(r *http.Request, a *App) string {
-	accessToken := GetAccessTokenFromRequest(r)
-	user, err := a.admin.builder.VerifyUser(accessToken)
-	if err != nil {
-		return ""
-	}
-	return user.GetIDString()
-}
-
-// readRequestBody reads the entire request body and returns the contents as a byte slice.
-// It defers closing the request body until the function returns.
-// It returns an error if there is a problem reading the request body.
-func readRequestBody(r *http.Request) ([]byte, error) {
-	defer r.Body.Close()
-	return io.ReadAll(r.Body)
-}
-
-// unmarshalRequestBody unmarshals the given byte slice into a map[string]interface{}.
-// It returns the unmarshalled map and an error if the unmarshalling fails.
-func unmarshalRequestBody(data []byte) (map[string]interface{}, error) {
-	var jsonData map[string]interface{}
-	err := json.Unmarshal(data, &jsonData)
-	return jsonData, err
-}
-
-// appendUserDataToRequestBody appends the requested_by from the request header to the request body for create and update operations.
-// For create operations, the requested_by is added to the CreatedById field.
-// For update operations, the requested_by is added to the UpdatedById field.
-// The function returns the updated request body as a byte array, or an error if the request body cannot be unmarshalled or marshalled.
-func appendUserDataToRequestBody(bytes []byte, r *http.Request, isNewRecord bool, a *App) ([]byte, error) {
-	jsonData, err := unmarshalRequestBody(bytes)
-	if err != nil {
-		log.Error().Err(err).Msgf("Error unmarshalling request body for creation")
-		return nil, err
-	}
-
-	// Retrieve requested_by from request header
-	userId := getRequestUserId(r, a)
-
-	if userId == "" || userId == "0" {
-		log.Error().Msgf("No userId found for authorization header")
-		return nil, fmt.Errorf("user not authenticated")
-	}
-
-	convertedUserId, err := strconv.ParseUint(userId, 10, 64)
-	if err != nil {
-		log.Error().Err(err).Msgf("Error converting userId")
-		return nil, err
-	}
-
-	if isNewRecord {
-		jsonData["CreatedById"] = convertedUserId
-	}
-
-	jsonData["UpdatedById"] = convertedUserId
-
-	log.Info().Interface("body", jsonData).Msg("Appending user data to request body")
-
-	bodyBytes, err := json.Marshal(jsonData)
-	if err != nil {
-		log.Error().Err(err).Msgf("Error marshalling request body for creation")
-		return nil, err
-	}
-
-	return bodyBytes, err
 }
 
 /*

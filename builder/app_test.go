@@ -35,8 +35,10 @@ func TestRegisterApp(t *testing.T) {
 		Field string
 	}
 
+	permissions := builder.RolePermissionMap{}
+
 	t.Log("Testing RegisterApp")
-	app, err := e.Admin.Register(testStruct{}, false)
+	app, err := e.Admin.Register(testStruct{}, false, permissions)
 	assert.NoError(t, err, "Register should not return an error")
 	assert.NotNil(t, app, "Register should return a non-nil App")
 	assert.Equal(t, "teststruct", app.Name(), "App name should be 'teststruct'")
@@ -61,8 +63,10 @@ func TestRegisterAPIRoutes(t *testing.T) {
 		Field string
 	}
 
+	permissions := builder.RolePermissionMap{}
+
 	t.Log("Testing RegisterApp")
-	e.Admin.Register(Test{}, false)
+	e.Admin.Register(Test{}, false, permissions)
 
 	handler := func(w http.ResponseWriter, r *http.Request) {}
 
@@ -290,16 +294,17 @@ func TestUserCanNotCreateDeniedResources(t *testing.T) {
 	assert.Nil(t, user, "User should be nil")
 
 	t.Log("Creating a resource without authentication")
-	var result []th.MockStruct
+	var result th.MockStruct
 	response, err := th.ExecuteApiCall(
 		t,
-		e.App.ApiNew(e.DB),
+		e.App.ApiCreate(e.DB),
 		request,
 		&result,
 	)
-	assert.Error(t, err, "ApiNew should return an error")
+	assert.Equal(t, result, th.MockStruct{}, "Result should be empty")
+	assert.NoError(t, err, "ApiNew should not return an error")
 	assert.NotNil(t, response, "ApiNew should return a non-nil response")
-	assert.Contains(t, response.Message, "user not authenticated", "The response should be an error message")
+	assert.Contains(t, response.Message, "not allowed", "The response should be an error message")
 }
 
 // TestUserCanUpdateAllowedResources tests that a user can update a resource if they have the correct permissions.
@@ -496,7 +501,7 @@ func TestCreateCallsValidators(t *testing.T) {
 	var result th.MockStruct
 	response, err := th.ExecuteApiCall(
 		t,
-		e.App.ApiNew(e.DB),
+		e.App.ApiCreate(e.DB),
 		request,
 		&result,
 	)
@@ -560,7 +565,7 @@ func TestUserCanNotReplaceCreatedByIDOnCreate(t *testing.T) {
 	t.Log("Creating a resource")
 
 	var instance th.MockStruct
-	response, err := th.ExecuteApiCall(t, e.App.ApiNew(e.DB), request, &instance)
+	response, err := th.ExecuteApiCall(t, e.App.ApiCreate(e.DB), request, &instance)
 	assert.NoError(t, err, "ExecuteApiCall should not return an error")
 	assert.NotNil(t, response, "ApiNew should return a non-nil response")
 

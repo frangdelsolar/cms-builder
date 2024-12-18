@@ -8,7 +8,7 @@ services:
       - "./data:/data:rw"
     links:
       - "database_default"
-    command: go run cmd/main.go
+    command: go run .
 
   database_default:
     image: postgres:15.7-alpine

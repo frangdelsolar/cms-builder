@@ -18,73 +18,85 @@ type Database struct {
 	DB *gorm.DB // Embedded GORM DB instance for database access
 }
 
-// FindById retrieves an entity by its ID from the database.
-func (db *Database) FindById(id string, entity interface{}, userId string, skipUserBinding bool) *gorm.DB {
-	// Queries
-	idQuery := "id = '" + id + "'"
-	createdByIdQuery := "created_by_id = '" + userId + "'"
+// FindById retrieves a single record from the database that matches the provided ID.
+// It allows for an optional query extension to refine the search criteria.
+//
+// Parameters:
+//   - id: the unique identifier of the record to be retrieved.
+//   - entity: the destination where the result will be stored.
+//   - queryExtension: an optional additional query condition.
+//
+// Returns:
+//   - *gorm.DB: the result of the database query, which can be used to check for errors.
+func (db *Database) FindById(id string, entity interface{}, queryExtension string) *gorm.DB {
+	q := "id = '" + id + "'"
 
-	if skipUserBinding {
-		return db.DB.Where(idQuery).First(entity)
-	} else {
-		return db.DB.Where(idQuery + " AND " + createdByIdQuery).First(entity)
+	if queryExtension != "" {
+		q += " AND " + queryExtension
 	}
+
+	return db.DB.Where(q).First(entity)
 }
 
-// FindAll retrieves all entities from the database.
-func (db *Database) FindAll(entity interface{}, pagination *Pagination) *gorm.DB {
+// Find retrieves records from the database based on the provided query.
+// If pagination is provided, the query will be limited to the specified number of records
+// and offset to the correct page.
+//
+// Parameters:
+//   - entity: the destination where the result will be stored.
+//   - query: the query to be executed, it can be a raw SQL query or a GORM query.
+//   - pagination: optional pagination information.
+//
+// Returns:
+//   - *gorm.DB: the result of the database query, which can be used to check for errors.
+func (db *Database) Find(entity interface{}, query string, pagination *Pagination) *gorm.DB {
 
 	if pagination == nil {
-		return db.DB.Find(entity)
+		return db.DB.Where(query).Find(entity)
 	}
 
+	// Retrieve total number of records
+	db.DB.Model(entity).Where(query).Count(&pagination.Total)
+
 	// Apply pagination
+	filtered := db.DB.Where(query)
 	limit := pagination.Limit
 	offset := (pagination.Page - 1) * pagination.Limit
 
-	// Retrieve total number of records
-	db.DB.Model(entity).Count(&pagination.Total)
-	return db.DB.Limit(limit).Offset(offset).Find(entity)
+	return filtered.Limit(limit).Offset(offset).Find(entity)
 }
 
-func (db *Database) FindAllByUserId(entity interface{}, userId string, pagination *Pagination) *gorm.DB {
-	// Queries
-	createdByIdQuery := "created_by_id = '" + userId + "'"
-
-	if pagination == nil {
-		return db.DB.Where(createdByIdQuery).Find(entity)
-	}
-
-	// Retrieve total number of records
-	db.DB.Model(entity).Where(createdByIdQuery).Count(&pagination.Total)
-
-	// Apply pagination
-	query := db.DB.Where(createdByIdQuery)
-	limit := pagination.Limit
-	offset := (pagination.Page - 1) * pagination.Limit
-
-	return query.Limit(limit).Offset(offset).Find(entity)
-}
-
+// Create creates a new record in the database.
+//
+// Parameters:
+//   - entity: the model instance to be created.
+//
+// Returns:
+//   - *gorm.DB: the result of the database query, which can be used to check for errors.
 func (db *Database) Create(entity interface{}) *gorm.DB {
 	return db.DB.Create(entity)
 }
 
+// Delete deletes the record in the database.
+//
+// Parameters:
+//   - entity: the model instance to be deleted.
+//
+// Returns:
+//   - *gorm.DB: the result of the database query, which can be used to check for errors.
 func (db *Database) Delete(entity interface{}) *gorm.DB {
 	return db.DB.Delete(entity)
 }
+
+// Save updates a record in the database if it already exists, or creates a new one if it does not.
+//
+// Parameters:
+//   - entity: the model instance to be saved.
+//
+// Returns:
+//   - *gorm.DB: the result of the database query, which can be used to check for errors.
 func (db *Database) Save(entity interface{}) *gorm.DB {
 	return db.DB.Save(entity)
-}
-
-// Find runs a query on the database using the provided query string and stores the
-// results in the provided entity.
-//
-// The query string should be a valid GORM query, such as "name = ?" or "id > ?".
-// The entity should be a pointer to a struct that matches the shape of the data
-// being queried.
-func (db *Database) Find(entity interface{}, query string) {
-	db.DB.Where(query).Find(entity)
 }
 
 // DBConfig defines the configuration options for connecting to a database.

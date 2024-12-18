@@ -83,15 +83,11 @@ func (s *Scheduler) RegisterJob(name string, frequency JobFrequency, function an
 	}
 	s.Builder.DB.Save(&frequency)
 
-	log.Debug().Interface("Frequency", frequency).Str("Name", name).Msg("Registering job")
-
 	jobDefinition, err := s.CreateJobDefinition(name, frequency)
 	if err != nil {
 		log.Error().Err(err).Msg("Error creating job")
 		return err
 	}
-
-	log.Debug().Interface("Job definition", jobDefinition).Msg("Job definition created")
 
 	frequencyDefinition, err := getFrequencyDefinition(frequency)
 	if err != nil {
@@ -180,8 +176,9 @@ func (s *Scheduler) UpdateTaskStatus(id string, status TaskStatus, errMsg string
 
 func (s *Scheduler) GetSchedulerTask(id string) *SchedulerTask {
 	var task SchedulerTask
+
 	q := "cron_job_id = '" + id + "'"
-	s.Builder.DB.Find(&task, q)
+	s.Builder.DB.Find(&task, q, nil)
 	return &task
 }
 
@@ -230,18 +227,26 @@ func getFrequencyDefinition(frequency JobFrequency) (gocron.JobDefinition, error
 }
 
 func NewScheduler(b *Builder) (*Scheduler, error) {
+	schedulerUser := &User{}
+	schedulerUserData := &RegisterUserInput{
+		Name:     "Scheduler",
+		Email:    "scheduler@" + config.GetString(EnvKeys.Domain),
+		Password: "password123", // Leave all test users with the same password
+	}
 
-	var schedulerUser User
-	email := "scheduler@" + config.GetString(EnvKeys.BaseUrl)
-	q := "email = '" + email + "'"
-	b.DB.Find(&schedulerUser, q)
+	b.DB.DB.Find(schedulerUser, "email = ?", schedulerUserData.Email)
 
-	if schedulerUser.ID == 0 {
-		schedulerUser = User{
-			Email: email,
-			Name:  "Scheduler",
+	log.Debug().Interface("User", schedulerUserData).Msg("Creating scheduler user")
+
+	// var createdUser *User
+	if schedulerUser == (&User{}) {
+		newOne, err := b.CreateUserWithRole(*schedulerUserData, SchedulerRole, false)
+		if err != nil {
+			log.Error().Err(err).Msg("Error creating scheduler user")
+			return nil, err
 		}
-		b.DB.Create(&schedulerUser)
+
+		schedulerUser = newOne
 	}
 
 	log.Info().Interface("User", schedulerUser).Msg("Scheduler")
@@ -254,7 +259,7 @@ func NewScheduler(b *Builder) (*Scheduler, error) {
 		return nil, err
 	}
 	s.Start()
-	return &Scheduler{Cron: s, Builder: b, User: &schedulerUser}, nil
+	return &Scheduler{Cron: s, Builder: b, User: schedulerUser}, nil
 }
 
 func (s *Scheduler) Shutdown() error {

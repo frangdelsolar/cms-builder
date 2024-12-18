@@ -53,13 +53,21 @@ func (a *Admin) GetApp(appName string) (App, error) {
 // Parameters:
 // - model: The model to register.
 // - skipUserBinding: Whether to skip user binding which is used for filtering db queries by userId
-func (a *Admin) Register(model interface{}, skipUserBinding bool) (App, error) {
+func (a *Admin) Register(model interface{}, skipUserBinding bool, permissions RolePermissionMap) (App, error) {
 
 	app := App{
 		model:           model,
 		skipUserBinding: skipUserBinding,
 		admin:           a,
 		validators:      make(ValidatorsMap),
+		Permissions:     permissions,
+		Api: &API{
+			List:   DefaultList,
+			Detail: DefaultDetail,
+			Create: DefaultCreate,
+			Update: DefaultUpdate,
+			Delete: DefaultDelete,
+		},
 	}
 
 	// check the app is not already registered
@@ -129,7 +137,7 @@ func (a *Admin) registerAPIRoutes(app App) {
 
 	a.builder.Server.AddRoute(
 		baseRoute+"/new",
-		app.ApiNew(a.builder.DB),
+		app.ApiCreate(a.builder.DB),
 		app.Name()+"-new",
 		protectedRoute,
 	)

@@ -74,12 +74,20 @@ func GetDefaultEngine() (TestEngineServices, error) {
 
 	admin := e.Admin
 
-	app, err := admin.Register(MockStruct{}, false)
+	permission := builder.RolePermissionMap{
+		builder.AdminRole:   builder.AllAllowedAccess,
+		builder.VisitorRole: builder.AllAllowedAccess,
+	}
+
+	app, err := admin.Register(MockStruct{}, false, permission)
 	if err != nil {
 		return TestEngineServices{}, err
 	}
 
-	app.RegisterValidator("field", builder.ValidatorsList{FieldValidator})
+	err = app.RegisterValidator("field", builder.ValidatorsList{FieldValidator})
+	if err != nil {
+		return TestEngineServices{}, err
+	}
 	defer admin.Unregister(app.Name())
 
 	return TestEngineServices{e, admin, e.DB, e.Server, e.Firebase, &app, e.Logger, e.Config, e.Store}, nil
@@ -98,7 +106,7 @@ func CreateMockResource(t *testing.T, db *builder.Database, app *builder.App, us
 	var createdItem MockStruct
 	response, err := ExecuteApiCall(
 		t,
-		app.ApiNew(db),
+		app.ApiCreate(db),
 		request,
 		&createdItem,
 	)

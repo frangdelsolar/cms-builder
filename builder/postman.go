@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+// TODO: Needs to figure out how to generate for those urls that are not comming from a model
+
 const (
 	PostmanSchemaFilePath = "postman/collection.json"
 	PostmanEnvFilePath    = "postman/environment.json"
@@ -493,14 +495,14 @@ func (b *Builder) GetPostmanEnv() (*PostmanEnv, error) {
 	// Email
 	envSchema.Values = append(envSchema.Values, PostmanEnvValue{
 		Key:     keyEmail,
-		Value:   "admin@admin.com",
+		Value:   config.GetString(EnvKeys.AdminEmail),
 		Enabled: true,
 	})
 
 	// Password
 	envSchema.Values = append(envSchema.Values, PostmanEnvValue{
 		Key:     keyPassword,
-		Value:   "admin123",
+		Value:   config.GetString(EnvKeys.AdminPassword),
 		Enabled: true,
 	})
 

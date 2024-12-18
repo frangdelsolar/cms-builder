@@ -21,7 +21,7 @@ func TestCSVParser(t *testing.T) {
 	defer os.Remove(file.Name())
 
 	// Write some data to the file
-	_, err = file.WriteString("field1,field2,field3\nvalue1,value2,value3\nvalue1,value2,value3\nvalue1,value2,value3")
+	_, err = file.WriteString("field1,field2,field3\n\"value1,9,0\",value2,value3\nvalue1,value2,value3\nvalue1,value2,value3")
 	assert.NoError(t, err)
 
 	// Create a new CSV parser
@@ -36,7 +36,7 @@ func TestCSVParser(t *testing.T) {
 
 	// Assert that the data was parsed correctly
 	assert.Equal(t, 3, len(dataSlice))
-	assert.Equal(t, "value1", dataSlice[0].Field1)
+	assert.Equal(t, "value1,9,0", dataSlice[0].Field1)
 
 	// Close the file
 	err = file.Close()

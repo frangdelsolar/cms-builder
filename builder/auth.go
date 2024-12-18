@@ -3,10 +3,13 @@ package builder
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
+
+	"gorm.io/gorm"
 )
 
 // VerifyUser verifies the user based on the access token provided in the userIdToken parameter.
@@ -24,7 +27,7 @@ func (b *Builder) VerifyUser(userIdToken string) (*User, error) {
 	var localUser User
 
 	q := "firebase_id = '" + accessToken.UID + "'"
-	b.DB.Find(&localUser, q)
+	b.DB.DB.Where(q).First(&localUser)
 
 	// Create user if firebase has it but not in database
 	if localUser.ID == 0 {
@@ -32,8 +35,9 @@ func (b *Builder) VerifyUser(userIdToken string) (*User, error) {
 
 		// create user in database
 		localUser.Name = accessToken.Claims["name"].(string)
-		localUser.Email = accessToken.Claims["email"].(string)
+		localUser.Email = strings.ToLower(accessToken.Claims["email"].(string))
 		localUser.FirebaseId = accessToken.UID
+		localUser.Roles = string(VisitorRole)
 		b.DB.Create(&localUser)
 	}
 
@@ -48,6 +52,10 @@ func (b *Builder) VerifyUser(userIdToken string) (*User, error) {
 func (b *Builder) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
+		// Clear the headers in case someone else set them
+		DeleteHeader(requestedByParamKey, r)
+		DeleteHeader(authParamKey, r)
+
 		accessToken := GetAccessTokenFromRequest(r)
 		localUser, err := b.VerifyUser(accessToken)
 		if err != nil {
@@ -61,9 +69,11 @@ func (b *Builder) AuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		r.Header.Set("auth", "true") // this is set only for testing purposes
+		SetHeader(requestedByParamKey, localUser.GetIDString(), r)
+		SetHeader(authParamKey, "true", r)
 
 		log.Info().Interface("User", localUser).Msg("Logging in user")
+
 		next.ServeHTTP(w, r)
 	})
 }
@@ -78,7 +88,7 @@ func (b *Builder) AuthMiddleware(next http.Handler) http.Handler {
 //
 // The function will also set the requested_by header to the ID of the newly created
 // user.
-func (b *Builder) RegisterUserController(w http.ResponseWriter, r *http.Request) {
+func (b *Builder) RegisterVisitorController(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		SendJsonResponse(w, http.StatusMethodNotAllowed, nil, "Method not allowed")
 		return
@@ -99,46 +109,10 @@ func (b *Builder) RegisterUserController(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	var fbUserId string
-	fbUser, err := b.Firebase.RegisterUser(r.Context(), input)
+	user, err := b.CreateUserWithRole(input, VisitorRole, true)
 	if err != nil {
-		msg := fmt.Sprintf("Error registering user: %s", err.Error())
-
-		if strings.Contains(err.Error(), "EMAIL_EXISTS") {
-			existingFbUser, err := b.Firebase.Client.GetUserByEmail(r.Context(), input.Email)
-			if err != nil {
-				msg := fmt.Sprintf("Error getting user by email: %s", err.Error())
-				SendJsonResponse(w, http.StatusInternalServerError, nil, msg)
-				return
-			}
-			log.Warn().Msg("User already exists in Firebase. Will add it to database")
-			fbUserId = existingFbUser.UID
-		} else {
-			SendJsonResponse(w, http.StatusInternalServerError, nil, msg)
-			return
-		}
-	} else {
-		fbUserId = fbUser.UID
-	}
-
-	// Check if there is a user with the same fbUserId in the database
-	var existingUser User
-	q := "firebase_id = '" + fbUserId + "'"
-	b.DB.Find(&existingUser, q)
-	if existingUser.ID != 0 {
-		log.Warn().Msg("User already exists in database.")
-		// Prevent sending the firebaseId to the client
-		existingUser.FirebaseId = ""
-		SendJsonResponse(w, http.StatusOK, existingUser, "User already registered")
-		return
-	}
-
-	// Create user in database
-	user := User{Name: input.Name, Email: input.Email, FirebaseId: fbUserId}
-	b.DB.Create(&user)
-
-	if user.ID == 0 {
-		SendJsonResponse(w, http.StatusInternalServerError, nil, "Error creating user in database")
+		msg := fmt.Sprintf("Error creating user: %s", err.Error())
+		SendJsonResponse(w, http.StatusInternalServerError, nil, msg)
 		return
 	}
 
@@ -147,16 +121,122 @@ func (b *Builder) RegisterUserController(w http.ResponseWriter, r *http.Request)
 	SendJsonResponse(w, http.StatusOK, user, "User registered successfully")
 }
 
-// GetAccessTokenFromRequest extracts the access token from the Authorization header of the given request.
-// The header should be in the format "Bearer <token>".
-// If the token is not found, it returns an empty string.
-func GetAccessTokenFromRequest(r *http.Request) string {
-	header := r.Header.Get("Authorization")
-	if header != "" {
-		token := strings.Split(header, " ")[1]
-		if token != "" {
-			return token
+// AppendRoleToUser appends a role to a user's roles field in the database.
+//
+// The method first retrieves the user from the database. If the user is not found,
+// it returns an error.
+//
+// If the user's roles field is empty, it sets the roles field to the given role.
+// Otherwise, it appends the given role to the list of roles, separated by a comma.
+// If the given role is already in the list of roles, it does not append it again.
+//
+// Finally, it saves the user back to the database. If there is an error saving the user,
+// it returns the error.
+func (b *Builder) AppendRoleToUser(userId string, role Role) error {
+	user := User{}
+	b.DB.DB.Where("id = ?", userId).First(&user)
+
+	if user == (User{}) {
+		return fmt.Errorf("User not found")
+	}
+
+	err := user.SetRole(role)
+	if err != nil {
+		return err
+	}
+
+	err = b.DB.DB.Save(&user).Error
+	if err != nil {
+		log.Error().Err(err).Msg("Error appending role to user")
+		return err
+	}
+	return nil
+}
+
+// RemoveRoleFromUser removes a role from a user's roles field in the database.
+//
+// The method first retrieves the user from the database. If the user is not found,
+// it returns an error.
+//
+// If the user's roles field does not contain the given role, it simply returns.
+// Otherwise, it removes the given role from the list of roles and saves the user
+// back to the database. If there is an error saving the user, it returns the error.
+func (b *Builder) RemoveRoleFromUser(userId string, role Role) error {
+
+	user := User{}
+	b.DB.DB.Where("id = ?", userId).First(&user)
+
+	if user == (User{}) {
+		return fmt.Errorf("User not found")
+	}
+
+	user.RemoveRole(role)
+
+	err := b.DB.DB.Save(&user).Error
+	if err != nil {
+		log.Error().Err(err).Msg("Error removing role from user")
+		return err
+	}
+
+	return nil
+}
+
+// CreateUserWithRole creates a new user in Firebase with the given name, email, and password, and also
+// creates a new user in the local database with the given role. If the user already exists in Firebase,
+// it will add the user to the local database. If the user already exists in the local database, it will
+// return an error.
+func (b *Builder) CreateUserWithRole(input RegisterUserInput, role Role, registerFirebase bool) (*User, error) {
+	ctx := context.Background()
+
+	var fbUserId string
+	if registerFirebase {
+		fbUser, err := b.Firebase.RegisterUser(ctx, input)
+		if err != nil {
+			msg := fmt.Sprintf("Error registering user: %s", err.Error())
+
+			if strings.Contains(err.Error(), "EMAIL_EXISTS") {
+				existingFbUser, err := b.Firebase.Client.GetUserByEmail(ctx, input.Email)
+				if err != nil {
+					msg := fmt.Sprintf("Error getting user by email: %s", err.Error())
+					return nil, fmt.Errorf("%s", msg)
+				}
+				log.Warn().Msg("User already exists in Firebase. Will add it to database")
+				fbUserId = existingFbUser.UID
+			} else {
+				return nil, fmt.Errorf("%s", msg)
+			}
+		} else {
+			fbUserId = fbUser.UID
+		}
+
+		// Check if there is a user with the same fbUserId in the database
+		var existingUser User
+		q := "firebase_id = '" + fbUserId + "'"
+		err = b.DB.DB.Where(q).First(&existingUser).Error
+		if err != nil {
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, fmt.Errorf("error getting user from database")
+			}
+		}
+
+		if existingUser != (User{}) {
+			log.Warn().Msg("User already exists in database.")
+			return &existingUser, nil
 		}
 	}
-	return ""
+
+	// Create user in database
+	user := User{
+		Name:       input.Name,
+		Email:      strings.ToLower(input.Email),
+		FirebaseId: fbUserId,
+		Roles:      string(role),
+	}
+	b.DB.Create(&user)
+
+	if user.ID == 0 {
+		return nil, fmt.Errorf("error creating user in database")
+	}
+
+	return &user, nil
 }

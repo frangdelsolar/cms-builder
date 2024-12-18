@@ -30,6 +30,10 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       STATIC_PATH: static
       BASE_URL: http://localhost
+      DOMAIN: localhost
+      ADMIN_NAME: Admin
+      ADMIN_EMAIL: admin@admin.com
+      ADMIN_PASSWORD: admin123admin
 
     steps:
       - uses: actions/checkout@v3 

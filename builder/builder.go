@@ -3,17 +3,23 @@ package builder
 import (
 	"errors"
 	"fmt"
+
+	"gorm.io/gorm"
 )
 
-const builderVersion = "1.3.6"
+const builderVersion = "1.4.0"
 
 // ConfigKeys define the keys used in the configuration file
 type ConfigKeys struct {
 	AppName               string `json:"appName"`               // App name
+	AdminName             string `json:"adminName"`             // Admin name
+	AdminEmail            string `json:"adminEmail"`            // Admin email
+	AdminPassword         string `json:"adminPassword"`         // Admin password
 	Environment           string `json:"environment"`           // Environment where the app is running
 	LogLevel              string `json:"logLevel"`              // Log level
 	LogFilePath           string `json:"logFilePath"`           // File path for logging
 	LogWriteToFile        string `json:"logWriteToFile"`        // Write logs to file
+	Domain                string `json:"domain"`                // Domain
 	DbFile                string `json:"dbFile"`                // Database file
 	DbUrl                 string `json:"dbUrl"`                 // Database URL
 	ServerHost            string `json:"serverHost"`            // Server host
@@ -36,10 +42,14 @@ type ConfigKeys struct {
 // EnvKeys are the keys used in the configuration file
 var EnvKeys = ConfigKeys{
 	AppName:               "APP_NAME",
+	AdminName:             "ADMIN_NAME",
+	AdminEmail:            "ADMIN_EMAIL",
+	AdminPassword:         "ADMIN_PASSWORD",
 	Environment:           "ENVIRONMENT",
 	LogLevel:              "LOG_LEVEL",
 	LogFilePath:           "LOG_FILE_PATH",
 	LogWriteToFile:        "LOG_WRITE_TO_FILE",
+	Domain:                "DOMAIN",
 	DbFile:                "DB_FILE",
 	DbUrl:                 "DB_URL",
 	ServerHost:            "SERVER_HOST",
@@ -62,10 +72,14 @@ var EnvKeys = ConfigKeys{
 // defaultConfig defines the default values for the configuration
 var DefaultEnvValues = ConfigKeys{
 	AppName:               "Builder",
+	AdminName:             "Admin",
+	AdminEmail:            "admin@admin.com",
+	AdminPassword:         "admin123admin",
 	Environment:           "development",
 	LogLevel:              "debug",
 	LogFilePath:           "logs/default.log",
 	LogWriteToFile:        "true",
+	Domain:                "localhost",
 	DbFile:                "database.db",
 	DbUrl:                 "",
 	ServerHost:            "0.0.0.0",
@@ -146,31 +160,30 @@ type NewBuilderInput struct {
 
 // NewBuilder creates a new Builder instance.
 func NewBuilder(input *NewBuilderInput) (*Builder, error) {
-
 	if input == nil {
 		return nil, builderErr.ConfigurationNotProvided
 	}
 
-	builder := &Builder{}
+	b := &Builder{}
 
-	err := builder.InitConfigReader(input)
+	err := b.InitConfigReader(input)
 	if err != nil {
 		log.Err(err).Msg("Error initializing config reader")
 		return nil, builderErr.ConfigReaderNotInitialized
 	}
 
 	// Make configurations available for other modules
-	config = builder.Config
+	config = b.Config
 
 	// Logger
-	err = builder.InitLogger()
+	err = b.InitLogger()
 	if err != nil {
 		log.Err(err).Msg("Error initializing logger")
 		return nil, builderErr.LoggerNotInitialized
 	}
 
 	// Make logger available for other modules
-	log = builder.Logger
+	log = b.Logger
 
 	log.Info().
 		Str("version", builderVersion).
@@ -178,57 +191,63 @@ func NewBuilder(input *NewBuilderInput) (*Builder, error) {
 		Msg("Running Builder")
 
 	// Database
-	err = builder.InitDatabase()
+	err = b.InitDatabase()
 	if err != nil {
 		log.Err(err).Msg("Error initializing database")
 		return nil, err
 	}
 
 	// Server
-	err = builder.InitServer()
+	err = b.InitServer()
 	if err != nil {
 		log.Err(err).Msg("Error initializing server")
 		return nil, err
 	}
 
 	// Admin
-	builder.InitAdmin()
+	b.InitAdmin()
 
 	// Firebase
-	err = builder.InitFirebase()
+	err = b.InitFirebase()
 	if err != nil {
 		log.Err(err).Msg("Error initializing firebase")
 		return nil, err
 	}
 
-	err = builder.InitAuth()
+	err = b.InitAuth()
 	if err != nil {
 		log.Err(err).Msg("Error initializing auth")
 		return nil, err
 	}
 
-	err = builder.InitStore()
+	err = b.InitStore()
 	if err != nil {
 		log.Err(err).Msg("Error initializing store")
 		return nil, err
 	}
 
 	// Uploader
-	err = builder.InitUploader()
+	err = b.InitUploader()
 	if err != nil {
 		log.Err(err).Msg("Error initializing uploader")
 		return nil, err
 	}
 
 	if input.InitializeScheduler {
-		err = builder.InitScheduler()
+		err = b.InitScheduler()
 		if err != nil {
 			log.Err(err).Msg("Error initializing scheduler")
 			return nil, err
 		}
 	}
 
-	return builder, nil
+	err = b.RegisterAdminUser()
+	if err != nil {
+		log.Err(err).Msg("Error registering admin user")
+		return nil, err
+	}
+
+	return b, nil
 }
 
 // InitConfigReader initializes the config reader based on the provided configuration.
@@ -349,17 +368,63 @@ func (b *Builder) InitFirebase() error {
 // If an error occurs while registering the User app, it logs the error and panics.
 func (b *Builder) InitAuth() error {
 	admin := b.Admin
-	userApp, err := admin.Register(&User{}, false)
+
+	permissions := RolePermissionMap{
+		AdminRole:   AllAllowedAccess,
+		VisitorRole: AllAllowedAccess,
+	}
+
+	userApp, err := admin.Register(&User{}, false, permissions)
 	if err != nil {
 		log.Error().Err(err).Msg("Error registering user app")
 		return err
 	}
 
-	userApp.RegisterValidator("email", ValidatorsList{RequiredValidator, EmailValidator})
-	userApp.RegisterValidator("name", ValidatorsList{RequiredValidator})
+	// Admin can see all users, others can only see their own
+	userApp.Api.List = func(input *RequestData, db *Database, app *App) (*gorm.DB, error) {
+		query := ""
+		for _, role := range input.Parameters.Roles {
+			if role == AdminRole {
+				return db.Find(input.Model, query, input.Pagination), nil
+			}
+		}
+		query = "id = '" + input.Parameters.RequestedById + "'"
+		return db.Find(input.Model, query, input.Pagination), nil
+	}
+
+	// Admin can see all users, others can only see their own
+	userApp.Api.Detail = func(input *RequestData, db *Database, app *App) (*gorm.DB, error) {
+		query := ""
+		for _, role := range input.Parameters.Roles {
+			if role == AdminRole {
+				return db.FindById(input.InstanceId, input.Model, query), nil
+			}
+		}
+
+		query = "id = '" + input.Parameters.RequestedById + "'"
+		return db.FindById(input.InstanceId, input.Model, query), nil
+	}
+
+	err = userApp.RegisterValidator("email", ValidatorsList{RequiredValidator, EmailValidator})
+	if err != nil {
+		log.Error().Err(err).Msg("Error registering email validator")
+		return err
+	}
+
+	err = userApp.RegisterValidator("name", ValidatorsList{RequiredValidator})
+	if err != nil {
+		log.Error().Err(err).Msg("Error registering name validator")
+		return err
+	}
+
+	err = userApp.RegisterValidator("roles", ValidatorsList{RequiredValidator})
+	if err != nil {
+		log.Error().Err(err).Msg("Error registering roles validator")
+		return err
+	}
 
 	svr := b.Server
-	svr.AddRoute("/auth/register", b.RegisterUserController, "register", false)
+	svr.AddRoute("/auth/register", b.RegisterVisitorController, "register", false)
 	return nil
 }
 
@@ -404,8 +469,13 @@ func (b *Builder) InitUploader() error {
 		Folder:             config.GetString(config.GetString(EnvKeys.UploaderFolder)),
 	}
 
+	permissions := RolePermissionMap{
+		AdminRole:   AllAllowedAccess,
+		VisitorRole: AllAllowedAccess,
+	}
+
 	// Register the Upload app without authentication
-	_, err := b.Admin.Register(&Upload{}, false)
+	_, err := b.Admin.Register(&Upload{}, false, permissions)
 	if err != nil {
 		log.Error().Err(err).Msg("Error registering upload app")
 		return err
@@ -417,7 +487,7 @@ func (b *Builder) InitUploader() error {
 	// Add route for uploading new files
 	b.Server.AddRoute(
 		route+"/upload",
-		b.GetUploadPostHandler(cfg),
+		b.GetFilePostHandler(cfg),
 		"file-new",
 		true, // Requires authentication
 	)
@@ -425,7 +495,7 @@ func (b *Builder) InitUploader() error {
 	// Add route for deleting files by ID
 	b.Server.AddRoute(
 		route+"/{id}/delete",
-		b.GetUploadDeleteHandler(cfg),
+		b.GetFileDeleteHandler(cfg),
 		"file-delete",
 		true, // Requires authentication
 	)
@@ -443,21 +513,26 @@ func (b *Builder) InitUploader() error {
 
 func (b *Builder) InitScheduler() error {
 
-	_, err := b.Admin.Register(&SchedulerJobDefinition{}, false)
+	permissions := RolePermissionMap{
+		AdminRole:     AllAllowedAccess,
+		SchedulerRole: AllAllowedAccess,
+	}
+
+	_, err := b.Admin.Register(&SchedulerJobDefinition{}, false, permissions)
 	if err != nil {
-		log.Error().Err(err).Msg("Error registering job app")
+		log.Error().Err(err).Msg("Error registering job definition app")
 		return err
 	}
 
-	_, err = b.Admin.Register(&JobFrequency{}, false)
+	_, err = b.Admin.Register(&JobFrequency{}, false, permissions)
 	if err != nil {
-		log.Error().Err(err).Msg("Error registering job app")
+		log.Error().Err(err).Msg("Error registering job frequency app")
 		return err
 	}
 
-	_, err = b.Admin.Register(&SchedulerTask{}, false)
+	_, err = b.Admin.Register(&SchedulerTask{}, false, permissions)
 	if err != nil {
-		log.Error().Err(err).Msg("Error registering job app")
+		log.Error().Err(err).Msg("Error registering scheduler task app")
 		return err
 	}
 
@@ -468,6 +543,27 @@ func (b *Builder) InitScheduler() error {
 	}
 
 	b.Scheduler = s
+
+	return nil
+}
+
+func (b *Builder) RegisterAdminUser() error {
+	userData := &RegisterUserInput{
+		Name:     config.GetString(EnvKeys.AdminName),
+		Email:    config.GetString(EnvKeys.AdminEmail),
+		Password: config.GetString(EnvKeys.AdminPassword),
+	}
+
+	user, err := b.CreateUserWithRole(*userData, AdminRole, true)
+	if err != nil {
+		log.Error().Err(err).Msg("Error creating admin user")
+		return err
+	}
+
+	if user == nil {
+		log.Error().Msg("Error creating admin user")
+		return err
+	}
 
 	return nil
 }
