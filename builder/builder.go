@@ -7,7 +7,7 @@ import (
 	"gorm.io/gorm"
 )
 
-const builderVersion = "1.3.6"
+const builderVersion = "1.4.0"
 
 // ConfigKeys define the keys used in the configuration file
 type ConfigKeys struct {
