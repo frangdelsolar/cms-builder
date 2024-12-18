@@ -130,7 +130,7 @@ func TestAppendRoleToUser(t *testing.T) {
 			userRoles:     []builder.Role{adminRole},
 			newRole:       adminRole,
 			expectedRoles: "admin",
-			expectedErr:   false,
+			expectedErr:   true,
 		},
 		{
 			name:          "User does not have the role",

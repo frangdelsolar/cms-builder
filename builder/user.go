@@ -7,6 +7,10 @@ import (
 	"gorm.io/gorm"
 )
 
+var (
+	ErrorRoleAlreadyAssigned = fmt.Errorf("role already assigned to user")
+)
+
 type User struct {
 	*gorm.Model
 	Name       string `json:"name"`
@@ -43,15 +47,16 @@ func (u *User) GetRoles() []Role {
 //
 // Parameters:
 // - role: the Role to be added to the User's Roles field.
-func (u *User) SetRole(role Role) {
+func (u *User) SetRole(role Role) error {
 	if u.Roles == "" {
 		u.Roles = string(role)
 	} else {
 		if strings.Contains(u.Roles, string(role)) {
-			return
+			return ErrorRoleAlreadyAssigned
 		}
 		u.Roles += "," + string(role)
 	}
+	return nil
 }
 
 // RemoveRole removes a role from the User's Roles field. If the role is not present, it has no effect.

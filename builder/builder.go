@@ -380,14 +380,29 @@ func (b *Builder) InitAuth() error {
 		return err
 	}
 
-	userApp.Api.List = func(input *ApiInput, db *Database, app *App) (*gorm.DB, error) {
+	// Admin can see all users, others can only see their own
+	userApp.Api.List = func(input *RequestData, db *Database, app *App) (*gorm.DB, error) {
 		query := ""
-		role := input.Parameters.Roles[0]
-		if role == VisitorRole {
-			query = "id = '" + input.Parameters.RequestedById + "'"
+		for _, role := range input.Parameters.Roles {
+			if role == AdminRole {
+				return db.Find(input.Model, query, input.Pagination), nil
+			}
+		}
+		query = "id = '" + input.Parameters.RequestedById + "'"
+		return db.Find(input.Model, query, input.Pagination), nil
+	}
+
+	// Admin can see all users, others can only see their own
+	userApp.Api.Detail = func(input *RequestData, db *Database, app *App) (*gorm.DB, error) {
+		query := ""
+		for _, role := range input.Parameters.Roles {
+			if role == AdminRole {
+				return db.FindById(input.InstanceId, input.Model, query), nil
+			}
 		}
 
-		return db.Find(input.Model, query, input.Pagination), nil
+		query = "id = '" + input.Parameters.RequestedById + "'"
+		return db.FindById(input.InstanceId, input.Model, query), nil
 	}
 
 	err = userApp.RegisterValidator("email", ValidatorsList{RequiredValidator, EmailValidator})

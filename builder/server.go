@@ -89,7 +89,7 @@ func NewServer(config *ServerConfig) (*Server, error) {
 
 	// Public Routes
 	svr.AddRoute("/", func(w http.ResponseWriter, r *http.Request) {
-		err := validateRequestMethod(r, "GET")
+		err := ValidateRequestMethod(r, "GET")
 		if err != nil {
 			SendJsonResponse(w, http.StatusMethodNotAllowed, err, err.Error())
 			return

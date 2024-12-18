@@ -21,6 +21,7 @@ type Store interface {
 	StoreFile(cfg *UploaderConfig, fileName string, file multipart.File) (fileData FileData, err error)
 	DeleteFile(file FileData) error
 	ListFiles() ([]string, error)
+	ReadFile(file *FileData) ([]byte, error)
 }
 
 type LocalStore struct {
@@ -47,8 +48,6 @@ func (s *LocalStore) StoreFile(cfg *UploaderConfig, fileName string, file multip
 
 	// Create the uploads directory if it doesn't exist
 	uploadsDir := s.GetPath()
-
-	log.Warn().Interface("config", cfg).Str("uploadsDir", uploadsDir).Msg("Storing file")
 
 	err = os.MkdirAll(uploadsDir, os.ModePerm)
 	if err != nil {
@@ -111,6 +110,10 @@ func (s *LocalStore) ListFiles() ([]string, error) {
 	return output, nil
 }
 
+func (s *LocalStore) ReadFile(file *FileData) ([]byte, error) {
+	return os.ReadFile(file.Path)
+}
+
 type S3Store struct {
 	Client *AwsManager
 	Path   string
@@ -167,6 +170,10 @@ func (s *S3Store) DeleteFile(file FileData) error {
 
 func (s *S3Store) ListFiles() ([]string, error) {
 	return s.Client.ListFiles()
+}
+
+func (s *S3Store) ReadFile(file *FileData) ([]byte, error) {
+	return s.Client.DownloadFile(file.Path)
 }
 
 // getFileBytes reads the contents of a multipart.File into a byte array.

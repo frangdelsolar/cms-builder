@@ -38,7 +38,7 @@ type UploaderConfig struct {
 func (b *Builder) GetFilePostHandler(cfg *UploaderConfig) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Validate method
-		err := validateRequestMethod(r, http.MethodPost)
+		err := ValidateRequestMethod(r, http.MethodPost)
 		if err != nil {
 			SendJsonResponse(w, http.StatusMethodNotAllowed, nil, err.Error())
 			return
@@ -127,7 +127,7 @@ func (b *Builder) GetFilePostHandler(cfg *UploaderConfig) HandlerFunc {
 func (b *Builder) GetFileDeleteHandler(cfg *UploaderConfig) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		err := validateRequestMethod(r, http.MethodDelete)
+		err := ValidateRequestMethod(r, http.MethodDelete)
 		if err != nil {
 			SendJsonResponse(w, http.StatusMethodNotAllowed, err, err.Error())
 			return
@@ -148,7 +148,7 @@ func (b *Builder) GetFileDeleteHandler(cfg *UploaderConfig) HandlerFunc {
 
 		var instance Upload
 
-		instanceId := getUrlParam("id", r)
+		instanceId := GetUrlParam("id", r)
 
 		result := b.DB.FindById(instanceId, &instance, "")
 		if result.Error != nil {

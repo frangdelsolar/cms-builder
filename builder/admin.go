@@ -61,7 +61,7 @@ func (a *Admin) Register(model interface{}, skipUserBinding bool, permissions Ro
 		admin:           a,
 		validators:      make(ValidatorsMap),
 		Permissions:     permissions,
-		Api: API{
+		Api: &API{
 			List:   DefaultList,
 			Detail: DefaultDetail,
 			Create: DefaultCreate,

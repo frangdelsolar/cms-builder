@@ -1,6 +1,7 @@
 package builder
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -30,33 +31,33 @@ func (r RequestParamKey) S() string {
 	return string(r)
 }
 
-// setHeader sets a header in the HTTP request with the given parameter key and value.
+// SetHeader sets a header in the HTTP request with the given parameter key and value.
 // The parameter key is converted to a string using the S() method,
 // and the value is set in the request header.
 // If a header with the same key already exists, it will be overwritten.
-func setHeader(param RequestParamKey, value string, request *http.Request) {
+func SetHeader(param RequestParamKey, value string, request *http.Request) {
 	request.Header.Set(param.S(), value)
 }
 
-// deleteHeader deletes a header from the HTTP request with the given parameter key.
+// DeleteHeader deletes a header from the HTTP request with the given parameter key.
 // The parameter key is converted to a string using the S() method,
 // and the header is deleted from the request.
-func deleteHeader(param RequestParamKey, request *http.Request) {
+func DeleteHeader(param RequestParamKey, request *http.Request) {
 	request.Header.Del(param.S())
 }
 
-// getUrlParam retrieves the value of a URL parameter from the request.
+// GetUrlParam retrieves the value of a URL parameter from the request.
 // It uses the gorilla/mux package to extract the parameter value from the URL variables.
 // The function takes the parameter name as a string and the HTTP request object.
 // Returns the value of the specified URL parameter as a string.
-func getUrlParam(param string, r *http.Request) string {
+func GetUrlParam(param string, r *http.Request) string {
 	return mux.Vars(r)[param]
 }
 
-// getQueryParam retrieves the value of a query parameter from the request.
+// GetQueryParam retrieves the value of a query parameter from the request.
 // The function takes the parameter name as a string and the HTTP request object.
 // Returns the value of the specified query parameter as a string.
-func getQueryParam(param string, r *http.Request) string {
+func GetQueryParam(param string, r *http.Request) string {
 	output := ""
 	if r.URL != nil {
 		output = r.URL.Query().Get(param)
@@ -72,7 +73,7 @@ func getQueryParam(param string, r *http.Request) string {
 func FormatRequestParameters(r *http.Request, b *Builder) RequestParameters {
 	params := RequestParameters{}
 
-	user := getRequestUser(r, b)
+	user := GetRequestUser(r, b)
 	if user == nil {
 		return params
 	}
@@ -90,7 +91,7 @@ func FormatRequestParameters(r *http.Request, b *Builder) RequestParameters {
 // The function first retrieves the access token from the request header, then verifies it
 // by calling VerifyUser on the App's admin instance. If the verification fails, it returns
 // an empty string. Otherwise, it returns the ID of the verified user as a string.
-func getRequestUser(r *http.Request, b *Builder) *User {
+func GetRequestUser(r *http.Request, b *Builder) *User {
 	accessToken := GetAccessTokenFromRequest(r)
 	user, err := b.VerifyUser(accessToken)
 	if err != nil {
@@ -113,17 +114,38 @@ func GetAccessTokenFromRequest(r *http.Request) string {
 	return ""
 }
 
-// readRequestBody reads the entire request body and returns the contents as a byte slice.
+// ReadRequestBody reads the entire request body and returns the contents as a byte slice.
 // It defers closing the request body until the function returns.
 // It returns an error if there is a problem reading the request body.
-func readRequestBody(r *http.Request) ([]byte, error) {
+func ReadRequestBody(r *http.Request) ([]byte, error) {
+	if r.Body == nil {
+		return []byte{}, nil
+	}
+
 	defer r.Body.Close()
 	return io.ReadAll(r.Body)
 }
 
-// validateRequestMethod returns an error if the request method does not match the given
+// FormatRequestBody reads the JSON request body from the HTTP request,
+// unmarshals it into a map[string]interface{}, and returns the resulting map.
+// If there is an error reading the request body or unmarshaling the JSON, it returns nil.
+func FormatRequestBody(r *http.Request) map[string]interface{} {
+	body, err := ReadRequestBody(r)
+	if err != nil {
+		return nil
+	}
+	var result map[string]interface{}
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		return nil
+	}
+
+	return result
+}
+
+// ValidateRequestMethod returns an error if the request method does not match the given
 // method string. The error message will include the actual request method.
-func validateRequestMethod(r *http.Request, method string) error {
+func ValidateRequestMethod(r *http.Request, method string) error {
 	if r.Method != method {
 		return fmt.Errorf("invalid request method: %s", r.Method)
 	}

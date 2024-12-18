@@ -53,8 +53,8 @@ func (b *Builder) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		// Clear the headers in case someone else set them
-		deleteHeader(requestedByParamKey, r)
-		deleteHeader(authParamKey, r)
+		DeleteHeader(requestedByParamKey, r)
+		DeleteHeader(authParamKey, r)
 
 		accessToken := GetAccessTokenFromRequest(r)
 		localUser, err := b.VerifyUser(accessToken)
@@ -69,8 +69,8 @@ func (b *Builder) AuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		setHeader(requestedByParamKey, localUser.GetIDString(), r)
-		setHeader(authParamKey, "true", r)
+		SetHeader(requestedByParamKey, localUser.GetIDString(), r)
+		SetHeader(authParamKey, "true", r)
 
 		log.Info().Interface("User", localUser).Msg("Logging in user")
 
@@ -140,9 +140,12 @@ func (b *Builder) AppendRoleToUser(userId string, role Role) error {
 		return fmt.Errorf("User not found")
 	}
 
-	user.SetRole(role)
+	err := user.SetRole(role)
+	if err != nil {
+		return err
+	}
 
-	err := b.DB.DB.Save(&user).Error
+	err = b.DB.DB.Save(&user).Error
 	if err != nil {
 		log.Error().Err(err).Msg("Error appending role to user")
 		return err
