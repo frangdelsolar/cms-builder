@@ -51,7 +51,7 @@ var DefaultList ApiFunction = func(a *App, db *Database) HandlerFunc {
 			return
 		}
 
-		params := FormatRequestParameters(r, a.Admin.builder)
+		params := FormatRequestParameters(r, a.Admin.Builder)
 		isAllowed := a.Permissions.HasPermission(params.Roles, OperationRead)
 		if !isAllowed {
 			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to read this resource")
@@ -71,7 +71,7 @@ var DefaultList ApiFunction = func(a *App, db *Database) HandlerFunc {
 		}
 
 		// Create slice to store the model instances.
-		instances, err := CreateSliceForUndeterminedType(a.model)
+		instances, err := CreateSliceForUndeterminedType(a.Model)
 		if err != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
@@ -83,7 +83,7 @@ var DefaultList ApiFunction = func(a *App, db *Database) HandlerFunc {
 			Limit: limit,
 		}
 		query := ""
-		if a.skipUserBinding {
+		if a.SkipUserBinding {
 			// Admin
 			for _, role := range params.Roles {
 				if role == AdminRole {
@@ -123,7 +123,7 @@ var DefaultDetail ApiFunction = func(a *App, db *Database) HandlerFunc {
 			return
 		}
 
-		params := FormatRequestParameters(r, a.Admin.builder)
+		params := FormatRequestParameters(r, a.Admin.Builder)
 		isAllowed := a.Permissions.HasPermission(params.Roles, OperationRead)
 		if !isAllowed {
 			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to read this resource")
@@ -133,8 +133,8 @@ var DefaultDetail ApiFunction = func(a *App, db *Database) HandlerFunc {
 		// Create a new instance of the model
 		instanceId := GetUrlParam("id", r)
 		var instance interface{}
-		if a.skipUserBinding {
-			instance = CreateInstanceForUndeterminedType(a.model)
+		if a.SkipUserBinding {
+			instance = CreateInstanceForUndeterminedType(a.Model)
 
 			for _, role := range params.Roles {
 				if role == AdminRole {
@@ -145,7 +145,7 @@ var DefaultDetail ApiFunction = func(a *App, db *Database) HandlerFunc {
 			query := "id = '" + params.RequestedById + "'"
 			db.FindById(instanceId, instance, query)
 		} else {
-			instance, err = GetInstanceIfAuthorized(a.model, instanceId, db, &params)
+			instance, err = GetInstanceIfAuthorized(a.Model, instanceId, db, &params)
 			if err != nil {
 				SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 				return
@@ -169,7 +169,7 @@ var DefaultCreate ApiFunction = func(a *App, db *Database) HandlerFunc {
 			return
 		}
 
-		params := FormatRequestParameters(r, a.Admin.builder)
+		params := FormatRequestParameters(r, a.Admin.Builder)
 		isAllowed := a.Permissions.HasPermission(params.Roles, OperationCreate)
 		if !isAllowed {
 			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to create this resource")
@@ -193,7 +193,7 @@ var DefaultCreate ApiFunction = func(a *App, db *Database) HandlerFunc {
 			return
 		}
 
-		instance := CreateInstanceForUndeterminedType(a.model)
+		instance := CreateInstanceForUndeterminedType(a.Model)
 		log.Debug().Interface("instance", instance).Msg("Instance")
 		err = json.Unmarshal(bodyBytes, &instance)
 		if err != nil {
@@ -226,7 +226,7 @@ var DefaultUpdate ApiFunction = func(a *App, db *Database) HandlerFunc {
 			return
 		}
 
-		params := FormatRequestParameters(r, a.Admin.builder)
+		params := FormatRequestParameters(r, a.Admin.Builder)
 
 		isAllowed := a.Permissions.HasPermission(params.Roles, OperationUpdate)
 		if !isAllowed {
@@ -250,7 +250,7 @@ var DefaultUpdate ApiFunction = func(a *App, db *Database) HandlerFunc {
 
 		// Create a new instance of the model
 		instanceId := GetUrlParam("id", r)
-		instance, err := GetInstanceIfAuthorized(a.model, instanceId, db, &params)
+		instance, err := GetInstanceIfAuthorized(a.Model, instanceId, db, &params)
 		if err != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
@@ -301,7 +301,7 @@ var DefaultDelete ApiFunction = func(a *App, db *Database) HandlerFunc {
 			return
 		}
 
-		params := FormatRequestParameters(r, a.Admin.builder)
+		params := FormatRequestParameters(r, a.Admin.Builder)
 		isAllowed := a.Permissions.HasPermission(params.Roles, OperationDelete)
 		if !isAllowed {
 			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to delete this resource")
@@ -309,7 +309,7 @@ var DefaultDelete ApiFunction = func(a *App, db *Database) HandlerFunc {
 		}
 
 		instanceId := GetUrlParam("id", r)
-		instance, err := GetInstanceIfAuthorized(a.model, instanceId, db, &params)
+		instance, err := GetInstanceIfAuthorized(a.Model, instanceId, db, &params)
 		if err != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
@@ -362,8 +362,8 @@ func GetInstanceIfAuthorized(model interface{}, instanceId string, db *Database,
 }
 
 type App struct {
-	model           interface{}       // The model struct
-	skipUserBinding bool              // Means that theres a CreatedBy field in the model that will be used for filtering the database query to only include records created by the user
+	Model           interface{}       // The model struct
+	SkipUserBinding bool              // Means that theres a CreatedBy field in the model that will be used for filtering the database query to only include records created by the user
 	Admin           *Admin            // The admin instance
 	Validators      ValidatorsMap     // A map of field names to validation functions
 	Permissions     RolePermissionMap // Key is Role name, value is permission
@@ -372,7 +372,7 @@ type App struct {
 
 // Name returns the name of the model as a string, lowercased and without the package name.
 func (a *App) Name() string {
-	return GetStructName(a.model)
+	return GetStructName(a.Model)
 }
 
 // PluralName returns the plural form of the name of the model as a string.
@@ -391,7 +391,7 @@ func (a *App) PluralName() string {
 func (a *App) RegisterValidator(fieldName FieldName, validators ValidatorsList) error {
 	fieldNameLower := strings.ToLower(string(fieldName))
 
-	jsonData, err := JsonifyInterface(a.model)
+	jsonData, err := JsonifyInterface(a.Model)
 	if err != nil {
 		return err
 	}

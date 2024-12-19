@@ -12,7 +12,7 @@ var (
 
 type Admin struct {
 	apps    map[string]App
-	builder *Builder
+	Builder *Builder
 }
 
 // NewAdmin creates a new instance of the Admin, which is a central
@@ -26,7 +26,7 @@ type Admin struct {
 func NewAdmin(builder *Builder) *Admin {
 	return &Admin{
 		apps:    make(map[string]App),
-		builder: builder,
+		Builder: builder,
 	}
 }
 
@@ -56,8 +56,8 @@ func (a *Admin) GetApp(appName string) (App, error) {
 func (a *Admin) Register(model interface{}, skipUserBinding bool, permissions RolePermissionMap) (App, error) {
 
 	app := App{
-		model:           model,
-		skipUserBinding: skipUserBinding,
+		Model:           model,
+		SkipUserBinding: skipUserBinding,
 		Admin:           a,
 		Validators:      make(ValidatorsMap),
 		Permissions:     permissions,
@@ -82,7 +82,7 @@ func (a *Admin) Register(model interface{}, skipUserBinding bool, permissions Ro
 	a.apps[app.Name()] = app
 
 	// apply migrations
-	a.builder.DB.Migrate(app.model)
+	a.Builder.DB.Migrate(app.Model)
 
 	// register CRUD routes
 	a.registerAPIRoutes(app)
@@ -128,37 +128,37 @@ func (a *Admin) registerAPIRoutes(app App) {
 	baseRoute := "/api/" + app.PluralName()
 	protectedRoute := true
 
-	a.builder.Server.AddRoute(
+	a.Builder.Server.AddRoute(
 		baseRoute,
-		app.ApiList(a.builder.DB),
+		app.ApiList(a.Builder.DB),
 		app.Name()+"-list",
 		protectedRoute,
 	)
 
-	a.builder.Server.AddRoute(
+	a.Builder.Server.AddRoute(
 		baseRoute+"/new",
-		app.ApiCreate(a.builder.DB),
+		app.ApiCreate(a.Builder.DB),
 		app.Name()+"-new",
 		protectedRoute,
 	)
 
-	a.builder.Server.AddRoute(
+	a.Builder.Server.AddRoute(
 		baseRoute+"/{id}",
-		app.ApiDetail(a.builder.DB),
+		app.ApiDetail(a.Builder.DB),
 		app.Name()+"-get",
 		protectedRoute,
 	)
 
-	a.builder.Server.AddRoute(
+	a.Builder.Server.AddRoute(
 		baseRoute+"/{id}/delete",
-		app.ApiDelete(a.builder.DB),
+		app.ApiDelete(a.Builder.DB),
 		app.Name()+"-delete",
 		protectedRoute,
 	)
 
-	a.builder.Server.AddRoute(
+	a.Builder.Server.AddRoute(
 		baseRoute+"/{id}/update",
-		app.ApiUpdate(a.builder.DB),
+		app.ApiUpdate(a.Builder.DB),
 		app.Name()+"-update",
 		protectedRoute,
 	)

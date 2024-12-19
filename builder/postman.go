@@ -563,7 +563,7 @@ func WriteFile(filePath string, data interface{}) error {
 
 func GetAppPath(app *App) []string {
 	path := []string{"{{" + keyBaseUrl + "}}"}
-	if !app.skipUserBinding {
+	if !app.SkipUserBinding {
 		path = append(path, "private")
 	}
 	path = append(path, []string{
@@ -576,7 +576,7 @@ func GetAppPath(app *App) []string {
 
 func GetBody(app *App) string {
 
-	data, err := JsonifyInterface(app.model)
+	data, err := JsonifyInterface(app.Model)
 	if err != nil {
 		return ""
 	}
