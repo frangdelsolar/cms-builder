@@ -3,8 +3,6 @@ package builder
 import (
 	"errors"
 	"fmt"
-
-	"gorm.io/gorm"
 )
 
 const builderVersion = "1.4.0"
@@ -378,31 +376,6 @@ func (b *Builder) InitAuth() error {
 	if err != nil {
 		log.Error().Err(err).Msg("Error registering user app")
 		return err
-	}
-
-	// Admin can see all users, others can only see their own
-	userApp.Api.List = func(input *RequestData, db *Database, app *App) (*gorm.DB, error) {
-		query := ""
-		for _, role := range input.Parameters.Roles {
-			if role == AdminRole {
-				return db.Find(input.Instance, query, input.Pagination), nil
-			}
-		}
-		query = "id = '" + input.Parameters.RequestedById + "'"
-		return db.Find(input.Instance, query, input.Pagination), nil
-	}
-
-	// Admin can see all users, others can only see their own
-	userApp.Api.Detail = func(input *RequestData, db *Database, app *App) (*gorm.DB, error) {
-		query := ""
-		for _, role := range input.Parameters.Roles {
-			if role == AdminRole {
-				return db.FindById(input.InstanceId, input.Instance, query), nil
-			}
-		}
-
-		query = "id = '" + input.Parameters.RequestedById + "'"
-		return db.FindById(input.InstanceId, input.Instance, query), nil
 	}
 
 	err = userApp.RegisterValidator("email", ValidatorsList{RequiredValidator, EmailValidator})

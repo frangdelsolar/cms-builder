@@ -126,21 +126,38 @@ func ReadRequestBody(r *http.Request) ([]byte, error) {
 	return io.ReadAll(r.Body)
 }
 
-// FormatRequestBody reads the JSON request body from the HTTP request,
-// unmarshals it into a map[string]interface{}, and returns the resulting map.
-// If there is an error reading the request body or unmarshaling the JSON, it returns nil.
-func FormatRequestBody(r *http.Request) map[string]interface{} {
+// FormatRequestBody reads the request body and filters out any keys specified in the filterKeys map.
+// It returns the filtered request body as a map[string]interface{}.
+// If there is an error reading the request body, it returns an empty map.
+// The function applies the filter with a case-insensitive comparison.
+func FormatRequestBody(r *http.Request, filterKeys map[string]bool) (map[string]interface{}, error) {
+	var unFilteredResult map[string]interface{}
 	body, err := ReadRequestBody(r)
 	if err != nil {
-		return nil
-	}
-	var result map[string]interface{}
-	err = json.Unmarshal(body, &result)
-	if err != nil {
-		return nil
+		return map[string]interface{}{}, err
 	}
 
-	return result
+	err = json.Unmarshal(body, &unFilteredResult)
+	if err != nil {
+		return map[string]interface{}{}, err
+	}
+
+	// make a copy of the filter with all lowercase
+	filterLowerCase := map[string]bool{}
+	for key := range filterKeys {
+		filterLowerCase[strings.ToLower(key)] = true
+	}
+
+	// apply the filter to the unfiltered result
+	result := make(map[string]interface{})
+	for key, value := range unFilteredResult {
+		lowerCaseKey := strings.ToLower(key)
+		if !filterLowerCase[lowerCaseKey] {
+			result[key] = value
+		}
+	}
+
+	return result, nil
 }
 
 // ValidateRequestMethod returns an error if the request method does not match the given

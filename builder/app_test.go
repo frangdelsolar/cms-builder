@@ -158,7 +158,7 @@ func TestUserCanNotRetrieveDeniedResources(t *testing.T) {
 	responseA, err := th.ExecuteApiCall(t, e.App.ApiDetail(e.DB), requestA, nil)
 	assert.Error(t, err, "ApiDetail should return an error")
 	assert.False(t, responseA.Success, "ParseResponse should return an error response")
-	assert.Contains(t, responseA.Message, "Failed to get", "The response should be an error")
+	assert.Contains(t, responseA.Message, "record not found", "The response should be an error")
 
 	// User B tries to get the detail for user A
 	requestB, _, _ := th.NewRequest(
@@ -172,7 +172,7 @@ func TestUserCanNotRetrieveDeniedResources(t *testing.T) {
 	responseB, err := th.ExecuteApiCall(t, e.App.ApiDetail(e.DB), requestB, nil)
 	assert.Error(t, err, "ApiDetail should return an error")
 	assert.False(t, responseB.Success, "ParseResponse should return an error response")
-	assert.Contains(t, responseB.Message, "Failed to get", "The response should be an error")
+	assert.Contains(t, responseB.Message, "record not found", "The response should be an error")
 }
 
 // TestUserCanListAllowedResources tests that a user can list resources if they have the correct permissions.
@@ -418,7 +418,7 @@ func TestUserCanDeleteAllowedResources(t *testing.T) {
 	assert.NoError(t, err, "ApiDetail should not return an error")
 	assert.NotNil(t, responseB, "ApiDetail should return a non-nil response")
 	assert.Equal(t, responseB.Success, false, "Success should be false")
-	assert.Contains(t, responseB.Message, "Failed to get", "The response should be an error")
+	assert.Contains(t, responseB.Message, "record not found", "The response should be an error")
 	assert.Equal(t, resultB, th.MockStruct{}, "The result should be empty")
 }
 
