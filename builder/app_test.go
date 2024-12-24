@@ -71,11 +71,11 @@ func TestRegisterAPIRoutes(t *testing.T) {
 
 	// check ig server has expected routs
 	expectedRoutes := []builder.RouteHandler{
-		builder.NewRouteHandler("/api/tests", handler, "test-list", true),
-		builder.NewRouteHandler("/api/tests/new", handler, "test-new", true),
-		builder.NewRouteHandler("/api/tests/{id}", handler, "test-get", true),
-		builder.NewRouteHandler("/api/tests/{id}/delete", handler, "test-delete", true),
-		builder.NewRouteHandler("/api/tests/{id}/update", handler, "test-update", true),
+		builder.NewRouteHandler("/api/tests", handler, "test-list", true, http.MethodGet, nil),
+		builder.NewRouteHandler("/api/tests/new", handler, "test-new", true, http.MethodPost, Test{}),
+		builder.NewRouteHandler("/api/tests/{id}", handler, "test-get", true, http.MethodGet, nil),
+		builder.NewRouteHandler("/api/tests/{id}/delete", handler, "test-delete", true, http.MethodDelete, nil),
+		builder.NewRouteHandler("/api/tests/{id}/update", handler, "test-update", true, http.MethodPut, Test{}),
 	}
 
 	routes := e.Server.GetRoutes()
@@ -85,6 +85,8 @@ func TestRegisterAPIRoutes(t *testing.T) {
 			if route.Route == expectedRoute.Route {
 				assert.Equal(t, expectedRoute.Name, route.Name, "Route name should be the same")
 				assert.Equal(t, expectedRoute.RequiresAuth, route.RequiresAuth, "Route requires auth should be the same")
+				assert.Equal(t, expectedRoute.Schema, route.Schema, "Route schema should be the same")
+				assert.Equal(t, expectedRoute.Method, route.Method, "Route method should be the same")
 				found = true
 			}
 		}

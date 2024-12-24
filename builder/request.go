@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	requestedByParamKey RequestParamKey = "requested_by"
+	requestedByParamKey RequestParamKey = "requestedBy"
 	rolesParamKey       RequestParamKey = "roles"
 	authParamKey        RequestParamKey = "auth"
 	limitParamKey       RequestParamKey = "limit"

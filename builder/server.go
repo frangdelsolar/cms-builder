@@ -2,9 +2,11 @@ package builder
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	// "github.com/gorilla/csrf"
+
 	"github.com/gorilla/mux"
 )
 
@@ -21,6 +23,8 @@ type RouteHandler struct {
 	Handler      HandlerFunc // handler is the handler for the route
 	Name         string      // name is the name of the route
 	RequiresAuth bool        // requiresAuth is a flag indicating if the route requires authentication
+	Schema       interface{} // represents the input
+	Method       string      // method is the HTTP method for the route
 }
 
 // Server defines a structure for managing an HTTP server with middleware and routing capabilities.
@@ -76,29 +80,87 @@ func NewServer(config *ServerConfig) (*Server, error) {
 		Builder:     config.Builder,
 	}
 
-	svr.AddMiddleware(LoggingMiddleware)
-
 	// CSRF
 	// csrfKey := []byte(config.CSRFToken) // Replace with a real secret key
 	// csrfMiddleware := csrf.Protect(csrfKey, csrf.CookieName("csrftoken"))
 
 	// Middlewares
+
+	r.Use(CORS)
 	r.Use(LoggingMiddleware)
-	r.Use(mux.CORSMethodMiddleware(r))
+
 	// r.Use(csrfMiddleware)
 
 	// Public Routes
-	svr.AddRoute("/", func(w http.ResponseWriter, r *http.Request) {
-		err := ValidateRequestMethod(r, "GET")
-		if err != nil {
-			SendJsonResponse(w, http.StatusMethodNotAllowed, err, err.Error())
+	svr.AddRoute(
+		"/",
+		func(w http.ResponseWriter, r *http.Request) {
+			err := ValidateRequestMethod(r, "GET")
+			if err != nil {
+				SendJsonResponse(w, http.StatusMethodNotAllowed, err, err.Error())
+				return
+			}
+
+			SendJsonResponse(w, http.StatusOK, nil, "ok")
+		},
+		"healthz",
+		false,
+		http.MethodGet,
+		nil,
+	)
+
+	return svr, nil
+}
+
+// CORS adds Cross-Origin Resource Sharing headers to the response.
+//
+// It sets the following headers:
+//
+// - Access-Control-Allow-Headers: Content-Type, Authorization, Origin
+// - Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+// - Access-Control-Allow-Origin: *
+//
+// It also checks the Origin header against the list of allowed origins
+// and returns a 403 Forbidden response if the origin is not allowed.
+//
+// If the request method is OPTIONS, it returns a 200 OK response immediately.
+func CORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Origin")
+
+		allowedOrigins := config.GetStringSlice(EnvKeys.CorsAllowedOrigins)
+		origin := r.Header.Get("Origin")
+
+		if allowedOrigins[0] == "*" || contains(allowedOrigins, origin) {
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+
+			if r.Method == "OPTIONS" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+		} else {
+			err := fmt.Errorf("origin '%s' is not allowed", origin)
+			log.Warn().Interface("headers", r.Header).Interface("allowedOrigins", allowedOrigins).Interface("origin", origin).Msg("CORS")
+			SendJsonResponse(w, http.StatusForbidden, nil, err.Error())
 			return
 		}
 
-		SendJsonResponse(w, http.StatusOK, nil, "ok")
-	}, "healthz", false)
+		next.ServeHTTP(w, r)
+	})
+}
 
-	return svr, nil
+// contains checks if a slice of strings contains a specific string.
+//
+// It iterates over the slice 's' and returns true if the element 'e' is found;
+// otherwise, it returns false.
+func contains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }
 
 // LoggingMiddleware is a sample middleware function that logs the request URI.
@@ -118,6 +180,9 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 // applies all registered middleware to the server's handler,
 // and finally calls the underlying http.Server's ListenAndServe method.
 func (s *Server) Run() error {
+
+	// Include schema endpoint
+	s.Builder.Admin.AddApiRoute()
 
 	// Create separate routers for authenticated and public routes
 	authRouter := s.Root.PathPrefix("/private").Subrouter()
@@ -180,8 +245,8 @@ type HandlerFunc func(w http.ResponseWriter, r *http.Request)
 //
 // url, err := r.Get("getUser").URL("id", "123") =>
 // "/users/123"
-func (s *Server) AddRoute(route string, handler HandlerFunc, name string, requiresAuth bool) {
-	s.Routes = append(s.Routes, NewRouteHandler(route, handler, name, requiresAuth))
+func (s *Server) AddRoute(route string, handler HandlerFunc, name string, requiresAuth bool, method string, schema interface{}) {
+	s.Routes = append(s.Routes, NewRouteHandler(route, handler, name, requiresAuth, method, schema))
 }
 
 // NewRouteHandler creates a new RouteHandler instance.
@@ -197,12 +262,14 @@ func (s *Server) AddRoute(route string, handler HandlerFunc, name string, requir
 //	routeHandler := NewRouteHandler("/users/{id}", func(w http.ResponseWriter, r *http.Request) {
 //	  // Handle user with ID
 //	}, "getUser", false)
-func NewRouteHandler(route string, handler HandlerFunc, name string, requiresAuth bool) RouteHandler {
+func NewRouteHandler(route string, handler HandlerFunc, name string, requiresAuth bool, method string, schema interface{}) RouteHandler {
 	return RouteHandler{
 		Route:        route,
 		Handler:      handler,
 		Name:         name,
 		RequiresAuth: requiresAuth,
+		Method:       method,
+		Schema:       schema,
 	}
 }
 

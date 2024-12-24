@@ -83,6 +83,7 @@ var DefaultList ApiFunction = func(a *App, db *Database) HandlerFunc {
 			Limit: limit,
 		}
 		query := ""
+
 		if a.SkipUserBinding {
 			// Admin
 			for _, role := range params.Roles {
@@ -92,8 +93,13 @@ var DefaultList ApiFunction = func(a *App, db *Database) HandlerFunc {
 				}
 			}
 
-			query = "id = '" + params.RequestedById + "'"
-			db.Find(instances, query, pagination)
+			response := db.Find(instances, query, pagination)
+			if response.Error != nil {
+				log.Error().Err(response.Error).Msgf("Error finding instances")
+				SendJsonResponse(w, http.StatusInternalServerError, nil, response.Error.Error())
+				return
+			}
+
 		} else {
 			// Admin
 			for _, role := range params.Roles {
@@ -109,9 +115,9 @@ var DefaultList ApiFunction = func(a *App, db *Database) HandlerFunc {
 				SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
 				return
 			}
-			SendJsonResponseWithPagination(w, http.StatusOK, instances, a.Name()+" list", pagination)
 		}
 
+		SendJsonResponseWithPagination(w, http.StatusOK, instances, a.Name()+" list", pagination)
 	}
 }
 
@@ -145,7 +151,7 @@ var DefaultDetail ApiFunction = func(a *App, db *Database) HandlerFunc {
 			query := "id = '" + params.RequestedById + "'"
 			db.FindById(instanceId, instance, query)
 		} else {
-			instance, err = GetInstanceIfAuthorized(a.Model, instanceId, db, &params)
+			instance, err = GetInstanceIfAuthorized(a.Model, a.SkipUserBinding, instanceId, db, &params)
 			if err != nil {
 				SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 				return
@@ -194,13 +200,12 @@ var DefaultCreate ApiFunction = func(a *App, db *Database) HandlerFunc {
 		}
 
 		instance := CreateInstanceForUndeterminedType(a.Model)
-		log.Debug().Interface("instance", instance).Msg("Instance")
 		err = json.Unmarshal(bodyBytes, &instance)
 		if err != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
 		}
-		log.Debug().Interface("instance", instance).Msg("Instance")
+
 		// Run validations
 		validationErrors := a.Validate(instance)
 		if len(validationErrors.Errors) > 0 {
@@ -250,7 +255,7 @@ var DefaultUpdate ApiFunction = func(a *App, db *Database) HandlerFunc {
 
 		// Create a new instance of the model
 		instanceId := GetUrlParam("id", r)
-		instance, err := GetInstanceIfAuthorized(a.Model, instanceId, db, &params)
+		instance, err := GetInstanceIfAuthorized(a.Model, a.SkipUserBinding, instanceId, db, &params)
 		if err != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
@@ -309,7 +314,8 @@ var DefaultDelete ApiFunction = func(a *App, db *Database) HandlerFunc {
 		}
 
 		instanceId := GetUrlParam("id", r)
-		instance, err := GetInstanceIfAuthorized(a.Model, instanceId, db, &params)
+
+		instance, err := GetInstanceIfAuthorized(a.Model, a.SkipUserBinding, instanceId, db, &params)
 		if err != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
@@ -339,7 +345,7 @@ var DefaultDelete ApiFunction = func(a *App, db *Database) HandlerFunc {
 // if the "created_by_id" field of the instance matches the RequestedById parameter.
 //
 // If the user is not authorized to access the instance, the function returns nil.
-func GetInstanceIfAuthorized(model interface{}, instanceId string, db *Database, params *RequestParameters) (interface{}, error) {
+func GetInstanceIfAuthorized(model interface{}, skipUserBinding bool, instanceId string, db *Database, params *RequestParameters) (interface{}, error) {
 	var res *gorm.DB
 	instance := CreateInstanceForUndeterminedType(model)
 
@@ -353,11 +359,16 @@ func GetInstanceIfAuthorized(model interface{}, instanceId string, db *Database,
 		}
 	}
 
-	q := "created_by_id = '" + params.RequestedById + "'"
+	q:=""
+	if !skipUserBinding {
+		q = "created_by_id = '" + params.RequestedById + "'"
+	}
+
 	res = db.FindById(instanceId, instance, q)
 	if res.Error != nil {
 		return nil, res.Error
 	}
+
 	return instance, nil
 }
 

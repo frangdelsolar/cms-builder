@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -37,6 +39,7 @@ type UploaderConfig struct {
 // error storing the file or saving the file information to the database.
 func (b *Builder) GetFilePostHandler(cfg *UploaderConfig) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+
 		// Validate method
 		err := ValidateRequestMethod(r, http.MethodPost)
 		if err != nil {
@@ -60,6 +63,7 @@ func (b *Builder) GetFilePostHandler(cfg *UploaderConfig) HandlerFunc {
 		// Parse the multipart form data
 		err = r.ParseMultipartForm(cfg.MaxSize)
 		if err != nil {
+			log.Error().Err(err).Msg("Error parsing multipart form data")
 			SendJsonResponse(w, http.StatusBadRequest, nil, err.Error())
 			return
 		}
@@ -75,7 +79,7 @@ func (b *Builder) GetFilePostHandler(cfg *UploaderConfig) HandlerFunc {
 		// Check if the file type is supported
 		contentType := header.Header.Get("Content-Type")
 
-		validContentType, err := validateContentType(contentType, cfg.SupportedMimeTypes)
+		validContentType, err := ValidateContentType(contentType, cfg.SupportedMimeTypes)
 		if err != nil {
 			SendJsonResponse(w, http.StatusBadRequest, nil, err.Error())
 			return
@@ -86,7 +90,7 @@ func (b *Builder) GetFilePostHandler(cfg *UploaderConfig) HandlerFunc {
 			return
 		}
 
-		fileName := randomizeFileName(header.Filename)
+		fileName := header.Filename
 		fileData, err := b.Store.StoreFile(cfg, fileName, file)
 		if err != nil {
 			handleUploadError(b.Store, fileData, w, err)
@@ -184,14 +188,29 @@ func (b *Builder) GetFileDeleteHandler(cfg *UploaderConfig) HandlerFunc {
 }
 
 // getStaticHandler returns a handler function that serves static files from the
-// configured folder. The handler will serve files from the configured folder
-// under the path "/public/static/" if config.Authenticate is false, or
-// "/private/static/" if config.Authenticate is true.
+// configured folder.
 func (b *Builder) GetStaticHandler(cfg *UploaderConfig) HandlerFunc {
-	prefix := config.GetString(EnvKeys.BaseUrl) + "/file/"
-	handler := http.StripPrefix(prefix, http.FileServer(http.Dir(cfg.Folder)))
+
 	return func(w http.ResponseWriter, r *http.Request) {
-		handler.ServeHTTP(w, r)
+
+		requestPath := r.URL.Path
+		if !strings.HasPrefix(requestPath, cfg.StaticPath) {
+			log.Error().Msgf("Invalid request path: %s", requestPath)
+			SendJsonResponse(w, http.StatusNotFound, nil, "File not found")
+			return
+		}
+
+		fileName := strings.TrimPrefix(requestPath, cfg.StaticPath)
+		filePath := filepath.Join(cfg.Folder, filepath.Base(fileName))
+
+		bytes, err := b.Store.ReadFile(&FileData{Path: filePath})
+		if err != nil {
+			log.Error().Err(err).Msg("Error reading file")
+			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+			return
+		}
+
+		w.Write(bytes)
 	}
 }
 
@@ -202,7 +221,7 @@ func getMimeTypeAndExtension(mime string) (string, string) {
 	return data[0], data[1]
 }
 
-// validateContentType takes a content type and a list of supported mime types
+// ValidateContentType takes a content type and a list of supported mime types
 // and returns true if the content type is supported, and false otherwise.
 // It also returns an error if the content type is not supported.
 //
@@ -211,7 +230,7 @@ func getMimeTypeAndExtension(mime string) (string, string) {
 // - "*/*": Supports all mime types with a specific mime type.
 // - "audio/*": Supports all mime types with a specific mime type and extension.
 // - "audio/wav": Supports a specific mime type and extension.
-func validateContentType(contentType string, supportedMimeTypes []string) (bool, error) {
+func ValidateContentType(contentType string, supportedMimeTypes []string) (bool, error) {
 	inMimeType, inExtension := getMimeTypeAndExtension(contentType)
 
 	for _, supportedItem := range supportedMimeTypes {
@@ -256,18 +275,21 @@ func handleUploadError(store Store, fileData FileData, w http.ResponseWriter, er
 // randomized using the current timestamp. The file name is also sanitized
 // to replace spaces, forward slashes, and backslashes with underscores.
 func randomizeFileName(fileName string) string {
+
+	name, extension := path.Split(fileName)
+
 	// Replace spaces with underscores
-	fileName = strings.ReplaceAll(fileName, " ", "_")
+	name = strings.ReplaceAll(name, " ", "_")
 
 	// Replace forward slashes with underscores
-	fileName = strings.ReplaceAll(fileName, "/", "_")
+	name = strings.ReplaceAll(name, "/", "_")
 
 	// Replace backslashes with underscores
-	fileName = strings.ReplaceAll(fileName, "\\", "_")
+	name = strings.ReplaceAll(name, "\\", "_")
 
 	// Add the current timestamp to the file name
 	now := strconv.FormatInt(time.Now().UnixNano(), 10)
-	fileName = now + "_" + fileName
+	name = now + "_" + name
 
-	return fileName
+	return name + "." + extension
 }

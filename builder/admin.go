@@ -3,7 +3,10 @@ package builder
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
+
+	"github.com/invopop/jsonschema"
 )
 
 var (
@@ -129,10 +132,24 @@ func (a *Admin) registerAPIRoutes(app App) {
 	protectedRoute := true
 
 	a.Builder.Server.AddRoute(
+		baseRoute+"/schema",
+		func(w http.ResponseWriter, r *http.Request) {
+			schema := jsonschema.Reflect(app.Model)
+			SendJsonResponse(w, http.StatusOK, schema, fmt.Sprintf("Schema for %s", app.Name()))
+		},
+		app.Name()+"-schema",
+		!protectedRoute,
+		http.MethodGet,
+		nil,
+	)
+
+	a.Builder.Server.AddRoute(
 		baseRoute,
 		app.ApiList(a.Builder.DB),
 		app.Name()+"-list",
 		protectedRoute,
+		http.MethodGet,
+		nil,
 	)
 
 	a.Builder.Server.AddRoute(
@@ -140,6 +157,8 @@ func (a *Admin) registerAPIRoutes(app App) {
 		app.ApiCreate(a.Builder.DB),
 		app.Name()+"-new",
 		protectedRoute,
+		http.MethodPost,
+		app.Model,
 	)
 
 	a.Builder.Server.AddRoute(
@@ -147,6 +166,8 @@ func (a *Admin) registerAPIRoutes(app App) {
 		app.ApiDetail(a.Builder.DB),
 		app.Name()+"-get",
 		protectedRoute,
+		http.MethodGet,
+		nil,
 	)
 
 	a.Builder.Server.AddRoute(
@@ -154,6 +175,8 @@ func (a *Admin) registerAPIRoutes(app App) {
 		app.ApiDelete(a.Builder.DB),
 		app.Name()+"-delete",
 		protectedRoute,
+		http.MethodDelete,
+		nil,
 	)
 
 	a.Builder.Server.AddRoute(
@@ -161,5 +184,50 @@ func (a *Admin) registerAPIRoutes(app App) {
 		app.ApiUpdate(a.Builder.DB),
 		app.Name()+"-update",
 		protectedRoute,
+		http.MethodPut,
+		app.Model,
 	)
+}
+
+func (a *Admin) AddApiRoute() {
+	s := a.Builder.Server
+	s.AddRoute(
+		"/api",
+		func(w http.ResponseWriter, r *http.Request) {
+			type Endpoint struct {
+				Method string `json:"method"`
+				Path   string `json:"path"`
+			}
+			type appInfo struct {
+				Name      string              `json:"name"`
+				Plural    string              `json:"pluralName"`
+				Endpoints map[string]Endpoint `json:"endpoints"`
+			}
+			output := make([]appInfo, 0)
+
+			for _, app := range s.Builder.Admin.apps {
+				baseUrl := config.GetString(EnvKeys.BaseUrl) + "/api/" + app.PluralName()
+
+				data := appInfo{
+					Name:   app.Name(),
+					Plural: app.PluralName(),
+					Endpoints: map[string]Endpoint{
+						"schema": {
+							Method: http.MethodGet,
+							Path:   baseUrl + "/schema",
+						},
+					},
+				}
+
+				output = append(output, data)
+			}
+
+			SendJsonResponse(w, http.StatusOK, output, "ok")
+		},
+		"endpoints",
+		false,
+		http.MethodGet,
+		nil,
+	)
+
 }

@@ -24,9 +24,9 @@ func TestUploaderGetsCreated(t *testing.T) {
 
 	t.Log("Testing Upload routes are registered")
 	expectedRoutes := []builder.RouteHandler{
-		builder.NewRouteHandler("/file/upload", handler, "file-new", true),
-		builder.NewRouteHandler("/file/{id}/delete", handler, "file-delete", true),
-		builder.NewRouteHandler("/file/{path:.*}", handler, "file-static", true), // static path is configurable as env var
+		builder.NewRouteHandler("/file/upload", handler, "file-new", true, http.MethodPost, nil),
+		builder.NewRouteHandler("/file/{id}/delete", handler, "file-delete", true, http.MethodDelete, nil),
+		builder.NewRouteHandler("/file/{path:.*}", handler, "file-static", true, http.MethodGet, nil), // static path is configurable as env var
 	}
 
 	routes := e.Server.GetRoutes()
@@ -91,7 +91,7 @@ func TestAnonymousCanNotUploadForbidden(t *testing.T) {
 	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 
 	// Create a helper request to get the detail
-	request, _, _ := th.NewRequestWithFile(
+	request, _, rollback := th.NewRequestWithFile(
 		http.MethodPost,
 		"",
 		testFilePath,
@@ -99,6 +99,7 @@ func TestAnonymousCanNotUploadForbidden(t *testing.T) {
 		nil,
 		nil,
 	)
+	defer rollback()
 
 	var result builder.Upload
 
@@ -122,13 +123,3 @@ func TestAnonymousCanNotUploadForbidden(t *testing.T) {
 
 	assert.Equal(t, result, (builder.Upload{}), "Result should be nil", result)
 }
-
-func TestAnonymousCanAccessAllowed(t *testing.T)      {}
-func TestAnonymousCanNotAccessForbidden(t *testing.T) {}
-
-func TestAnonymousCanDeleteAllowed(t *testing.T)      {}
-func TestAnonymousCanNotDeleteForbidden(t *testing.T) {}
-
-func TestMaxSize(t *testing.T) {}
-
-func TestSupportedMediaType(t *testing.T) {}

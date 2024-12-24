@@ -69,10 +69,11 @@ func (b *Builder) AuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		SetHeader(requestedByParamKey, localUser.GetIDString(), r)
-		SetHeader(authParamKey, "true", r)
 
-		log.Info().Interface("User", localUser).Msg("Logging in user")
+		// set the writerheader
+		w.Header().Set("requestedBy", localUser.GetIDString())
+		w.Header().Set("auth", "true")
+		w.Header().Set("roles", localUser.Roles)
 
 		next.ServeHTTP(w, r)
 	})

@@ -194,6 +194,50 @@ func (b *Builder) GetPostmanCollection() (*PostmanCollection, error) {
 		Item:  make([]PostmanCollectionItem, 0),
 		Event: make([]PostmanCollectionEvent, 0),
 	}
+	// FIXME: Routes now bring method and schema to build this dynamically
+	// for _, route := range b.Server.Routes {
+
+	// 	appName := strings.Split(route.Route, "/")[0]
+	// 	if appName == "api"{
+	// 		appName = strings.Split(route.Route, "/")[1]
+	// 	}
+
+	// 	collection.Item = append(collection.Item, PostmanCollectionItem{
+	// 		Name: appName,
+	// 		Item: []PostmanCollectionItemItem{
+	// 			{
+	// 				Name:    route.Name,
+	// 				Request: PostmanCollectionItemItemRequest{
+	// 									Auth: PostmanRequestAuth{
+	// 										Type: "noauth",
+	// 									},
+	// 									Method: "POST",
+	// 									Header: []PostmanHeader{},
+	// 									Body: PostmanRequestBody{
+	// 										Mode: "raw",
+	// 										Raw:  "{\n  \"name\": \"admin\",\n  \"email\": \"{{" + keyEmail + "}}\",\n    \"password\": \"{{" + keyPassword + "}}\"\n}",
+	// 										Options: PostmanRequestOptions{
+	// 											Raw: PostmanRequestOptionsRaw{
+	// 												Language: "json",
+	// 											},
+	// 										},
+	// 									},
+	// 									URL: PostmanRequestURL{
+	// 										Raw:   "{{URL}}/auth/register",
+	// 										Host:  []string{"{{URL}}"},
+	// 										Path:  []string{"auth", "register"},
+	// 										Query: []PostmanQuery{},
+	// 									},
+	// 								},
+	// 				Response: []interface{}{
+	// 					PostmanCollectionItemItemResponse{
+	// 						Headers: []PostmanHeader{},
+	// 					},
+	// 				},
+	// 			},
+	// 		},
+	// 	})
+	// }
 
 	// Auth
 	collection.Item = append(collection.Item, PostmanCollectionItem{
@@ -332,7 +376,6 @@ func (b *Builder) GetPostmanCollection() (*PostmanCollection, error) {
 
 	// Iterate over apps to build the collection
 	for _, app := range b.Admin.apps {
-
 		path := GetAppPath(&app)
 		body := GetBody(&app)
 		appId := app.Name() + "Id"
