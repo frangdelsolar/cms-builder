@@ -90,6 +90,7 @@ var DefaultList ApiFunction = func(a *App, db *Database) HandlerFunc {
 				if role == AdminRole {
 					db.Find(instances, query, pagination)
 					SendJsonResponseWithPagination(w, http.StatusOK, instances, a.Name()+" list", pagination)
+					return
 				}
 			}
 
@@ -106,6 +107,7 @@ var DefaultList ApiFunction = func(a *App, db *Database) HandlerFunc {
 				if role == AdminRole {
 					db.Find(instances, "", pagination)
 					SendJsonResponseWithPagination(w, http.StatusOK, instances, a.Name()+" list", pagination)
+					return
 				}
 			}
 
