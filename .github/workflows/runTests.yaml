@@ -2,14 +2,14 @@ name: Quality
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
   pull_request:
-    branches: [ master ]
+    branches: [master]
 
 jobs:
   test:
     name: Test with Coverage
-    runs-on: ubuntu-latest 
+    runs-on: ubuntu-latest
 
     env:
       APP_NAME: test
@@ -36,7 +36,7 @@ jobs:
       ADMIN_PASSWORD: admin123admin
 
     steps:
-      - uses: actions/checkout@v3 
+      - uses: actions/checkout@v3
 
       - name: Tidy
         working-directory: builder
@@ -45,7 +45,7 @@ jobs:
       - name: Install dependencies
         working-directory: builder
         run: go mod download
-    
+
       - name: Run tests
         working-directory: builder
         run: go test -v -race -covermode atomic -coverprofile=covprofile ./...
@@ -61,14 +61,14 @@ jobs:
         run: $HOME/go/bin/goveralls -coverprofile=covprofile -service=github
 
       - name: Upload test artifacts (optional)
-        uses: actions/upload-artifact@v3
-        if: failure() 
+        uses: actions/upload-artifact@v4
+        if: failure()
         with:
           name: test-results
           path: ${{ github.workspace }}/
 
       - name: Fail workflow on test failures (optional)
-        uses: styfle/cancel-workflow-action@0.8.0 
-        if: failure()  
+        uses: styfle/cancel-workflow-action@0.8.0
+        if: failure()
         with:
-          message: 'Tests failed. Fix the errors before merging...'
+          message: "Tests failed. Fix the errors before merging..."
