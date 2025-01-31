@@ -118,7 +118,7 @@ func (b *Builder) RegisterVisitorController(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Prevent sending the firebaseId to the client
-	user.FirebaseId = ""
+	// user.FirebaseId = "" // Tests will create innumerable users if we do this
 	SendJsonResponse(w, http.StatusOK, user, "User registered successfully")
 }
 
