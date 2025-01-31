@@ -194,7 +194,7 @@ func (b *Builder) GetPostmanCollection() (*PostmanCollection, error) {
 		Item:  make([]PostmanCollectionItem, 0),
 		Event: make([]PostmanCollectionEvent, 0),
 	}
-	// FIXME: Routes now bring method and schema to build this dynamically
+	// TODO: Routes now bring method and schema to build this dynamically
 	// for _, route := range b.Server.Routes {
 
 	// 	appName := strings.Split(route.Route, "/")[0]
