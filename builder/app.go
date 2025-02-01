@@ -362,7 +362,7 @@ func GetInstanceIfAuthorized(model interface{}, skipUserBinding bool, instanceId
 		}
 	}
 
-	q:=""
+	q := ""
 	if !skipUserBinding {
 		q = "created_by_id = '" + params.RequestedById + "'"
 	}

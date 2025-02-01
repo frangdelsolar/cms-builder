@@ -561,7 +561,7 @@ func (b *Builder) RegisterAdminUser() error {
 
 func (b *Builder) InitHistory() error {
 	permissions := RolePermissionMap{
-		AdminRole:     AllAllowedAccess,
+		AdminRole: AllAllowedAccess,
 	}
 
 	_, err := b.Admin.Register(&HistoryEntry{}, false, permissions)

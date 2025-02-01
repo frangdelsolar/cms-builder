@@ -15,7 +15,7 @@ var (
 
 // Database represents a database connection managed by GORM.
 type Database struct {
-	DB *gorm.DB // Embedded GORM DB instance for database access
+	DB      *gorm.DB // Embedded GORM DB instance for database access
 	Builder *Builder
 }
 
@@ -137,7 +137,7 @@ type DBConfig struct {
 	URL string
 	// Path: Used for connecting to a SQLite database.
 	// Provide the path to the SQLite database file.
-	Path string
+	Path    string
 	Builder *Builder
 }
 

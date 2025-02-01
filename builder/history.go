@@ -8,7 +8,6 @@ import (
 	"gorm.io/gorm"
 )
 
-
 type CRUDAction string
 
 const (
@@ -19,13 +18,13 @@ const (
 
 type HistoryEntry struct {
 	gorm.Model
-	Timestamp string `gorm:"type:timestamp" json:"timestamp"`
-	User *User `json:"user"`
-	UserId string `gorm:"foreignKey:UserId" json:"userId"`
-	Action CRUDAction `json:"action"`
-	ResourceName string `json:"resourceName"`
-	ResourceId string  `json:"resourceId"`
-	Detail string `json:"detail"`
+	Timestamp    string     `gorm:"type:timestamp" json:"timestamp"`
+	User         *User      `json:"user"`
+	UserId       string     `gorm:"foreignKey:UserId" json:"userId"`
+	Action       CRUDAction `json:"action"`
+	ResourceName string     `json:"resourceName"`
+	ResourceId   string     `json:"resourceId"`
+	Detail       string     `json:"detail"`
 }
 
 // NewLogHistoryEntry takes an action of type CRUDAction, a user ID, and an object, and returns a pointer to a HistoryEntry and an error.
@@ -37,7 +36,7 @@ func NewLogHistoryEntry(action CRUDAction, userId string, object interface{}) (*
 	name := GetStructName(object)
 	jsonData, err := json.Marshal(object)
 	if err != nil {
-		return  nil, err
+		return nil, err
 	}
 
 	var objJson map[string]interface{}
@@ -54,14 +53,13 @@ func NewLogHistoryEntry(action CRUDAction, userId string, object interface{}) (*
 	// TODO: maybe worth trying to store just the differences, specially for updates
 	detail := string(jsonData)
 
-
-	historyEntry:= &HistoryEntry{
-		Timestamp: time.Now().Format(time.RFC3339),
-		Action: action,
-		UserId: userId,
-		ResourceId: resourceId,
+	historyEntry := &HistoryEntry{
+		Timestamp:    time.Now().Format(time.RFC3339),
+		Action:       action,
+		UserId:       userId,
+		ResourceId:   resourceId,
 		ResourceName: name,
-		Detail: detail,
+		Detail:       detail,
 	}
 
 	return historyEntry, nil
@@ -79,7 +77,7 @@ func GetHistoryEntryForInstanceFromDB(db *Database, userId string, resource inte
 	}
 
 	var historyEntry HistoryEntry
-	
+
 	q := "user_id = '" + userId + "'"
 	q += " AND "
 	q += "action = '" + string(crudAction) + "'"

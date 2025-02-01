@@ -73,7 +73,7 @@ func TestAuthenticationMiddleware(t *testing.T) {
 	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		
+
 		authHeader := w.Header().Get("auth")
 		if authHeader != "true" {
 			t.Errorf("missing auth header")

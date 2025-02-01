@@ -68,7 +68,6 @@ func (b *Builder) AuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-
 		// set the writerheader
 		w.Header().Set("requestedBy", localUser.GetIDString())
 		w.Header().Set("auth", "true")
