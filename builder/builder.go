@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-const builderVersion = "1.4.0"
+const builderVersion = "1.4.1"
 
 // ConfigKeys define the keys used in the configuration file
 type ConfigKeys struct {
@@ -246,6 +246,13 @@ func NewBuilder(input *NewBuilderInput) (*Builder, error) {
 	err = b.RegisterAdminUser()
 	if err != nil {
 		log.Err(err).Msg("Error registering admin user")
+		return nil, err
+	}
+
+	// History
+	err = b.InitHistory()
+	if err != nil {
+		log.Err(err).Msg("Error initializing history")
 		return nil, err
 	}
 
@@ -546,6 +553,20 @@ func (b *Builder) RegisterAdminUser() error {
 
 	if user == nil {
 		log.Error().Msg("Error creating admin user")
+		return err
+	}
+
+	return nil
+}
+
+func (b *Builder) InitHistory() error {
+	permissions := RolePermissionMap{
+		AdminRole:     AllAllowedAccess,
+	}
+
+	_, err := b.Admin.Register(&HistoryEntry{}, false, permissions)
+	if err != nil {
+		log.Error().Err(err).Msg("Error registering history app")
 		return err
 	}
 

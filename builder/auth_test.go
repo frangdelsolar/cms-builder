@@ -155,7 +155,7 @@ func TestAppendRoleToUser(t *testing.T) {
 				Email: th.RandomEmail(),
 				Roles: roles,
 			}
-			e.DB.Create(&user)
+			e.DB.Create(&user, "test")
 
 			// first test should pass an invalid id.
 			if ix == 0 {
@@ -249,7 +249,7 @@ func TestRemoveRoleFromUser(t *testing.T) {
 				Email: th.RandomEmail(),
 				Roles: roles,
 			}
-			e.DB.Create(&user)
+			e.DB.Create(&user, "test")
 
 			// first test should pass an invalid id.
 			if ix == 0 {

@@ -37,7 +37,7 @@ func (b *Builder) VerifyUser(userIdToken string) (*User, error) {
 		localUser.Email = strings.ToLower(accessToken.Claims["email"].(string))
 		localUser.FirebaseId = accessToken.UID
 		localUser.Roles = string(VisitorRole)
-		b.DB.Create(&localUser)
+		b.DB.Create(&localUser, "system")
 	}
 
 	return &localUser, nil
@@ -232,7 +232,7 @@ func (b *Builder) CreateUserWithRole(input RegisterUserInput, role Role, registe
 		FirebaseId: fbUserId,
 		Roles:      string(role),
 	}
-	b.DB.Create(&user)
+	b.DB.Create(&user, "system")
 
 	if user.ID == 0 {
 		return nil, fmt.Errorf("error creating user in database")
