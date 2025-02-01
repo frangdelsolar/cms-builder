@@ -269,12 +269,17 @@ func TestUserCanCreateAllowedResources(t *testing.T) {
 	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 
 	// Create a resource for some user
-	instance, _, userRollback := th.CreateMockResource(t, e.DB, e.App, nil)
+	instance, user, userRollback := th.CreateMockResource(t, e.DB, e.App, nil)
 	defer userRollback()
 
 	assert.NotNil(t, instance.ID, "ID should not be nil")
 	assert.NotNil(t, instance.Field, "Field should not be nil")
 	assert.NotNil(t, instance.CreatedByID, "CreatedBy should not be nil")
+
+	// Validate that historyEntry is created
+	historyEntry, err := builder.GetHistoryEntryForInstanceFromDB(e.DB, user.GetIDString(), instance, instance.GetIDString(), "mockstruct", builder.CreateCRUDAction)
+	assert.NoError(t, err, "GetHistoryEntryForInstanceFromDB should not return an error")
+	assert.NotNil(t, historyEntry, "HistoryEntry should not be nil")
 }
 
 // TestUserCanNotCreateDeniedResources tests that a user cannot create a resource if they do not have the correct permissions.
@@ -341,6 +346,11 @@ func TestUserCanUpdateAllowedResources(t *testing.T) {
 	assert.Equal(t, "updated_field", updatedInstance.Field, "Field should be the same")
 	assert.Equal(t, user.ID, updatedInstance.CreatedByID, "CreatedBy should be the same")
 	assert.Equal(t, user.ID, updatedInstance.UpdatedByID, "UpdatedBy should be the same")
+
+	// Validate that historyEntry is created
+	historyEntry, err := builder.GetHistoryEntryForInstanceFromDB(e.DB, user.GetIDString(), updatedInstance, updatedInstance.GetIDString(), "mockstruct", builder.UpdateCRUDAction)
+	assert.NoError(t, err, "GetHistoryEntryForInstanceFromDB should not return an error")
+	assert.NotNil(t, historyEntry, "HistoryEntry should not be nil")
 }
 
 // TestUserCanNotUpdateDeniedResources tests that a user can not update a resource if they don't have the correct permissions.
@@ -422,6 +432,11 @@ func TestUserCanDeleteAllowedResources(t *testing.T) {
 	assert.Equal(t, responseB.Success, false, "Success should be false")
 	assert.Contains(t, responseB.Message, "record not found", "The response should be an error")
 	assert.Equal(t, resultB, th.MockStruct{}, "The result should be empty")
+
+	// Validate that historyEntry is created
+	historyEntry, err := builder.GetHistoryEntryForInstanceFromDB(e.DB, user.GetIDString(), instance, instance.GetIDString(), "mockstruct", builder.DeleteCRUDAction)
+	assert.NoError(t, err, "GetHistoryEntryForInstanceFromDB should not return an error")
+	assert.NotNil(t, historyEntry, "HistoryEntry should not be nil")
 }
 
 // TestUserCanNotDeleteDeniedResources tests that a user cannot delete a resource if they don't have the correct permissions.

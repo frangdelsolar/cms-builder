@@ -15,7 +15,8 @@ var (
 
 // Database represents a database connection managed by GORM.
 type Database struct {
-	DB *gorm.DB // Embedded GORM DB instance for database access
+	DB      *gorm.DB // Embedded GORM DB instance for database access
+	Builder *Builder
 }
 
 // FindById retrieves a single record from the database that matches the provided ID.
@@ -73,8 +74,18 @@ func (db *Database) Find(entity interface{}, query string, pagination *Paginatio
 //
 // Returns:
 //   - *gorm.DB: the result of the database query, which can be used to check for errors.
-func (db *Database) Create(entity interface{}) *gorm.DB {
-	return db.DB.Create(entity)
+func (db *Database) Create(entity interface{}, userId string) *gorm.DB {
+
+	result := db.DB.Create(entity)
+	if result.Error == nil {
+		historyEntry, err := NewLogHistoryEntry(CreateCRUDAction, userId, entity)
+		if err != nil {
+			return nil
+		}
+		db.DB.Create(historyEntry)
+	}
+
+	return result
 }
 
 // Delete deletes the record in the database.
@@ -84,8 +95,18 @@ func (db *Database) Create(entity interface{}) *gorm.DB {
 //
 // Returns:
 //   - *gorm.DB: the result of the database query, which can be used to check for errors.
-func (db *Database) Delete(entity interface{}) *gorm.DB {
-	return db.DB.Delete(entity)
+func (db *Database) Delete(entity interface{}, userId string) *gorm.DB {
+
+	result := db.DB.Delete(entity)
+	if result.Error == nil {
+		historyEntry, err := NewLogHistoryEntry(DeleteCRUDAction, userId, entity)
+		if err != nil {
+			return nil
+		}
+		db.DB.Create(historyEntry)
+	}
+
+	return result
 }
 
 // Save updates a record in the database if it already exists, or creates a new one if it does not.
@@ -95,8 +116,18 @@ func (db *Database) Delete(entity interface{}) *gorm.DB {
 //
 // Returns:
 //   - *gorm.DB: the result of the database query, which can be used to check for errors.
-func (db *Database) Save(entity interface{}) *gorm.DB {
-	return db.DB.Save(entity)
+func (db *Database) Save(entity interface{}, userId string) *gorm.DB {
+
+	result := db.DB.Save(entity)
+	if result.Error == nil {
+		historyEntry, err := NewLogHistoryEntry(UpdateCRUDAction, userId, entity)
+		if err != nil {
+			return nil
+		}
+		db.DB.Create(historyEntry)
+	}
+
+	return result
 }
 
 // DBConfig defines the configuration options for connecting to a database.
@@ -106,7 +137,8 @@ type DBConfig struct {
 	URL string
 	// Path: Used for connecting to a SQLite database.
 	// Provide the path to the SQLite database file.
-	Path string
+	Path    string
+	Builder *Builder
 }
 
 // LoadDB establishes a connection to the database based on the provided configuration.
@@ -130,6 +162,7 @@ func LoadDB(config *DBConfig) (*Database, error) {
 		}
 		return &Database{
 			gormDB,
+			config.Builder,
 		}, nil
 	}
 
@@ -141,6 +174,7 @@ func LoadDB(config *DBConfig) (*Database, error) {
 		}
 		return &Database{
 			gormDB,
+			config.Builder,
 		}, nil
 	}
 

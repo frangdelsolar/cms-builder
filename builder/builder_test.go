@@ -72,7 +72,6 @@ func TestMain(m *testing.M) {
 	os.Exit(exitCode)
 }
 
-
 func TestNewBuilder_ConfigFile(t *testing.T) {
 
 	if os.Getenv("ENVIRONMENT") == "test" || os.Getenv("ENVIRONMENT") == "" {

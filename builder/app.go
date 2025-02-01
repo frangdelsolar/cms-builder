@@ -216,7 +216,7 @@ var DefaultCreate ApiFunction = func(a *App, db *Database) HandlerFunc {
 			return
 		}
 
-		res := db.Create(instance)
+		res := db.Create(instance, params.RequestedById)
 		if res.Error != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
 			return
@@ -290,7 +290,7 @@ var DefaultUpdate ApiFunction = func(a *App, db *Database) HandlerFunc {
 		}
 
 		// Update the record in the database
-		res := db.Save(instance)
+		res := db.Save(instance, params.RequestedById)
 		if res.Error != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
 			return
@@ -328,7 +328,7 @@ var DefaultDelete ApiFunction = func(a *App, db *Database) HandlerFunc {
 			return
 		}
 
-		res := db.Delete(instance)
+		res := db.Delete(instance, params.RequestedById)
 		if res.Error != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
 			return
@@ -362,7 +362,7 @@ func GetInstanceIfAuthorized(model interface{}, skipUserBinding bool, instanceId
 		}
 	}
 
-	q:=""
+	q := ""
 	if !skipUserBinding {
 		q = "created_by_id = '" + params.RequestedById + "'"
 	}

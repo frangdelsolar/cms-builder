@@ -172,7 +172,7 @@ func (b *Builder) GetFileDeleteHandler(cfg *UploaderConfig) HandlerFunc {
 		}
 
 		// Delete the record from the database
-		result = b.DB.Delete(&instance)
+		result = b.DB.Delete(&instance, params.RequestedById)
 		if result.Error != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, result.Error.Error())
 			return

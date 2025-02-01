@@ -73,7 +73,7 @@ func TestAuthenticationMiddleware(t *testing.T) {
 	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		
+
 		authHeader := w.Header().Get("auth")
 		if authHeader != "true" {
 			t.Errorf("missing auth header")
@@ -155,7 +155,7 @@ func TestAppendRoleToUser(t *testing.T) {
 				Email: th.RandomEmail(),
 				Roles: roles,
 			}
-			e.DB.Create(&user)
+			e.DB.Create(&user, "test")
 
 			// first test should pass an invalid id.
 			if ix == 0 {
@@ -249,7 +249,7 @@ func TestRemoveRoleFromUser(t *testing.T) {
 				Email: th.RandomEmail(),
 				Roles: roles,
 			}
-			e.DB.Create(&user)
+			e.DB.Create(&user, "test")
 
 			// first test should pass an invalid id.
 			if ix == 0 {

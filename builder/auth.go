@@ -37,7 +37,7 @@ func (b *Builder) VerifyUser(userIdToken string) (*User, error) {
 		localUser.Email = strings.ToLower(accessToken.Claims["email"].(string))
 		localUser.FirebaseId = accessToken.UID
 		localUser.Roles = string(VisitorRole)
-		b.DB.Create(&localUser)
+		b.DB.Create(&localUser, "system")
 	}
 
 	return &localUser, nil
@@ -67,7 +67,6 @@ func (b *Builder) AuthMiddleware(next http.Handler) http.Handler {
 			SendJsonResponse(w, http.StatusUnauthorized, fmt.Errorf("User not found"), "Unauthorized")
 			return
 		}
-
 
 		// set the writerheader
 		w.Header().Set("requestedBy", localUser.GetIDString())
@@ -232,7 +231,7 @@ func (b *Builder) CreateUserWithRole(input RegisterUserInput, role Role, registe
 		FirebaseId: fbUserId,
 		Roles:      string(role),
 	}
-	b.DB.Create(&user)
+	b.DB.Create(&user, "system")
 
 	if user.ID == 0 {
 		return nil, fmt.Errorf("error creating user in database")
