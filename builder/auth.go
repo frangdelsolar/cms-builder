@@ -13,7 +13,6 @@ import (
 )
 
 // VerifyUser verifies the user based on the access token provided in the userIdToken parameter.
-//
 // The method verifies the token by calling VerifyIDToken on the Firebase Admin instance.
 // If the token is valid, it retrieves the user record from the database and returns it.
 // If the token is invalid, it returns an error.
@@ -69,10 +68,11 @@ func (b *Builder) AuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		SetHeader(requestedByParamKey, localUser.GetIDString(), r)
-		SetHeader(authParamKey, "true", r)
 
-		log.Info().Interface("User", localUser).Msg("Logging in user")
+		// set the writerheader
+		w.Header().Set("requestedBy", localUser.GetIDString())
+		w.Header().Set("auth", "true")
+		w.Header().Set("roles", localUser.Roles)
 
 		next.ServeHTTP(w, r)
 	})
@@ -117,7 +117,7 @@ func (b *Builder) RegisterVisitorController(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Prevent sending the firebaseId to the client
-	user.FirebaseId = ""
+	// user.FirebaseId = "" // Tests will create innumerable users if we do this
 	SendJsonResponse(w, http.StatusOK, user, "User registered successfully")
 }
 

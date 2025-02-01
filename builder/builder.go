@@ -3,8 +3,7 @@ package builder
 import (
 	"errors"
 	"fmt"
-
-	"gorm.io/gorm"
+	"net/http"
 )
 
 const builderVersion = "1.4.0"
@@ -15,6 +14,7 @@ type ConfigKeys struct {
 	AdminName             string `json:"adminName"`             // Admin name
 	AdminEmail            string `json:"adminEmail"`            // Admin email
 	AdminPassword         string `json:"adminPassword"`         // Admin password
+	CorsAllowedOrigins    string `json:"corsAllowedOrigins"`    // CORS allowed origins
 	Environment           string `json:"environment"`           // Environment where the app is running
 	LogLevel              string `json:"logLevel"`              // Log level
 	LogFilePath           string `json:"logFilePath"`           // File path for logging
@@ -45,6 +45,7 @@ var EnvKeys = ConfigKeys{
 	AdminName:             "ADMIN_NAME",
 	AdminEmail:            "ADMIN_EMAIL",
 	AdminPassword:         "ADMIN_PASSWORD",
+	CorsAllowedOrigins:    "CORS_ALLOWED_ORIGINS",
 	Environment:           "ENVIRONMENT",
 	LogLevel:              "LOG_LEVEL",
 	LogFilePath:           "LOG_FILE_PATH",
@@ -75,6 +76,7 @@ var DefaultEnvValues = ConfigKeys{
 	AdminName:             "Admin",
 	AdminEmail:            "admin@admin.com",
 	AdminPassword:         "admin123admin",
+	CorsAllowedOrigins:    "*",
 	Environment:           "development",
 	LogLevel:              "debug",
 	LogFilePath:           "logs/default.log",
@@ -374,35 +376,10 @@ func (b *Builder) InitAuth() error {
 		VisitorRole: AllAllowedAccess,
 	}
 
-	userApp, err := admin.Register(&User{}, false, permissions)
+	userApp, err := admin.Register(&User{}, true, permissions)
 	if err != nil {
 		log.Error().Err(err).Msg("Error registering user app")
 		return err
-	}
-
-	// Admin can see all users, others can only see their own
-	userApp.Api.List = func(input *RequestData, db *Database, app *App) (*gorm.DB, error) {
-		query := ""
-		for _, role := range input.Parameters.Roles {
-			if role == AdminRole {
-				return db.Find(input.Model, query, input.Pagination), nil
-			}
-		}
-		query = "id = '" + input.Parameters.RequestedById + "'"
-		return db.Find(input.Model, query, input.Pagination), nil
-	}
-
-	// Admin can see all users, others can only see their own
-	userApp.Api.Detail = func(input *RequestData, db *Database, app *App) (*gorm.DB, error) {
-		query := ""
-		for _, role := range input.Parameters.Roles {
-			if role == AdminRole {
-				return db.FindById(input.InstanceId, input.Model, query), nil
-			}
-		}
-
-		query = "id = '" + input.Parameters.RequestedById + "'"
-		return db.FindById(input.InstanceId, input.Model, query), nil
 	}
 
 	err = userApp.RegisterValidator("email", ValidatorsList{RequiredValidator, EmailValidator})
@@ -424,7 +401,7 @@ func (b *Builder) InitAuth() error {
 	}
 
 	svr := b.Server
-	svr.AddRoute("/auth/register", b.RegisterVisitorController, "register", false)
+	svr.AddRoute("/auth/register", b.RegisterVisitorController, "register", false, http.MethodPost, RegisterUserInput{})
 	return nil
 }
 
@@ -467,6 +444,7 @@ func (b *Builder) InitUploader() error {
 		MaxSize:            config.GetInt64(config.GetString(EnvKeys.UploaderMaxSize)),
 		SupportedMimeTypes: config.GetStringSlice(EnvKeys.UploaderSupportedMime),
 		Folder:             config.GetString(config.GetString(EnvKeys.UploaderFolder)),
+		StaticPath:         "private/file/",
 	}
 
 	permissions := RolePermissionMap{
@@ -490,6 +468,8 @@ func (b *Builder) InitUploader() error {
 		b.GetFilePostHandler(cfg),
 		"file-new",
 		true, // Requires authentication
+		http.MethodPost,
+		"form with file",
 	)
 
 	// Add route for deleting files by ID
@@ -498,6 +478,8 @@ func (b *Builder) InitUploader() error {
 		b.GetFileDeleteHandler(cfg),
 		"file-delete",
 		true, // Requires authentication
+		http.MethodDelete,
+		nil,
 	)
 
 	// Download route
@@ -505,7 +487,9 @@ func (b *Builder) InitUploader() error {
 		route+"/{path:.*}",
 		b.GetStaticHandler(cfg),
 		"file-static",
-		true, // Authentication based on config
+		true,
+		http.MethodGet,
+		nil,
 	)
 
 	return nil

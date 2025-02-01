@@ -3,7 +3,10 @@ package builder
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
+
+	"github.com/invopop/jsonschema"
 )
 
 var (
@@ -12,7 +15,7 @@ var (
 
 type Admin struct {
 	apps    map[string]App
-	builder *Builder
+	Builder *Builder
 }
 
 // NewAdmin creates a new instance of the Admin, which is a central
@@ -26,7 +29,7 @@ type Admin struct {
 func NewAdmin(builder *Builder) *Admin {
 	return &Admin{
 		apps:    make(map[string]App),
-		builder: builder,
+		Builder: builder,
 	}
 }
 
@@ -56,10 +59,10 @@ func (a *Admin) GetApp(appName string) (App, error) {
 func (a *Admin) Register(model interface{}, skipUserBinding bool, permissions RolePermissionMap) (App, error) {
 
 	app := App{
-		model:           model,
-		skipUserBinding: skipUserBinding,
-		admin:           a,
-		validators:      make(ValidatorsMap),
+		Model:           model,
+		SkipUserBinding: skipUserBinding,
+		Admin:           a,
+		Validators:      make(ValidatorsMap),
 		Permissions:     permissions,
 		Api: &API{
 			List:   DefaultList,
@@ -82,7 +85,7 @@ func (a *Admin) Register(model interface{}, skipUserBinding bool, permissions Ro
 	a.apps[app.Name()] = app
 
 	// apply migrations
-	a.builder.DB.Migrate(app.model)
+	a.Builder.DB.Migrate(app.Model)
 
 	// register CRUD routes
 	a.registerAPIRoutes(app)
@@ -128,38 +131,103 @@ func (a *Admin) registerAPIRoutes(app App) {
 	baseRoute := "/api/" + app.PluralName()
 	protectedRoute := true
 
-	a.builder.Server.AddRoute(
+	a.Builder.Server.AddRoute(
+		baseRoute+"/schema",
+		func(w http.ResponseWriter, r *http.Request) {
+			schema := jsonschema.Reflect(app.Model)
+			SendJsonResponse(w, http.StatusOK, schema, fmt.Sprintf("Schema for %s", app.Name()))
+		},
+		app.Name()+"-schema",
+		!protectedRoute,
+		http.MethodGet,
+		nil,
+	)
+
+	a.Builder.Server.AddRoute(
 		baseRoute,
-		app.ApiList(a.builder.DB),
+		app.ApiList(a.Builder.DB),
 		app.Name()+"-list",
 		protectedRoute,
+		http.MethodGet,
+		nil,
 	)
 
-	a.builder.Server.AddRoute(
+	a.Builder.Server.AddRoute(
 		baseRoute+"/new",
-		app.ApiCreate(a.builder.DB),
+		app.ApiCreate(a.Builder.DB),
 		app.Name()+"-new",
 		protectedRoute,
+		http.MethodPost,
+		app.Model,
 	)
 
-	a.builder.Server.AddRoute(
+	a.Builder.Server.AddRoute(
 		baseRoute+"/{id}",
-		app.ApiDetail(a.builder.DB),
+		app.ApiDetail(a.Builder.DB),
 		app.Name()+"-get",
 		protectedRoute,
+		http.MethodGet,
+		nil,
 	)
 
-	a.builder.Server.AddRoute(
+	a.Builder.Server.AddRoute(
 		baseRoute+"/{id}/delete",
-		app.ApiDelete(a.builder.DB),
+		app.ApiDelete(a.Builder.DB),
 		app.Name()+"-delete",
 		protectedRoute,
+		http.MethodDelete,
+		nil,
 	)
 
-	a.builder.Server.AddRoute(
+	a.Builder.Server.AddRoute(
 		baseRoute+"/{id}/update",
-		app.ApiUpdate(a.builder.DB),
+		app.ApiUpdate(a.Builder.DB),
 		app.Name()+"-update",
 		protectedRoute,
+		http.MethodPut,
+		app.Model,
 	)
+}
+
+func (a *Admin) AddApiRoute() {
+	s := a.Builder.Server
+	s.AddRoute(
+		"/api",
+		func(w http.ResponseWriter, r *http.Request) {
+			type Endpoint struct {
+				Method string `json:"method"`
+				Path   string `json:"path"`
+			}
+			type appInfo struct {
+				Name      string              `json:"name"`
+				Plural    string              `json:"pluralName"`
+				Endpoints map[string]Endpoint `json:"endpoints"`
+			}
+			output := make([]appInfo, 0)
+
+			for _, app := range s.Builder.Admin.apps {
+				baseUrl := config.GetString(EnvKeys.BaseUrl) + "/api/" + app.PluralName()
+
+				data := appInfo{
+					Name:   app.Name(),
+					Plural: app.PluralName(),
+					Endpoints: map[string]Endpoint{
+						"schema": {
+							Method: http.MethodGet,
+							Path:   baseUrl + "/schema",
+						},
+					},
+				}
+
+				output = append(output, data)
+			}
+
+			SendJsonResponse(w, http.StatusOK, output, "ok")
+		},
+		"endpoints",
+		false,
+		http.MethodGet,
+		nil,
+	)
+
 }

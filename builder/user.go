@@ -15,7 +15,7 @@ type User struct {
 	*gorm.Model
 	Name       string `json:"name"`
 	Email      string `gorm:"unique" json:"email"`
-	FirebaseId string `json:"firebase_id"`
+	FirebaseId string `json:"firebaseId"`
 	Roles      string `json:"roles"` // comma-separated list of roles e.g. "admin,visitor"
 }
 

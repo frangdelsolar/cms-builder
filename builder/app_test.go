@@ -1,7 +1,6 @@
 package builder_test
 
 import (
-	"fmt"
 	"net/http"
 	"testing"
 
@@ -72,11 +71,11 @@ func TestRegisterAPIRoutes(t *testing.T) {
 
 	// check ig server has expected routs
 	expectedRoutes := []builder.RouteHandler{
-		builder.NewRouteHandler("/api/tests", handler, "test-list", true),
-		builder.NewRouteHandler("/api/tests/new", handler, "test-new", true),
-		builder.NewRouteHandler("/api/tests/{id}", handler, "test-get", true),
-		builder.NewRouteHandler("/api/tests/{id}/delete", handler, "test-delete", true),
-		builder.NewRouteHandler("/api/tests/{id}/update", handler, "test-update", true),
+		builder.NewRouteHandler("/api/tests", handler, "test-list", true, http.MethodGet, nil),
+		builder.NewRouteHandler("/api/tests/new", handler, "test-new", true, http.MethodPost, Test{}),
+		builder.NewRouteHandler("/api/tests/{id}", handler, "test-get", true, http.MethodGet, nil),
+		builder.NewRouteHandler("/api/tests/{id}/delete", handler, "test-delete", true, http.MethodDelete, nil),
+		builder.NewRouteHandler("/api/tests/{id}/update", handler, "test-update", true, http.MethodPut, Test{}),
 	}
 
 	routes := e.Server.GetRoutes()
@@ -86,6 +85,8 @@ func TestRegisterAPIRoutes(t *testing.T) {
 			if route.Route == expectedRoute.Route {
 				assert.Equal(t, expectedRoute.Name, route.Name, "Route name should be the same")
 				assert.Equal(t, expectedRoute.RequiresAuth, route.RequiresAuth, "Route requires auth should be the same")
+				assert.Equal(t, expectedRoute.Schema, route.Schema, "Route schema should be the same")
+				assert.Equal(t, expectedRoute.Method, route.Method, "Route method should be the same")
 				found = true
 			}
 		}
@@ -159,7 +160,7 @@ func TestUserCanNotRetrieveDeniedResources(t *testing.T) {
 	responseA, err := th.ExecuteApiCall(t, e.App.ApiDetail(e.DB), requestA, nil)
 	assert.Error(t, err, "ApiDetail should return an error")
 	assert.False(t, responseA.Success, "ParseResponse should return an error response")
-	assert.Contains(t, responseA.Message, "Failed to get", "The response should be an error")
+	assert.Contains(t, responseA.Message, "record not found", "The response should be an error")
 
 	// User B tries to get the detail for user A
 	requestB, _, _ := th.NewRequest(
@@ -173,7 +174,7 @@ func TestUserCanNotRetrieveDeniedResources(t *testing.T) {
 	responseB, err := th.ExecuteApiCall(t, e.App.ApiDetail(e.DB), requestB, nil)
 	assert.Error(t, err, "ApiDetail should return an error")
 	assert.False(t, responseB.Success, "ParseResponse should return an error response")
-	assert.Contains(t, responseB.Message, "Failed to get", "The response should be an error")
+	assert.Contains(t, responseB.Message, "record not found", "The response should be an error")
 }
 
 // TestUserCanListAllowedResources tests that a user can list resources if they have the correct permissions.
@@ -185,8 +186,9 @@ func TestUserCanListAllowedResources(t *testing.T) {
 
 	// Create two resource for some user
 	instanceA, user, userRollback := th.CreateMockResource(t, e.DB, e.App, nil)
-	instanceB, _, _ := th.CreateMockResource(t, e.DB, e.App, user)
+	instanceB, _, userbRollback := th.CreateMockResource(t, e.DB, e.App, user)
 	defer userRollback()
+	defer userbRollback()
 
 	// Create a helper request to get the list
 	request, _, _ := th.NewRequest(
@@ -283,13 +285,14 @@ func TestUserCanNotCreateDeniedResources(t *testing.T) {
 	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 
 	// Create a resource without authentication
-	request, user, _ := th.NewRequest(
+	request, user, userRollback := th.NewRequest(
 		http.MethodPost,
 		`{"field": "test"}`,
 		false,
 		nil,
 		nil,
 	)
+	defer userRollback()
 
 	assert.Nil(t, user, "User should be nil")
 
@@ -417,7 +420,7 @@ func TestUserCanDeleteAllowedResources(t *testing.T) {
 	assert.NoError(t, err, "ApiDetail should not return an error")
 	assert.NotNil(t, responseB, "ApiDetail should return a non-nil response")
 	assert.Equal(t, responseB.Success, false, "Success should be false")
-	assert.Contains(t, responseB.Message, "Failed to get", "The response should be an error")
+	assert.Contains(t, responseB.Message, "record not found", "The response should be an error")
 	assert.Equal(t, resultB, th.MockStruct{}, "The result should be empty")
 }
 
@@ -569,8 +572,8 @@ func TestUserCanNotReplaceCreatedByIDOnCreate(t *testing.T) {
 	assert.NoError(t, err, "ExecuteApiCall should not return an error")
 	assert.NotNil(t, response, "ApiNew should return a non-nil response")
 
-	assert.Equal(t, user.GetIDString(), fmt.Sprintf("%d", instance.CreatedByID), "CreatedByID should be the logged in user")
-	assert.Equal(t, user.GetIDString(), fmt.Sprintf("%d", instance.UpdatedByID), "UpdatedByID should be the logged in user")
+	assert.Equal(t, user.ID, instance.CreatedByID, "CreatedByID should be the logged in user")
+	assert.Equal(t, user.ID, instance.UpdatedByID, "UpdatedByID should be the logged in user")
 }
 
 // TestUserCanNotReplaceCreatedByIDOnUpdate tests that a user cannot update a resource with a createdById or updatedById that is not their own user ID.
@@ -600,8 +603,8 @@ func TestUserCanNotReplaceCreatedByIDOnUpdate(t *testing.T) {
 
 	// Verify the update was successful
 	assert.Equal(t, instance.ID, updatedInstance.ID, "ID should be the same")
-	assert.Equal(t, user.GetIDString(), fmt.Sprintf("%d", updatedInstance.CreatedByID), "CreatedByID should be the logged in user")
-	assert.Equal(t, user.GetIDString(), fmt.Sprintf("%d", updatedInstance.UpdatedByID), "UpdatedByID should be the logged in user")
+	assert.Equal(t, user.ID, updatedInstance.CreatedByID, "CreatedByID should be the logged in user")
+	assert.Equal(t, user.ID, updatedInstance.UpdatedByID, "UpdatedByID should be the logged in user")
 }
 
 // TestUserCanNotReplaceInstanceIDOnUpdate tests that a user cannot update a resource with an instance ID that is not the same as the one in the request.
@@ -628,6 +631,6 @@ func TestUserCanNotReplaceInstanceIDOnUpdate(t *testing.T) {
 	assert.Equal(t, true, response.Success, "ApiUpdate should return a success response")
 	// Verify the update was successful
 	assert.Equal(t, instance.GetIDString(), updatedInstance.GetIDString(), "ID should remain the same")
-	assert.Equal(t, user.GetIDString(), fmt.Sprintf("%d", updatedInstance.CreatedByID), "CreatedByID should be the logged in user")
-	assert.Equal(t, user.GetIDString(), fmt.Sprintf("%d", updatedInstance.UpdatedByID), "UpdatedByID should be the logged in user")
+	assert.Equal(t, user.ID, updatedInstance.CreatedByID, "CreatedByID should be the logged in user")
+	assert.Equal(t, user.ID, updatedInstance.UpdatedByID, "UpdatedByID should be the logged in user")
 }

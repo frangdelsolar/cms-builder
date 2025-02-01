@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestRegisterUserController tests the RegisterUser endpoint by creating a new user and
+// TestRegisterUserController tests the RegisterUser endpoint by creating a new  user and
 // verifying the response to make sure the user was created correctly.
 func TestRegisterUserController(t *testing.T) {
 	t.Log("Testing VerifyUser")
@@ -68,11 +68,13 @@ func TestRegisterUserController(t *testing.T) {
 // logging in with that user, and verifying that the middleware adds the "auth" header
 // to the request.
 func TestAuthenticationMiddleware(t *testing.T) {
+
 	e, err := th.GetDefaultEngine()
 	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authHeader := r.Header.Get("auth")
+		
+		authHeader := w.Header().Get("auth")
 		if authHeader != "true" {
 			t.Errorf("missing auth header")
 		}

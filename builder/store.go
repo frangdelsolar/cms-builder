@@ -56,7 +56,7 @@ func (s *LocalStore) StoreFile(cfg *UploaderConfig, fileName string, file multip
 	}
 
 	// Create the file path
-	fileData.Name = fileName
+	fileData.Name = randomizeFileName(fileName)
 	fileData.Path = filepath.Join(uploadsDir, fileData.Name)
 
 	// Save the file to disk
@@ -73,7 +73,7 @@ func (s *LocalStore) StoreFile(cfg *UploaderConfig, fileName string, file multip
 		return fileData, err
 	}
 
-	fileData.Url = filepath.Join(config.GetString(EnvKeys.BaseUrl), "file", fileData.Name)
+	fileData.Url = config.GetString(EnvKeys.BaseUrl) + "/" + cfg.StaticPath + fileData.Name
 
 	return fileData, nil
 }
@@ -143,7 +143,8 @@ func (s *S3Store) StoreFile(cfg *UploaderConfig, fileName string, file multipart
 	}
 
 	path := filepath.Join(uploadsDir, fileName)
-	url := "https://" + config.GetString(EnvKeys.AwsBucket) + "/" + path
+	// url := "https://" + config.GetString(EnvKeys.AwsBucket) + "/" + uploadsDir + "/" + fileName
+	url := config.GetString(EnvKeys.BaseUrl) + "/" + cfg.StaticPath + fileData.Name
 
 	fileData = FileData{
 		Name: fileName,

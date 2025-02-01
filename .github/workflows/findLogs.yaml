@@ -3,9 +3,9 @@ name: Check Logs
 on:
   # Triggers the workflow on push or pull request events but only for the master branch
   push:
-    branches: [ master ]
+    branches: [master]
   pull_request:
-    branches: [ master ]
+    branches: [master]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -19,7 +19,7 @@ jobs:
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      - uses: actions/checkout@v3 
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Get changed files
@@ -32,5 +32,5 @@ jobs:
       - name: Check Logs
         working-directory: scripts
         run: python3 find_logs.py
-        env: 
+        env:
           CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
