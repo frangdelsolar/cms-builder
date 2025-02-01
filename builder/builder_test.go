@@ -14,7 +14,6 @@ import (
 
 const testConfigFilePath = ".test.env"
 
-
 // TestMain runs the tests, and also performs some pre-test setup (i.e. gets a list of all existing users in
 // firebase) and post-test cleanup (i.e. deletes all users that were created during the test).
 func TestMain(m *testing.M) {

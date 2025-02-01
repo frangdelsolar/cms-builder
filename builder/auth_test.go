@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestRegisterUserController tests the RegisterUser endpoint by creating a new user and
+// TestRegisterUserController tests the RegisterUser endpoint by creating a new  user and
 // verifying the response to make sure the user was created correctly.
 func TestRegisterUserController(t *testing.T) {
 	t.Log("Testing VerifyUser")

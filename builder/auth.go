@@ -13,7 +13,6 @@ import (
 )
 
 // VerifyUser verifies the user based on the access token provided in the userIdToken parameter.
-//
 // The method verifies the token by calling VerifyIDToken on the Firebase Admin instance.
 // If the token is valid, it retrieves the user record from the database and returns it.
 // If the token is invalid, it returns an error.

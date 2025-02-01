@@ -11,6 +11,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// these are the keys that will be filtered out of the request body
 var filterKeys = map[string]bool{
 	"id":            true,
 	"createdBy":     true,
