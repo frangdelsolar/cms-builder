@@ -209,6 +209,13 @@ func NewBuilder(input *NewBuilderInput) (*Builder, error) {
 	// Admin
 	b.InitAdmin()
 
+	// History
+	err = b.InitHistory()
+	if err != nil {
+		log.Err(err).Msg("Error initializing history")
+		return nil, err
+	}
+
 	// Firebase
 	err = b.InitFirebase()
 	if err != nil {
@@ -222,6 +229,7 @@ func NewBuilder(input *NewBuilderInput) (*Builder, error) {
 		return nil, err
 	}
 
+	// Store
 	err = b.InitStore()
 	if err != nil {
 		log.Err(err).Msg("Error initializing store")
@@ -246,13 +254,6 @@ func NewBuilder(input *NewBuilderInput) (*Builder, error) {
 	err = b.RegisterAdminUser()
 	if err != nil {
 		log.Err(err).Msg("Error registering admin user")
-		return nil, err
-	}
-
-	// History
-	err = b.InitHistory()
-	if err != nil {
-		log.Err(err).Msg("Error initializing history")
 		return nil, err
 	}
 
