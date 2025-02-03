@@ -379,6 +379,7 @@ func (b *Builder) InitFirebase() error {
 func (b *Builder) InitAuth() error {
 	admin := b.Admin
 
+	// FIXME: This doesn't look good to me!
 	permissions := RolePermissionMap{
 		AdminRole:   AllAllowedAccess,
 		VisitorRole: AllAllowedAccess,
@@ -407,6 +408,17 @@ func (b *Builder) InitAuth() error {
 		log.Error().Err(err).Msg("Error registering roles validator")
 		return err
 	}
+
+	// FIXME: Implement these
+	// userApp.Api.Delete = ...
+	// userApp.Api.Update = ...
+	// userApp.Api.Create = ...
+	// userApp.Api.List = ...
+	// userApp.Api.Detail = ...
+
+	// FIXME: Create tests so that no user can edit another user unless authorized
+	// No user should be able to delete other users
+	// No user should be able to delete users, including himself
 
 	svr := b.Server
 	svr.AddRoute("/auth/register", b.RegisterVisitorController, "register", false, http.MethodPost, RegisterUserInput{})
