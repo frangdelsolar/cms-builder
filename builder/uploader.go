@@ -13,9 +13,10 @@ import (
 )
 
 type FileData struct {
-	Name string `json:"fileName"`
-	Path string `json:"filePath"` // relative path
-	Url  string `json:"url"`      // absolute path
+	*SystemData
+	Name string `json:"name"`
+	Path string `json:"path"` // relative path
+	Url  string `json:"url"`  // absolute path
 }
 
 type Upload struct {
@@ -172,7 +173,7 @@ func (b *Builder) GetFileDeleteHandler(cfg *UploaderConfig) HandlerFunc {
 		}
 
 		// Delete the record from the database
-		result = b.DB.Delete(&instance, params.RequestedById)
+		result = b.DB.Delete(&instance, params.User)
 		if result.Error != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, result.Error.Error())
 			return

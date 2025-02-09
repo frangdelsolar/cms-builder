@@ -18,12 +18,13 @@ const (
 
 type HistoryEntry struct {
 	gorm.Model
-	Timestamp    string     `gorm:"type:timestamp" json:"timestamp"`
 	User         *User      `json:"user"`
 	UserId       string     `gorm:"foreignKey:UserId" json:"userId"`
+	Username     string     `json:"username"`
 	Action       CRUDAction `json:"action"`
 	ResourceName string     `json:"resourceName"`
 	ResourceId   string     `json:"resourceId"`
+	Timestamp    string     `gorm:"type:timestamp" json:"timestamp"`
 	Detail       string     `json:"detail"`
 }
 
@@ -32,7 +33,7 @@ type HistoryEntry struct {
 // The object is expected to be a struct with a JSON tag for the ID field named "ID".
 // The function returns an error if the object cannot be marshaled or unmarshaled to JSON.
 // The function uses the GetStructName function to get the name of the struct from the object passed in.
-func NewLogHistoryEntry(action CRUDAction, userId string, object interface{}) (*HistoryEntry, error) {
+func NewLogHistoryEntry(action CRUDAction, user *User, object interface{}) (*HistoryEntry, error) {
 	name := GetStructName(object)
 	jsonData, err := json.Marshal(object)
 	if err != nil {
@@ -54,11 +55,12 @@ func NewLogHistoryEntry(action CRUDAction, userId string, object interface{}) (*
 	detail := string(jsonData)
 
 	historyEntry := &HistoryEntry{
-		Timestamp:    time.Now().Format(time.RFC3339),
 		Action:       action,
-		UserId:       userId,
+		UserId:       user.GetIDString(),
+		Username:     user.Email,
 		ResourceId:   resourceId,
 		ResourceName: name,
+		Timestamp:    time.Now().Format(time.RFC3339Nano),
 		Detail:       detail,
 	}
 

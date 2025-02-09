@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
+	"net/http"
 	"os"
 	"path/filepath"
 )
@@ -96,17 +97,35 @@ func (s *LocalStore) DeleteFile(file FileData) error {
 }
 
 func (s *LocalStore) ListFiles() ([]string, error) {
-	log.Warn().Msgf("Listing files from %s", s.Path)
 	output := []string{}
-	files, err := os.ReadDir(s.Path)
+
+	err := filepath.Walk(s.Path, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			log.Error().Err(err).Msgf("Error accessing path: %s", path)
+			return err // Return the error to stop walking if needed
+		}
+
+		// Get the relative path from the store's path
+		relPath, err := filepath.Rel(s.Path, path)
+		if err != nil {
+			log.Error().Err(err).Msgf("Error getting relative path for: %s", path)
+			return err
+		}
+
+		// Skip the root directory itself.  Important!
+		if relPath == "." {
+			return nil // Continue walking
+		}
+
+		output = append(output, relPath)
+		return nil
+	})
+
 	if err != nil {
-		log.Error().Err(err).Msg("Error listing files")
-		return output, err
+		log.Error().Err(err).Msg("Error walking the file tree")
+		return nil, err
 	}
 
-	for _, file := range files {
-		output = append(output, file.Name())
-	}
 	return output, nil
 }
 
@@ -207,4 +226,22 @@ func NewS3Store(folder string) (*S3Store, error) {
 		Client: &client,
 		Path:   folder,
 	}, nil
+}
+
+func (b *Builder) ListStoredFilesHandler(cfg *UploaderConfig) HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		err := ValidateRequestMethod(r, http.MethodGet)
+		if err != nil {
+			SendJsonResponse(w, http.StatusMethodNotAllowed, err, err.Error())
+			return
+		}
+
+		files, err := b.Store.ListFiles()
+		if err != nil {
+			log.Error().Err(err).Msg("Error deleting file")
+		}
+
+		SendJsonResponse(w, http.StatusOK, files, "StoredFiles")
+	}
 }

@@ -12,6 +12,11 @@ import (
 	"gorm.io/gorm"
 )
 
+var systemUser = User{
+	Name:  "System",
+	Email: "system",
+}
+
 // VerifyUser verifies the user based on the access token provided in the userIdToken parameter.
 // The method verifies the token by calling VerifyIDToken on the Firebase Admin instance.
 // If the token is valid, it retrieves the user record from the database and returns it.
@@ -25,8 +30,7 @@ func (b *Builder) VerifyUser(userIdToken string) (*User, error) {
 
 	var localUser User
 
-	q := "firebase_id = '" + accessToken.UID + "'"
-	b.DB.DB.Where(q).First(&localUser)
+	b.DB.FindUserByFirebaseId(accessToken.UID, &localUser)
 
 	// Create user if firebase has it but not in database
 	if localUser.ID == 0 {
@@ -37,7 +41,8 @@ func (b *Builder) VerifyUser(userIdToken string) (*User, error) {
 		localUser.Email = strings.ToLower(accessToken.Claims["email"].(string))
 		localUser.FirebaseId = accessToken.UID
 		localUser.Roles = string(VisitorRole)
-		b.DB.Create(&localUser, "system")
+
+		b.DB.Create(&localUser, &systemUser)
 	}
 
 	return &localUser, nil
@@ -54,6 +59,8 @@ func (b *Builder) AuthMiddleware(next http.Handler) http.Handler {
 		// Clear the headers in case someone else set them
 		DeleteHeader(requestedByParamKey, r)
 		DeleteHeader(authParamKey, r)
+
+		// TODO: Maybe I can send ^ this person to hell for trying to hack me
 
 		accessToken := GetAccessTokenFromRequest(r)
 		localUser, err := b.VerifyUser(accessToken)
@@ -231,7 +238,7 @@ func (b *Builder) CreateUserWithRole(input RegisterUserInput, role Role, registe
 		FirebaseId: fbUserId,
 		Roles:      string(role),
 	}
-	b.DB.Create(&user, "system")
+	b.DB.Create(&user, &systemUser)
 
 	if user.ID == 0 {
 		return nil, fmt.Errorf("error creating user in database")

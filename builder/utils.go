@@ -2,6 +2,7 @@ package builder
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/gertd/go-pluralize"
@@ -20,7 +21,7 @@ import (
 func GetStructName(a interface{}) string {
 	modelName := fmt.Sprintf("%T", a)
 	name := modelName[strings.LastIndex(modelName, ".")+1:]
-	name = strings.ToLower(name)
+	// name = strings.ToLower(name)
 	return name
 }
 
@@ -34,4 +35,10 @@ func GetStructName(a interface{}) string {
 func Pluralize(word string) string {
 	p := pluralize.NewClient()
 	return p.Plural(word)
+}
+
+func SnakeCase(s string) string {
+	re := regexp.MustCompile("(.)([A-Z][a-z]+)")
+	s = re.ReplaceAllString(s, "${1}_${2}")
+	return strings.ToLower(s)
 }

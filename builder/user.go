@@ -13,8 +13,10 @@ var (
 
 type User struct {
 	*gorm.Model
-	Name       string `json:"name"`
-	Email      string `gorm:"unique" json:"email"`
+	ID   uint   `gorm:"primaryKey" json:"ID"`
+	Name string `json:"name"`
+	// Email      string `gorm:"unique" json:"email"`
+	Email      string `json:"email"` //FIXME
 	FirebaseId string `json:"firebaseId"`
 	Roles      string `json:"roles"` // comma-separated list of roles e.g. "admin,visitor"
 }

@@ -306,18 +306,14 @@ func (b *Builder) InitLogger() error {
 func (b *Builder) InitDatabase() error {
 	dbConfig := &DBConfig{}
 
-	env := config.GetString(EnvKeys.Environment)
-
-	if env == "production" || env == "stage" || env == "docker" {
-		dbConfig.URL = config.GetString(EnvKeys.DbUrl)
-	} else {
-		dbConfig.Path = config.GetString(EnvKeys.DbFile)
-	}
+	dbConfig.URL = config.GetString(EnvKeys.DbUrl)
+	dbConfig.Path = config.GetString(EnvKeys.DbFile)
 
 	log.Info().Str("path", dbConfig.Path).Str("url", dbConfig.URL).Msg("Initializing database...")
 
 	db, err := LoadDB(dbConfig)
 	if err != nil {
+		log.Error().Err(err).Msg("Error initializing database")
 		return err
 	}
 	b.DB = db
@@ -381,8 +377,8 @@ func (b *Builder) InitAuth() error {
 
 	// FIXME: This doesn't look good to me!
 	permissions := RolePermissionMap{
-		AdminRole:   AllAllowedAccess,
-		VisitorRole: AllAllowedAccess,
+		AdminRole:   []CrudOperation{OperationRead, OperationUpdate},
+		VisitorRole: []CrudOperation{OperationRead},
 	}
 
 	userApp, err := admin.Register(&User{}, true, permissions)
@@ -467,6 +463,7 @@ func (b *Builder) InitUploader() error {
 		StaticPath:         "private/file/",
 	}
 
+	// TODO: Revisit this permissions
 	permissions := RolePermissionMap{
 		AdminRole:   AllAllowedAccess,
 		VisitorRole: AllAllowedAccess,
@@ -479,8 +476,41 @@ func (b *Builder) InitUploader() error {
 		return err
 	}
 
+	fdApp, err := b.Admin.Register(&FileData{}, false, permissions)
+	if err != nil {
+		log.Error().Err(err).Msg("Error registering FileData app")
+		return err
+	}
+
+	err = fdApp.RegisterValidator("name", ValidatorsList{RequiredValidator})
+	if err != nil {
+		log.Error().Err(err).Msg("Error registering name validator")
+		return err
+	}
+
+	err = fdApp.RegisterValidator("path", ValidatorsList{RequiredValidator})
+	if err != nil {
+		log.Error().Err(err).Msg("Error registering path validator")
+		return err
+	}
+
+	err = fdApp.RegisterValidator("url", ValidatorsList{RequiredValidator})
+	if err != nil {
+		log.Error().Err(err).Msg("Error registering url validator")
+		return err
+	}
+
 	// Define the base route for file operations
 	route := "/file"
+
+	b.Server.AddRoute(
+		route,
+		b.ListStoredFilesHandler(cfg),
+		"file-list",
+		true, // Requires authentication
+		http.MethodGet,
+		"list files",
+	)
 
 	// Add route for uploading new files
 	b.Server.AddRoute(
@@ -574,7 +604,7 @@ func (b *Builder) RegisterAdminUser() error {
 
 func (b *Builder) InitHistory() error {
 	permissions := RolePermissionMap{
-		AdminRole: AllAllowedAccess,
+		AdminRole: []CrudOperation{OperationRead},
 	}
 
 	_, err := b.Admin.Register(&HistoryEntry{}, false, permissions)

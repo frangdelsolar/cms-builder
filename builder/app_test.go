@@ -1,6 +1,7 @@
 package builder_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -648,4 +649,54 @@ func TestUserCanNotReplaceInstanceIDOnUpdate(t *testing.T) {
 	assert.Equal(t, instance.GetIDString(), updatedInstance.GetIDString(), "ID should remain the same")
 	assert.Equal(t, user.ID, updatedInstance.CreatedByID, "CreatedByID should be the logged in user")
 	assert.Equal(t, user.ID, updatedInstance.UpdatedByID, "UpdatedByID should be the logged in user")
+}
+
+// TestJsonifyInterface tests that JsonifyInterface correctly converts a struct to a map[string]interface{}
+func TestJsonifyInterface(t *testing.T) {
+
+	t.Log("Testing JsonifyInterface with omitempty. Not Working")
+	t.Skip()
+	//TODO: find a way for this to work
+	type JsonTest struct {
+		Field      string `json:"field"`
+		NotOmitted string `json:"notOmitted"`
+	}
+
+	testStruct := JsonTest{}
+	// Convert the struct to a map
+	data, err := builder.JsonifyInterface(&testStruct)
+	assert.NoError(t, err, "JsonifyInterface should not return an error")
+
+	// Marshal the map to JSON
+	bytes, err := json.Marshal(data)
+	assert.NoError(t, err, "json.Marshal should not return an error")
+
+	// Assert the expected output
+	assert.Equal(t, `{"field":"","notOmitted":""}`, string(bytes))
+
+}
+
+// TestJsonifyInterfaceWithOmitempty tests that JsonifyInterface correctly converts a struct to a map[string]interface{}, including the use of "omitempty" tags.
+func TestJsonifyInterfaceWithOmitempty(t *testing.T) {
+
+	// t.Log("Testing JsonifyInterface with omitempty. Not Working")
+	t.Skip()
+	//TODO: find a way for this to work
+	type JsonTest struct {
+		Field   string `json:"field"`
+		Omitted string `json:"omitted,omitempty"`
+	}
+
+	testStruct := JsonTest{}
+	// Convert the struct to a map
+	data, err := builder.JsonifyInterface(&testStruct)
+	assert.NoError(t, err, "JsonifyInterface should not return an error")
+
+	// Marshal the map to JSON
+	bytes, err := json.Marshal(data)
+	assert.NoError(t, err, "json.Marshal should not return an error")
+
+	// Assert the expected output
+	assert.Equal(t, `{"field":"","omitted":""}`, string(bytes))
+
 }
