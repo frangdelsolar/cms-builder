@@ -143,7 +143,6 @@ func TestAppendRoleToUser(t *testing.T) {
 		},
 	}
 
-	// FIXME:
 	var systemUser = &builder.User{
 		ID:    uint(9923142453952396459),
 		Name:  "System",
@@ -241,7 +240,6 @@ func TestRemoveRoleFromUser(t *testing.T) {
 		},
 	}
 
-	// FIXME:
 	var systemUser = &builder.User{
 		ID:    uint(9923142453952396459),
 		Name:  "System",

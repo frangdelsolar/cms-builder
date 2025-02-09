@@ -375,7 +375,6 @@ func (b *Builder) InitFirebase() error {
 func (b *Builder) InitAuth() error {
 	admin := b.Admin
 
-	// FIXME: This doesn't look good to me!
 	permissions := RolePermissionMap{
 		AdminRole:   []CrudOperation{OperationRead, OperationUpdate},
 		VisitorRole: []CrudOperation{OperationRead},
@@ -405,14 +404,14 @@ func (b *Builder) InitAuth() error {
 		return err
 	}
 
-	// FIXME: Implement these
+	// TODO: Implement these
 	// userApp.Api.Delete = ...
 	// userApp.Api.Update = ...
 	// userApp.Api.Create = ...
 	// userApp.Api.List = ...
 	// userApp.Api.Detail = ...
 
-	// FIXME: Create tests so that no user can edit another user unless authorized
+	// TODO: Create tests so that no user can edit another user unless authorized
 	// No user should be able to delete other users
 	// No user should be able to delete users, including himself
 
