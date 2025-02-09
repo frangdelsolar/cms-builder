@@ -116,7 +116,7 @@ func CreateMockResource(t *testing.T, db *builder.Database, app *builder.App, us
 	assert.NoError(t, err, "ApiNew should not return an error")
 	assert.True(t, response.Success, "ApiNew should return a success response")
 	assert.Nil(t, response.Pagination, "ApiNew should not return a pagination response")
-	assert.Equal(t, "mockstruct created", response.Message, "The response should be a success message")
+	assert.Equal(t, "MockStruct created", response.Message, "The response should be a success message")
 	return &createdItem, user, rollback
 }
 

@@ -34,7 +34,7 @@ func (b *Builder) VerifyUser(userIdToken string) (*User, error) {
 
 	// Create user if firebase has it but not in database
 	if localUser.ID == 0 {
-		log.Info().Msg("User exists in Firebase but not in database. Will create it now")
+		// log.Info().Msg("User exists in Firebase but not in database. Will create it now")
 
 		// create user in database
 		localUser.Name = accessToken.Claims["name"].(string)
@@ -206,7 +206,7 @@ func (b *Builder) CreateUserWithRole(input RegisterUserInput, role Role, registe
 					msg := fmt.Sprintf("Error getting user by email: %s", err.Error())
 					return nil, fmt.Errorf("%s", msg)
 				}
-				log.Warn().Msg("User already exists in Firebase. Will add it to database")
+				// log.Warn().Msg("User already exists in Firebase. Will add it to database")
 				fbUserId = existingFbUser.UID
 			} else {
 				return nil, fmt.Errorf("%s", msg)
@@ -226,7 +226,7 @@ func (b *Builder) CreateUserWithRole(input RegisterUserInput, role Role, registe
 		}
 
 		if existingUser != (User{}) {
-			log.Warn().Msg("User already exists in database.")
+			// log.Warn().Msg("User already exists in database.")
 			return &existingUser, nil
 		}
 	}

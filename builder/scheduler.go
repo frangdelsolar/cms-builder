@@ -236,8 +236,6 @@ func NewScheduler(b *Builder) (*Scheduler, error) {
 
 	b.DB.DB.Find(schedulerUser, "email = ?", schedulerUserData.Email)
 
-	log.Debug().Interface("User", schedulerUserData).Msg("Creating scheduler user")
-
 	// var createdUser *User
 	if schedulerUser == (&User{}) {
 		newOne, err := b.CreateUserWithRole(*schedulerUserData, SchedulerRole, false)
@@ -248,8 +246,6 @@ func NewScheduler(b *Builder) (*Scheduler, error) {
 
 		schedulerUser = newOne
 	}
-
-	log.Info().Interface("User", schedulerUser).Msg("Scheduler")
 
 	s, err := gocron.NewScheduler(
 		gocron.WithLogger(gocron.NewLogger(gocron.LogLevelDebug)),

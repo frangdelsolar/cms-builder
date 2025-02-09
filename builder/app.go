@@ -535,8 +535,6 @@ func (a *App) ValidateOrderParam(orderParam string) (string, error) {
 
 		field = SnakeCase(field)
 
-		log.Debug().Str("field", field).Msg("Validating order field")
-
 		if desc {
 			order += field + " desc,"
 		} else {
@@ -602,7 +600,6 @@ func (a *App) ApiDetail(db *Database) HandlerFunc {
 // occurs during the creation of the record.
 func (a *App) ApiCreate(db *Database) HandlerFunc {
 	return a.Api.Create(a, db)
-
 }
 
 // ApiUpdate returns a handler function that responds to PUT requests on the

@@ -74,7 +74,7 @@ func (s *LocalStore) StoreFile(cfg *UploaderConfig, fileName string, file multip
 		return fileData, err
 	}
 
-	fileData.Url = config.GetString(EnvKeys.BaseUrl) + "/" + cfg.StaticPath + fileData.Name
+	fileData.Url = config.GetString(EnvKeys.BaseUrl) + "/" + cfg.StaticPath + "/" + fileData.Name
 
 	return fileData, nil
 }
@@ -83,7 +83,7 @@ func (s *LocalStore) StoreFile(cfg *UploaderConfig, fileName string, file multip
 // It returns an error if the file cannot be deleted.
 func (s *LocalStore) DeleteFile(file FileData) error {
 	// Log the file path to be deleted
-	log.Warn().Msgf("Deleting file: %s", file.Path)
+	log.Warn().Interface("file", file).Msg("Deleting file from local store")
 
 	// Attempt to delete the file
 	if err := os.Remove(file.Path); err != nil {
@@ -162,8 +162,7 @@ func (s *S3Store) StoreFile(cfg *UploaderConfig, fileName string, file multipart
 	}
 
 	path := filepath.Join(uploadsDir, fileName)
-	// url := "https://" + config.GetString(EnvKeys.AwsBucket) + "/" + uploadsDir + "/" + fileName
-	url := config.GetString(EnvKeys.BaseUrl) + "/" + cfg.StaticPath + fileData.Name
+	url := "https://" + config.GetString(EnvKeys.AwsBucket) + "/" + uploadsDir + "/" + fileName
 
 	fileData = FileData{
 		Name: fileName,

@@ -99,9 +99,9 @@ func (b *Builder) GetFilePostHandler(cfg *UploaderConfig) HandlerFunc {
 		}
 
 		uploadRequestBody := map[string]interface{}{
-			"fileName": fileData.Name,
-			"filePath": fileData.Path,
-			"url":      fileData.Url,
+			"name": fileData.Name,
+			"path": fileData.Path,
+			"url":  fileData.Url,
 		}
 
 		uploadData, err := json.Marshal(uploadRequestBody)
