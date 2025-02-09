@@ -402,6 +402,26 @@ func (a *App) PluralName() string {
 	return Pluralize(a.Name())
 }
 
+// KebabName returns the kebab-case form of the model's name.
+func (a *App) KebabName() string {
+	return KebabCase(a.Name())
+}
+
+// KebabPluralName returns the kebab-case form of the plural form of the model's name.
+func (a *App) KebabPluralName() string {
+	return KebabCase(a.PluralName())
+}
+
+// SnakeName returns the snake_case form of the model's name.
+func (a *App) SnakeName() string {
+	return SnakeCase(a.Name())
+}
+
+// SnakePluralName returns the snake_case form of the plural form of the model's name.
+func (a *App) SnakePluralName() string {
+	return SnakeCase(a.PluralName())
+}
+
 // FieldExists returns true if the given field name exists in the model, false otherwise.
 // It uses the JSON representation of the model to check if the field exists.
 func (a App) FieldExists(fieldName string) bool {

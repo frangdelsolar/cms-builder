@@ -130,7 +130,7 @@ func (a *Admin) Unregister(appName string) error {
 // All CRUD routes are protected by authentication middleware.
 func (a *Admin) registerAPIRoutes(app App) {
 
-	kebabName := KebabCase(app.PluralName())
+	kebabName := app.KebabPluralName()
 
 	baseRoute := "/api/" + kebabName
 	protectedRoute := true
@@ -211,9 +211,7 @@ func (a *Admin) AddApiRoute() {
 			output := make([]appInfo, 0)
 
 			for _, app := range s.Builder.Admin.apps {
-				kebabName := KebabCase(app.PluralName())
-
-				baseUrl := config.GetString(EnvKeys.BaseUrl) + "/api/" + kebabName
+				baseUrl := config.GetString(EnvKeys.BaseUrl) + "/api/" + app.KebabPluralName()
 
 				data := appInfo{
 					Name:   app.Name(),
