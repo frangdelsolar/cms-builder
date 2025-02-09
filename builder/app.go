@@ -46,6 +46,7 @@ type API struct {
 
 var DefaultList ApiFunction = func(a *App, db *Database) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+
 		err := ValidateRequestMethod(r, http.MethodGet)
 		if err != nil {
 			SendJsonResponse(w, http.StatusMethodNotAllowed, nil, err.Error())
@@ -71,6 +72,13 @@ var DefaultList ApiFunction = func(a *App, db *Database) HandlerFunc {
 			page = 1
 		}
 
+		orderParam := GetQueryParam("order", r)
+		order, err := a.ValidateOrderParam(orderParam)
+		if err != nil {
+			log.Error().Err(err).Msgf("Error validating order")
+			log.Warn().Msg("Using default order")
+		}
+
 		// Create slice to store the model instances.
 		instances, err := CreateSliceForUndeterminedType(a.Model)
 		if err != nil {
@@ -89,13 +97,13 @@ var DefaultList ApiFunction = func(a *App, db *Database) HandlerFunc {
 			// Admin
 			for _, role := range params.Roles {
 				if role == AdminRole {
-					db.Find(instances, query, pagination)
+					db.Find(instances, query, pagination, order)
 					SendJsonResponseWithPagination(w, http.StatusOK, instances, a.Name()+" list", pagination)
 					return
 				}
 			}
 
-			response := db.Find(instances, query, pagination)
+			response := db.Find(instances, query, pagination, order)
 			if response.Error != nil {
 				log.Error().Err(response.Error).Msgf("Error finding instances")
 				SendJsonResponse(w, http.StatusInternalServerError, nil, response.Error.Error())
@@ -106,14 +114,14 @@ var DefaultList ApiFunction = func(a *App, db *Database) HandlerFunc {
 			// Admin
 			for _, role := range params.Roles {
 				if role == AdminRole {
-					db.Find(instances, "", pagination)
+					db.Find(instances, "", pagination, order)
 					SendJsonResponseWithPagination(w, http.StatusOK, instances, a.Name()+" list", pagination)
 					return
 				}
 			}
 
 			query = "created_by_id = '" + params.RequestedById + "'"
-			res := db.Find(instances, query, pagination)
+			res := db.Find(instances, query, pagination, order)
 			if res.Error != nil {
 				SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
 				return
@@ -216,7 +224,7 @@ var DefaultCreate ApiFunction = func(a *App, db *Database) HandlerFunc {
 			return
 		}
 
-		res := db.Create(instance, params.RequestedById)
+		res := db.Create(instance, params.User)
 		if res.Error != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
 			return
@@ -290,7 +298,7 @@ var DefaultUpdate ApiFunction = func(a *App, db *Database) HandlerFunc {
 		}
 
 		// Update the record in the database
-		res := db.Save(instance, params.RequestedById)
+		res := db.Save(instance, params.User)
 		if res.Error != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
 			return
@@ -328,7 +336,7 @@ var DefaultDelete ApiFunction = func(a *App, db *Database) HandlerFunc {
 			return
 		}
 
-		res := db.Delete(instance, params.RequestedById)
+		res := db.Delete(instance, params.User)
 		if res.Error != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
 			return
@@ -394,6 +402,46 @@ func (a *App) PluralName() string {
 	return Pluralize(a.Name())
 }
 
+// KebabName returns the kebab-case form of the model's name.
+func (a *App) KebabName() string {
+	return KebabCase(a.Name())
+}
+
+// KebabPluralName returns the kebab-case form of the plural form of the model's name.
+func (a *App) KebabPluralName() string {
+	return KebabCase(a.PluralName())
+}
+
+// SnakeName returns the snake_case form of the model's name.
+func (a *App) SnakeName() string {
+	return SnakeCase(a.Name())
+}
+
+// SnakePluralName returns the snake_case form of the plural form of the model's name.
+func (a *App) SnakePluralName() string {
+	return SnakeCase(a.PluralName())
+}
+
+// FieldExists returns true if the given field name exists in the model, false otherwise.
+// It uses the JSON representation of the model to check if the field exists.
+func (a App) FieldExists(fieldName string) bool {
+	fieldNameLower := strings.ToLower(string(fieldName))
+
+	jsonData, err := JsonifyInterface(a.Model)
+	if err != nil {
+		return false
+	}
+
+	// Check if the field exists in the model's JSON representation
+	for k := range jsonData {
+		if strings.ToLower(k) == fieldNameLower {
+			return true
+		}
+	}
+
+	return false
+}
+
 // RegisterValidator registers a list of validators for a specific field in the model.
 //
 // Parameters:
@@ -405,25 +453,12 @@ func (a *App) PluralName() string {
 func (a *App) RegisterValidator(fieldName FieldName, validators ValidatorsList) error {
 	fieldNameLower := strings.ToLower(string(fieldName))
 
-	jsonData, err := JsonifyInterface(a.Model)
-	if err != nil {
-		return err
-	}
-
-	// Check if the field exists in the model's JSON representation
-	fieldExists := false
-	for k := range jsonData {
-		if strings.ToLower(k) == fieldNameLower {
-			fieldExists = true
-			break
-		}
-	}
+	fieldExists := a.FieldExists(fieldNameLower)
 
 	// If the field is not found, return an error
 	if !fieldExists {
 		return fmt.Errorf("field %s not found in model", fieldName)
 	}
-
 	// Append the provided validators to the existing list of validators for that field
 	a.Validators[fieldNameLower] = append(a.Validators[fieldNameLower], validators...)
 
@@ -463,6 +498,9 @@ func (a *App) GetValidatorsForField(fieldName FieldName) ValidatorsList {
 // - ValidationResult: a ValidationResult which contains a slice of FieldValidationError.
 func (a *App) Validate(instance interface{}) ValidationResult {
 
+	// TODO: Find a way to validate nested structs
+	// I think I could have a general object that has paths like system_data.id or upload.file_data.id as keys and validate them individually
+
 	errors := ValidationResult{
 		Errors: make([]ValidationError, 0),
 	}
@@ -490,6 +528,43 @@ func (a *App) Validate(instance interface{}) ValidationResult {
 	}
 
 	return errors
+}
+
+// ValidateOrderParam validates the given orderParam string and returns a valid order string for the given model.
+//
+// Parameters:
+// - orderParam: the orderParam string to be validated.
+//
+// Returns:
+// - string: a valid order string for the given model, or an empty string if the orderParam is empty.
+// - error: an error if one of the fields in the orderParam is not found in the model.
+func (a *App) ValidateOrderParam(orderParam string) (string, error) {
+	if orderParam == "" {
+		return "", nil
+	}
+
+	order := ""
+	fields := strings.Split(orderParam, ",")
+	for _, field := range fields {
+
+		desc := strings.HasPrefix(field, "-")
+
+		if desc {
+			field = strings.TrimPrefix(field, "-")
+		}
+
+		field = SnakeCase(field)
+
+		if desc {
+			order += field + " desc,"
+		} else {
+			order += field + ","
+		}
+	}
+
+	order = strings.TrimSuffix(order, ",")
+
+	return order, nil
 }
 
 // JsonifyInterface takes an interface{} and attempts to convert it to a map[string]interface{}
@@ -545,7 +620,6 @@ func (a *App) ApiDetail(db *Database) HandlerFunc {
 // occurs during the creation of the record.
 func (a *App) ApiCreate(db *Database) HandlerFunc {
 	return a.Api.Create(a, db)
-
 }
 
 // ApiUpdate returns a handler function that responds to PUT requests on the

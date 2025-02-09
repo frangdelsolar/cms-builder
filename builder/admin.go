@@ -82,7 +82,8 @@ func (a *Admin) Register(model interface{}, skipUserBinding bool, permissions Ro
 	}
 
 	// register the app
-	a.apps[app.Name()] = app
+	appName := strings.ToLower(app.Name())
+	a.apps[appName] = app
 
 	// apply migrations
 	a.Builder.DB.Migrate(app.Model)
@@ -128,7 +129,10 @@ func (a *Admin) Unregister(appName string) error {
 //
 // All CRUD routes are protected by authentication middleware.
 func (a *Admin) registerAPIRoutes(app App) {
-	baseRoute := "/api/" + app.PluralName()
+
+	kebabName := app.KebabPluralName()
+
+	baseRoute := "/api/" + kebabName
 	protectedRoute := true
 
 	a.Builder.Server.AddRoute(
@@ -137,7 +141,7 @@ func (a *Admin) registerAPIRoutes(app App) {
 			schema := jsonschema.Reflect(app.Model)
 			SendJsonResponse(w, http.StatusOK, schema, fmt.Sprintf("Schema for %s", app.Name()))
 		},
-		app.Name()+"-schema",
+		kebabName+"-schema",
 		!protectedRoute,
 		http.MethodGet,
 		nil,
@@ -146,7 +150,7 @@ func (a *Admin) registerAPIRoutes(app App) {
 	a.Builder.Server.AddRoute(
 		baseRoute,
 		app.ApiList(a.Builder.DB),
-		app.Name()+"-list",
+		kebabName+"-list",
 		protectedRoute,
 		http.MethodGet,
 		nil,
@@ -155,7 +159,7 @@ func (a *Admin) registerAPIRoutes(app App) {
 	a.Builder.Server.AddRoute(
 		baseRoute+"/new",
 		app.ApiCreate(a.Builder.DB),
-		app.Name()+"-new",
+		kebabName+"-new",
 		protectedRoute,
 		http.MethodPost,
 		app.Model,
@@ -164,7 +168,7 @@ func (a *Admin) registerAPIRoutes(app App) {
 	a.Builder.Server.AddRoute(
 		baseRoute+"/{id}",
 		app.ApiDetail(a.Builder.DB),
-		app.Name()+"-get",
+		kebabName+"-get",
 		protectedRoute,
 		http.MethodGet,
 		nil,
@@ -173,7 +177,7 @@ func (a *Admin) registerAPIRoutes(app App) {
 	a.Builder.Server.AddRoute(
 		baseRoute+"/{id}/delete",
 		app.ApiDelete(a.Builder.DB),
-		app.Name()+"-delete",
+		kebabName+"-delete",
 		protectedRoute,
 		http.MethodDelete,
 		nil,
@@ -182,7 +186,7 @@ func (a *Admin) registerAPIRoutes(app App) {
 	a.Builder.Server.AddRoute(
 		baseRoute+"/{id}/update",
 		app.ApiUpdate(a.Builder.DB),
-		app.Name()+"-update",
+		kebabName+"-update",
 		protectedRoute,
 		http.MethodPut,
 		app.Model,
@@ -190,6 +194,7 @@ func (a *Admin) registerAPIRoutes(app App) {
 }
 
 func (a *Admin) AddApiRoute() {
+
 	s := a.Builder.Server
 	s.AddRoute(
 		"/api",
@@ -206,7 +211,7 @@ func (a *Admin) AddApiRoute() {
 			output := make([]appInfo, 0)
 
 			for _, app := range s.Builder.Admin.apps {
-				baseUrl := config.GetString(EnvKeys.BaseUrl) + "/api/" + app.PluralName()
+				baseUrl := config.GetString(EnvKeys.BaseUrl) + "/api/" + app.KebabPluralName()
 
 				data := appInfo{
 					Name:   app.Name(),

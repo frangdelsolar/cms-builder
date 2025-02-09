@@ -10,6 +10,9 @@ COPY go.mod go.sum ./
 # Copy your Go source code
 COPY . .
 
+# Install dependencies
+RUN go install
+
 # Build your Go application
 RUN go build -o main .
 

@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-const builderVersion = "1.4.1"
+const builderVersion = "1.4.2"
 
 // ConfigKeys define the keys used in the configuration file
 type ConfigKeys struct {
@@ -209,6 +209,13 @@ func NewBuilder(input *NewBuilderInput) (*Builder, error) {
 	// Admin
 	b.InitAdmin()
 
+	// History
+	err = b.InitHistory()
+	if err != nil {
+		log.Err(err).Msg("Error initializing history")
+		return nil, err
+	}
+
 	// Firebase
 	err = b.InitFirebase()
 	if err != nil {
@@ -222,6 +229,7 @@ func NewBuilder(input *NewBuilderInput) (*Builder, error) {
 		return nil, err
 	}
 
+	// Store
 	err = b.InitStore()
 	if err != nil {
 		log.Err(err).Msg("Error initializing store")
@@ -246,13 +254,6 @@ func NewBuilder(input *NewBuilderInput) (*Builder, error) {
 	err = b.RegisterAdminUser()
 	if err != nil {
 		log.Err(err).Msg("Error registering admin user")
-		return nil, err
-	}
-
-	// History
-	err = b.InitHistory()
-	if err != nil {
-		log.Err(err).Msg("Error initializing history")
 		return nil, err
 	}
 
@@ -305,18 +306,14 @@ func (b *Builder) InitLogger() error {
 func (b *Builder) InitDatabase() error {
 	dbConfig := &DBConfig{}
 
-	env := config.GetString(EnvKeys.Environment)
-
-	if env == "production" || env == "stage" || env == "docker" {
-		dbConfig.URL = config.GetString(EnvKeys.DbUrl)
-	} else {
-		dbConfig.Path = config.GetString(EnvKeys.DbFile)
-	}
+	dbConfig.URL = config.GetString(EnvKeys.DbUrl)
+	dbConfig.Path = config.GetString(EnvKeys.DbFile)
 
 	log.Info().Str("path", dbConfig.Path).Str("url", dbConfig.URL).Msg("Initializing database...")
 
 	db, err := LoadDB(dbConfig)
 	if err != nil {
+		log.Error().Err(err).Msg("Error initializing database")
 		return err
 	}
 	b.DB = db
@@ -379,8 +376,8 @@ func (b *Builder) InitAuth() error {
 	admin := b.Admin
 
 	permissions := RolePermissionMap{
-		AdminRole:   AllAllowedAccess,
-		VisitorRole: AllAllowedAccess,
+		AdminRole:   []CrudOperation{OperationRead, OperationUpdate},
+		VisitorRole: []CrudOperation{OperationRead},
 	}
 
 	userApp, err := admin.Register(&User{}, true, permissions)
@@ -406,6 +403,17 @@ func (b *Builder) InitAuth() error {
 		log.Error().Err(err).Msg("Error registering roles validator")
 		return err
 	}
+
+	// TODO: Implement these
+	// userApp.Api.Delete = ...
+	// userApp.Api.Update = ...
+	// userApp.Api.Create = ...
+	// userApp.Api.List = ...
+	// userApp.Api.Detail = ...
+
+	// TODO: Create tests so that no user can edit another user unless authorized
+	// No user should be able to delete other users
+	// No user should be able to delete users, including himself
 
 	svr := b.Server
 	svr.AddRoute("/auth/register", b.RegisterVisitorController, "register", false, http.MethodPost, RegisterUserInput{})
@@ -454,6 +462,7 @@ func (b *Builder) InitUploader() error {
 		StaticPath:         "private/file/",
 	}
 
+	// TODO: Revisit this permissions
 	permissions := RolePermissionMap{
 		AdminRole:   AllAllowedAccess,
 		VisitorRole: AllAllowedAccess,
@@ -466,8 +475,41 @@ func (b *Builder) InitUploader() error {
 		return err
 	}
 
+	fdApp, err := b.Admin.Register(&FileData{}, false, permissions)
+	if err != nil {
+		log.Error().Err(err).Msg("Error registering FileData app")
+		return err
+	}
+
+	err = fdApp.RegisterValidator("name", ValidatorsList{RequiredValidator})
+	if err != nil {
+		log.Error().Err(err).Msg("Error registering name validator")
+		return err
+	}
+
+	err = fdApp.RegisterValidator("path", ValidatorsList{RequiredValidator})
+	if err != nil {
+		log.Error().Err(err).Msg("Error registering path validator")
+		return err
+	}
+
+	err = fdApp.RegisterValidator("url", ValidatorsList{RequiredValidator})
+	if err != nil {
+		log.Error().Err(err).Msg("Error registering url validator")
+		return err
+	}
+
 	// Define the base route for file operations
 	route := "/file"
+
+	b.Server.AddRoute(
+		route,
+		b.ListStoredFilesHandler(cfg),
+		"file-list",
+		true, // Requires authentication
+		http.MethodGet,
+		"list files",
+	)
 
 	// Add route for uploading new files
 	b.Server.AddRoute(
@@ -561,7 +603,7 @@ func (b *Builder) RegisterAdminUser() error {
 
 func (b *Builder) InitHistory() error {
 	permissions := RolePermissionMap{
-		AdminRole: AllAllowedAccess,
+		AdminRole: []CrudOperation{OperationRead},
 	}
 
 	_, err := b.Admin.Register(&HistoryEntry{}, false, permissions)

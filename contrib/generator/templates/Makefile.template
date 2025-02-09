@@ -1,11 +1,21 @@
 up:
 	docker-compose up
 
-build:
-	ENVIRONMENT=docker docker build . -t {{projectName}} 
+.PHONY: modsync
+modsync:
+	go get -u
+	go mod tidy
+	go mod vendor
+
+build: modsync
+	DOCKER_BUILDKIT=1 ENVIRONMENT=docker docker build . -t {{projectName}} 
 
 run-docker:
-	ENVIRONMENT=docker docker run -p 8000:80 {{projectName}} 
+	ENVIRONMENT=docker docker run -p 80:80 {{projectName}} 
+
+docker:
+	$(MAKE) build
+	$(MAKE) run-docker
 
 run:
 	ENVIRONMENT=development go run .

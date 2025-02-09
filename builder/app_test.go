@@ -1,6 +1,7 @@
 package builder_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -40,8 +41,8 @@ func TestRegisterApp(t *testing.T) {
 	app, err := e.Admin.Register(testStruct{}, false, permissions)
 	assert.NoError(t, err, "Register should not return an error")
 	assert.NotNil(t, app, "Register should return a non-nil App")
-	assert.Equal(t, "teststruct", app.Name(), "App name should be 'teststruct'")
-	assert.Equal(t, "teststructs", app.PluralName(), "App plural name should be 'teststructs'")
+	assert.Equal(t, "testStruct", app.Name(), "App name should be 'testStruct'")
+	assert.Equal(t, "testStructs", app.PluralName(), "App plural name should be 'testStructs'")
 
 	// check if the app is registered
 	t.Log("Testing GetApp")
@@ -57,7 +58,7 @@ func TestRegisterAPIRoutes(t *testing.T) {
 	e, err := th.GetDefaultEngine()
 	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 
-	type Test struct {
+	type TwoWords struct {
 		*builder.SystemData
 		Field string
 	}
@@ -65,17 +66,17 @@ func TestRegisterAPIRoutes(t *testing.T) {
 	permissions := builder.RolePermissionMap{}
 
 	t.Log("Testing RegisterApp")
-	e.Admin.Register(Test{}, false, permissions)
+	e.Admin.Register(TwoWords{}, false, permissions)
 
 	handler := func(w http.ResponseWriter, r *http.Request) {}
 
 	// check ig server has expected routs
 	expectedRoutes := []builder.RouteHandler{
-		builder.NewRouteHandler("/api/tests", handler, "test-list", true, http.MethodGet, nil),
-		builder.NewRouteHandler("/api/tests/new", handler, "test-new", true, http.MethodPost, Test{}),
-		builder.NewRouteHandler("/api/tests/{id}", handler, "test-get", true, http.MethodGet, nil),
-		builder.NewRouteHandler("/api/tests/{id}/delete", handler, "test-delete", true, http.MethodDelete, nil),
-		builder.NewRouteHandler("/api/tests/{id}/update", handler, "test-update", true, http.MethodPut, Test{}),
+		builder.NewRouteHandler("/api/two-words", handler, "two-words-list", true, http.MethodGet, nil),
+		builder.NewRouteHandler("/api/two-words/new", handler, "two-words-new", true, http.MethodPost, TwoWords{}),
+		builder.NewRouteHandler("/api/two-words/{id}", handler, "two-words-get", true, http.MethodGet, nil),
+		builder.NewRouteHandler("/api/two-words/{id}/delete", handler, "two-words-delete", true, http.MethodDelete, nil),
+		builder.NewRouteHandler("/api/two-words/{id}/update", handler, "two-words-update", true, http.MethodPut, TwoWords{}),
 	}
 
 	routes := e.Server.GetRoutes()
@@ -648,4 +649,54 @@ func TestUserCanNotReplaceInstanceIDOnUpdate(t *testing.T) {
 	assert.Equal(t, instance.GetIDString(), updatedInstance.GetIDString(), "ID should remain the same")
 	assert.Equal(t, user.ID, updatedInstance.CreatedByID, "CreatedByID should be the logged in user")
 	assert.Equal(t, user.ID, updatedInstance.UpdatedByID, "UpdatedByID should be the logged in user")
+}
+
+// TestJsonifyInterface tests that JsonifyInterface correctly converts a struct to a map[string]interface{}
+func TestJsonifyInterface(t *testing.T) {
+
+	t.Log("Testing JsonifyInterface with omitempty. Not Working")
+	t.Skip()
+	//TODO: find a way for this to work
+	type JsonTest struct {
+		Field      string `json:"field"`
+		NotOmitted string `json:"notOmitted"`
+	}
+
+	testStruct := JsonTest{}
+	// Convert the struct to a map
+	data, err := builder.JsonifyInterface(&testStruct)
+	assert.NoError(t, err, "JsonifyInterface should not return an error")
+
+	// Marshal the map to JSON
+	bytes, err := json.Marshal(data)
+	assert.NoError(t, err, "json.Marshal should not return an error")
+
+	// Assert the expected output
+	assert.Equal(t, `{"field":"","notOmitted":""}`, string(bytes))
+
+}
+
+// TestJsonifyInterfaceWithOmitempty tests that JsonifyInterface correctly converts a struct to a map[string]interface{}, including the use of "omitempty" tags.
+func TestJsonifyInterfaceWithOmitempty(t *testing.T) {
+
+	// t.Log("Testing JsonifyInterface with omitempty. Not Working")
+	t.Skip()
+	//TODO: find a way for this to work
+	type JsonTest struct {
+		Field   string `json:"field"`
+		Omitted string `json:"omitted,omitempty"`
+	}
+
+	testStruct := JsonTest{}
+	// Convert the struct to a map
+	data, err := builder.JsonifyInterface(&testStruct)
+	assert.NoError(t, err, "JsonifyInterface should not return an error")
+
+	// Marshal the map to JSON
+	bytes, err := json.Marshal(data)
+	assert.NoError(t, err, "json.Marshal should not return an error")
+
+	// Assert the expected output
+	assert.Equal(t, `{"field":"","omitted":""}`, string(bytes))
+
 }

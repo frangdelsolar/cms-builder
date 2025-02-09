@@ -143,6 +143,12 @@ func TestAppendRoleToUser(t *testing.T) {
 		},
 	}
 
+	var systemUser = &builder.User{
+		ID:    uint(9923142453952396459),
+		Name:  "System",
+		Email: "system@system",
+	}
+
 	for ix, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
@@ -155,7 +161,7 @@ func TestAppendRoleToUser(t *testing.T) {
 				Email: th.RandomEmail(),
 				Roles: roles,
 			}
-			e.DB.Create(&user, "test")
+			e.DB.Create(&user, systemUser)
 
 			// first test should pass an invalid id.
 			if ix == 0 {
@@ -234,6 +240,12 @@ func TestRemoveRoleFromUser(t *testing.T) {
 		},
 	}
 
+	var systemUser = &builder.User{
+		ID:    uint(9923142453952396459),
+		Name:  "System",
+		Email: "system@system",
+	}
+
 	for ix, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
@@ -249,7 +261,7 @@ func TestRemoveRoleFromUser(t *testing.T) {
 				Email: th.RandomEmail(),
 				Roles: roles,
 			}
-			e.DB.Create(&user, "test")
+			e.DB.Create(&user, systemUser)
 
 			// first test should pass an invalid id.
 			if ix == 0 {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
+	"net/http"
 	"os"
 	"path/filepath"
 )
@@ -73,7 +74,7 @@ func (s *LocalStore) StoreFile(cfg *UploaderConfig, fileName string, file multip
 		return fileData, err
 	}
 
-	fileData.Url = config.GetString(EnvKeys.BaseUrl) + "/" + cfg.StaticPath + fileData.Name
+	fileData.Url = config.GetString(EnvKeys.BaseUrl) + "/" + cfg.StaticPath + "/" + fileData.Name
 
 	return fileData, nil
 }
@@ -82,7 +83,7 @@ func (s *LocalStore) StoreFile(cfg *UploaderConfig, fileName string, file multip
 // It returns an error if the file cannot be deleted.
 func (s *LocalStore) DeleteFile(file FileData) error {
 	// Log the file path to be deleted
-	log.Warn().Msgf("Deleting file: %s", file.Path)
+	log.Warn().Interface("file", file).Msg("Deleting file from local store")
 
 	// Attempt to delete the file
 	if err := os.Remove(file.Path); err != nil {
@@ -96,17 +97,35 @@ func (s *LocalStore) DeleteFile(file FileData) error {
 }
 
 func (s *LocalStore) ListFiles() ([]string, error) {
-	log.Warn().Msgf("Listing files from %s", s.Path)
 	output := []string{}
-	files, err := os.ReadDir(s.Path)
+
+	err := filepath.Walk(s.Path, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			log.Error().Err(err).Msgf("Error accessing path: %s", path)
+			return err // Return the error to stop walking if needed
+		}
+
+		// Get the relative path from the store's path
+		relPath, err := filepath.Rel(s.Path, path)
+		if err != nil {
+			log.Error().Err(err).Msgf("Error getting relative path for: %s", path)
+			return err
+		}
+
+		// Skip the root directory itself.  Important!
+		if relPath == "." {
+			return nil // Continue walking
+		}
+
+		output = append(output, relPath)
+		return nil
+	})
+
 	if err != nil {
-		log.Error().Err(err).Msg("Error listing files")
-		return output, err
+		log.Error().Err(err).Msg("Error walking the file tree")
+		return nil, err
 	}
 
-	for _, file := range files {
-		output = append(output, file.Name())
-	}
 	return output, nil
 }
 
@@ -143,8 +162,7 @@ func (s *S3Store) StoreFile(cfg *UploaderConfig, fileName string, file multipart
 	}
 
 	path := filepath.Join(uploadsDir, fileName)
-	// url := "https://" + config.GetString(EnvKeys.AwsBucket) + "/" + uploadsDir + "/" + fileName
-	url := config.GetString(EnvKeys.BaseUrl) + "/" + cfg.StaticPath + fileData.Name
+	url := "https://" + config.GetString(EnvKeys.AwsBucket) + "/" + uploadsDir + "/" + fileName
 
 	fileData = FileData{
 		Name: fileName,
@@ -207,4 +225,22 @@ func NewS3Store(folder string) (*S3Store, error) {
 		Client: &client,
 		Path:   folder,
 	}, nil
+}
+
+func (b *Builder) ListStoredFilesHandler(cfg *UploaderConfig) HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		err := ValidateRequestMethod(r, http.MethodGet)
+		if err != nil {
+			SendJsonResponse(w, http.StatusMethodNotAllowed, err, err.Error())
+			return
+		}
+
+		files, err := b.Store.ListFiles()
+		if err != nil {
+			log.Error().Err(err).Msg("Error deleting file")
+		}
+
+		SendJsonResponse(w, http.StatusOK, files, "StoredFiles")
+	}
 }

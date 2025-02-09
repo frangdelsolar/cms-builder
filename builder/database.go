@@ -39,6 +39,18 @@ func (db *Database) FindById(id string, entity interface{}, queryExtension strin
 	return db.DB.Where(q).First(entity)
 }
 
+// FindUserByFirebaseId retrieves a user from the database by its Firebase ID.
+//
+// Parameters:
+//   - firebaseId: the Firebase ID of the user to be retrieved.
+//   - entity: the destination where the result will be stored.
+//
+// Returns:
+//   - *gorm.DB: the result of the database query, which can be used to check for errors.
+func (db *Database) FindUserByFirebaseId(firebaseId string, user *User) *gorm.DB {
+	return db.DB.Where("firebase_id = ?", firebaseId).First(user)
+}
+
 // Find retrieves records from the database based on the provided query.
 // If pagination is provided, the query will be limited to the specified number of records
 // and offset to the correct page.
@@ -50,17 +62,17 @@ func (db *Database) FindById(id string, entity interface{}, queryExtension strin
 //
 // Returns:
 //   - *gorm.DB: the result of the database query, which can be used to check for errors.
-func (db *Database) Find(entity interface{}, query string, pagination *Pagination) *gorm.DB {
+func (db *Database) Find(entity interface{}, query string, pagination *Pagination, order string) *gorm.DB {
 
 	if pagination == nil {
-		return db.DB.Where(query).Find(entity)
+		return db.DB.Order(order).Where(query).Find(entity)
 	}
 
 	// Retrieve total number of records
 	db.DB.Model(entity).Where(query).Count(&pagination.Total)
 
 	// Apply pagination
-	filtered := db.DB.Where(query)
+	filtered := db.DB.Where(query).Order(order)
 	limit := pagination.Limit
 	offset := (pagination.Page - 1) * pagination.Limit
 
@@ -74,11 +86,11 @@ func (db *Database) Find(entity interface{}, query string, pagination *Paginatio
 //
 // Returns:
 //   - *gorm.DB: the result of the database query, which can be used to check for errors.
-func (db *Database) Create(entity interface{}, userId string) *gorm.DB {
+func (db *Database) Create(entity interface{}, user *User) *gorm.DB {
 
 	result := db.DB.Create(entity)
 	if result.Error == nil {
-		historyEntry, err := NewLogHistoryEntry(CreateCRUDAction, userId, entity)
+		historyEntry, err := NewLogHistoryEntry(CreateCRUDAction, user, entity)
 		if err != nil {
 			return nil
 		}
@@ -95,11 +107,11 @@ func (db *Database) Create(entity interface{}, userId string) *gorm.DB {
 //
 // Returns:
 //   - *gorm.DB: the result of the database query, which can be used to check for errors.
-func (db *Database) Delete(entity interface{}, userId string) *gorm.DB {
+func (db *Database) Delete(entity interface{}, user *User) *gorm.DB {
 
 	result := db.DB.Delete(entity)
 	if result.Error == nil {
-		historyEntry, err := NewLogHistoryEntry(DeleteCRUDAction, userId, entity)
+		historyEntry, err := NewLogHistoryEntry(DeleteCRUDAction, user, entity)
 		if err != nil {
 			return nil
 		}
@@ -116,11 +128,11 @@ func (db *Database) Delete(entity interface{}, userId string) *gorm.DB {
 //
 // Returns:
 //   - *gorm.DB: the result of the database query, which can be used to check for errors.
-func (db *Database) Save(entity interface{}, userId string) *gorm.DB {
+func (db *Database) Save(entity interface{}, user *User) *gorm.DB {
 
 	result := db.DB.Save(entity)
 	if result.Error == nil {
-		historyEntry, err := NewLogHistoryEntry(UpdateCRUDAction, userId, entity)
+		historyEntry, err := NewLogHistoryEntry(UpdateCRUDAction, user, entity)
 		if err != nil {
 			return nil
 		}

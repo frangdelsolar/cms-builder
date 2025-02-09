@@ -81,7 +81,7 @@ func (s *Scheduler) RegisterJob(name string, frequency JobFrequency, function an
 		CreatedByID: s.User.ID,
 		UpdatedByID: s.User.ID,
 	}
-	s.Builder.DB.Save(&frequency, s.User.GetIDString())
+	s.Builder.DB.Save(&frequency, s.User)
 
 	jobDefinition, err := s.CreateJobDefinition(name, frequency)
 	if err != nil {
@@ -116,7 +116,7 @@ func (s *Scheduler) RegisterJob(name string, frequency JobFrequency, function an
 						CronJobId:       jobID.String(),
 					}
 
-					s.Builder.DB.Save(&task, s.User.GetIDString())
+					s.Builder.DB.Save(&task, s.User)
 
 					schedulerLogger.Info().
 						Interface("Task", task).
@@ -171,14 +171,14 @@ func (s *Scheduler) UpdateTaskStatus(id string, status TaskStatus, errMsg string
 	if errMsg != "" {
 		task.Error = errMsg
 	}
-	return s.Builder.DB.Save(&task, s.User.GetIDString()).Error
+	return s.Builder.DB.Save(&task, s.User).Error
 }
 
 func (s *Scheduler) GetSchedulerTask(id string) *SchedulerTask {
 	var task SchedulerTask
 
 	q := "cron_job_id = '" + id + "'"
-	s.Builder.DB.Find(&task, q, nil)
+	s.Builder.DB.Find(&task, q, nil, "")
 	return &task
 }
 
@@ -193,7 +193,7 @@ func (s *Scheduler) CreateJobDefinition(name string, frequency JobFrequency) (*S
 		Frequency:   &frequency,
 		FrequencyId: frequency.SystemData.GetIDString(),
 	}
-	if err := db.Create(&localJob, s.User.GetIDString()).Error; err != nil {
+	if err := db.Create(&localJob, s.User).Error; err != nil {
 		return nil, err
 	}
 	return localJob, nil
@@ -236,8 +236,6 @@ func NewScheduler(b *Builder) (*Scheduler, error) {
 
 	b.DB.DB.Find(schedulerUser, "email = ?", schedulerUserData.Email)
 
-	log.Debug().Interface("User", schedulerUserData).Msg("Creating scheduler user")
-
 	// var createdUser *User
 	if schedulerUser == (&User{}) {
 		newOne, err := b.CreateUserWithRole(*schedulerUserData, SchedulerRole, false)
@@ -248,8 +246,6 @@ func NewScheduler(b *Builder) (*Scheduler, error) {
 
 		schedulerUser = newOne
 	}
-
-	log.Info().Interface("User", schedulerUser).Msg("Scheduler")
 
 	s, err := gocron.NewScheduler(
 		gocron.WithLogger(gocron.NewLogger(gocron.LogLevelDebug)),
