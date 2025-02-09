@@ -204,9 +204,13 @@ func (a *Admin) AddApiRoute() {
 				Path   string `json:"path"`
 			}
 			type appInfo struct {
-				Name      string              `json:"name"`
-				Plural    string              `json:"pluralName"`
-				Endpoints map[string]Endpoint `json:"endpoints"`
+				Name        string              `json:"name"`
+				Plural      string              `json:"pluralName"`
+				Snake       string              `json:"snakeName"`
+				Kebab       string              `json:"kebabName"`
+				SnakePlural string              `json:"snakePluralName"`
+				KebabPlural string              `json:"kebabPluralName"`
+				Endpoints   map[string]Endpoint `json:"endpoints"`
 			}
 			output := make([]appInfo, 0)
 
@@ -214,8 +218,12 @@ func (a *Admin) AddApiRoute() {
 				baseUrl := config.GetString(EnvKeys.BaseUrl) + "/api/" + app.KebabPluralName()
 
 				data := appInfo{
-					Name:   app.Name(),
-					Plural: app.PluralName(),
+					Name:        app.Name(),
+					Plural:      app.PluralName(),
+					Snake:       app.SnakeName(),
+					Kebab:       app.KebabName(),
+					SnakePlural: app.SnakePluralName(),
+					KebabPlural: app.KebabPluralName(),
 					Endpoints: map[string]Endpoint{
 						"schema": {
 							Method: http.MethodGet,

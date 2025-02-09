@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-const builderVersion = "1.4.2"
+const builderVersion = "1.4.3"
 
 // ConfigKeys define the keys used in the configuration file
 type ConfigKeys struct {
@@ -547,7 +547,7 @@ func (b *Builder) InitUploader() error {
 func (b *Builder) InitScheduler() error {
 
 	permissions := RolePermissionMap{
-		AdminRole:     AllAllowedAccess,
+		AdminRole:     []CrudOperation{OperationRead},
 		SchedulerRole: AllAllowedAccess,
 	}
 
