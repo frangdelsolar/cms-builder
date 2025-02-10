@@ -6,6 +6,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 var (
@@ -17,6 +18,7 @@ var (
 type Database struct {
 	DB      *gorm.DB // Embedded GORM DB instance for database access
 	Builder *Builder
+	Config  *DBConfig
 }
 
 // FindById retrieves a single record from the database that matches the provided ID.
@@ -63,13 +65,16 @@ func (db *Database) FindUserByFirebaseId(firebaseId string, user *User) *gorm.DB
 // Returns:
 //   - *gorm.DB: the result of the database query, which can be used to check for errors.
 func (db *Database) Find(entity interface{}, query string, pagination *Pagination, order string) *gorm.DB {
+	if order == "" {
+		order = "id desc"
+	}
 
 	if pagination == nil {
 		return db.DB.Order(order).Where(query).Find(entity)
 	}
 
 	// Retrieve total number of records
-	db.DB.Model(entity).Where(query).Count(&pagination.Total)
+	db.DB.Model(entity).Debug().Where(query).Count(&pagination.Total)
 
 	// Apply pagination
 	filtered := db.DB.Where(query).Order(order)
@@ -149,7 +154,11 @@ type DBConfig struct {
 	URL string
 	// Path: Used for connecting to a SQLite database.
 	// Provide the path to the SQLite database file.
-	Path    string
+	Path string
+
+	// Driver: The driver to use for connecting to the database. postgres or sqlite
+	Driver string
+
 	Builder *Builder
 }
 
@@ -164,33 +173,37 @@ func LoadDB(config *DBConfig) (*Database, error) {
 		return nil, ErrDBConfigNotProvided
 	}
 
-	var db *Database
+	if config.Driver == "" || (config.Driver != "postgres" && config.Driver != "sqlite") {
+		log.Warn().Msg("Driver not provided or invalid. Defaulting to SQLite")
+		config.Driver = "sqlite"
+	}
 
-	if config.URL != "" {
-		// Connect to PostgreSQL
-		gormDB, err := gorm.Open(postgres.Open(config.URL), &gorm.Config{})
+	db := &Database{}
+
+	switch config.Driver {
+	case "postgres":
+		connection, err := gorm.Open(postgres.Open(config.URL), &gorm.Config{
+			Logger: logger.Default.LogMode(logger.Info),
+		})
 		if err != nil {
 			return db, err
 		}
-		return &Database{
-			gormDB,
-			config.Builder,
-		}, nil
-	}
+		db.DB = connection
 
-	if config.Path != "" {
-		// Connect to SQLite
-		gormDB, err := gorm.Open(sqlite.Open(config.Path), &gorm.Config{})
+	case "sqlite":
+		connection, err := gorm.Open(sqlite.Open(config.Path), &gorm.Config{
+			Logger: logger.Default.LogMode(logger.Info),
+		})
 		if err != nil {
 			return db, err
 		}
-		return &Database{
-			gormDB,
-			config.Builder,
-		}, nil
+		db.DB = connection
 	}
 
-	return db, ErrDBConfigNotProvided // Should never be reached, but added for completeness
+	db.Config = config
+	db.Builder = config.Builder
+
+	return db, nil
 }
 
 // Migrate calls the AutoMigrate method on the GORM DB instance.
