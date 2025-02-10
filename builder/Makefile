@@ -21,3 +21,8 @@ logs:
 .PHONY: fix
 fix:
 	cd ../scripts && python3 find_todos.py
+
+
+.PHONY: migration 
+migration:
+	migrate create -ext sql -dir migrations -seq $(name)
