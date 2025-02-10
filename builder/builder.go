@@ -323,12 +323,6 @@ func (b *Builder) InitDatabase() error {
 	}
 	b.DB = db
 
-	// err = Migrate(dbConfig)
-	// if err != nil {
-	// 	log.Error().Err(err).Msg("Error migrating database")
-	// 	return err
-	// }
-
 	log.Info().Msg("Database initialized")
 	return nil
 }
