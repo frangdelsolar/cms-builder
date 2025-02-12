@@ -505,7 +505,7 @@ func (b *Builder) InitUploader() error {
 	}
 
 	// Define the base route for file operations
-	route := "/file"
+	route := "/files"
 
 	b.Server.AddRoute(
 		route,
@@ -528,7 +528,7 @@ func (b *Builder) InitUploader() error {
 
 	// Add route for deleting files by ID
 	b.Server.AddRoute(
-		route+"/{id}/delete",
+		route+"/delete",
 		b.GetFileDeleteHandler(cfg),
 		"file-delete",
 		true, // Requires authentication
@@ -538,9 +538,18 @@ func (b *Builder) InitUploader() error {
 
 	// Download route
 	b.Server.AddRoute(
-		route+"/{path:.*}",
-		b.GetStaticHandler(cfg),
-		"file-static",
+		route+"/download",
+		b.GetDownloadHandler(cfg),
+		"file-download",
+		true,
+		http.MethodGet,
+		nil,
+	)
+
+	b.Server.AddRoute(
+		route+"/info",
+		b.GetFileInfoHandler(cfg),
+		"file-info",
 		true,
 		http.MethodGet,
 		nil,

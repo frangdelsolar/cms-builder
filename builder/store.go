@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"mime"
 	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 type StoreType string
@@ -17,12 +19,20 @@ const (
 	StoreS3    StoreType = "s3"
 )
 
+type FileInfo struct {
+	Name         string    `json:"name"`
+	Size         int64     `json:"size"`
+	LastModified time.Time `json:"last_modified,omitempty"`
+	ContentType  string    `json:"content_type,omitempty"`
+}
+
 type Store interface {
 	GetPath() string
 	StoreFile(cfg *UploaderConfig, fileName string, file multipart.File) (fileData FileData, err error)
 	DeleteFile(file FileData) error
 	ListFiles() ([]string, error)
 	ReadFile(file *FileData) ([]byte, error)
+	GetFileInfo(file *FileData) (*FileInfo, error)
 }
 
 type LocalStore struct {
@@ -116,6 +126,7 @@ func (s *LocalStore) ListFiles() ([]string, error) {
 		if relPath == "." {
 			return nil // Continue walking
 		}
+		relPath = s.Path + "/" + relPath
 
 		output = append(output, relPath)
 		return nil
@@ -131,6 +142,36 @@ func (s *LocalStore) ListFiles() ([]string, error) {
 
 func (s *LocalStore) ReadFile(file *FileData) ([]byte, error) {
 	return os.ReadFile(file.Path)
+}
+
+func (s *LocalStore) GetFileInfo(file *FileData) (*FileInfo, error) {
+
+	stats, err := os.Stat(file.Path)
+	if err != nil {
+		return nil, err
+	}
+
+	if stats.IsDir() {
+		return nil, fmt.Errorf("file is a directory")
+	}
+
+	// Get the content type
+	var contentType string
+	mime := mime.TypeByExtension(filepath.Ext(file.Name))
+	if mime != "" {
+		contentType = mime
+	} else {
+		contentType = "application/octet-stream"
+	}
+
+	fileInfo := &FileInfo{
+		Name:         stats.Name(),
+		Size:         stats.Size(),
+		LastModified: stats.ModTime(),
+		ContentType:  contentType,
+	}
+
+	return fileInfo, nil
 }
 
 type S3Store struct {
@@ -178,7 +219,7 @@ func (s *S3Store) StoreFile(cfg *UploaderConfig, fileName string, file multipart
 // If an error occurs during the deletion, it logs the error and returns it.
 func (s *S3Store) DeleteFile(file FileData) error {
 	log.Warn().Interface("file", file).Msg("Deleting file from S3")
-	err := s.Client.DeleteFile(file.Url)
+	err := s.Client.DeleteFile(file.Path)
 	if err != nil {
 		log.Error().Err(err).Msg("Error deleting file from S3")
 		return err
@@ -193,6 +234,10 @@ func (s *S3Store) ListFiles() ([]string, error) {
 
 func (s *S3Store) ReadFile(file *FileData) ([]byte, error) {
 	return s.Client.DownloadFile(file.Path)
+}
+
+func (s *S3Store) GetFileInfo(file *FileData) (*FileInfo, error) {
+	return s.Client.GetFileInfo(file.Path)
 }
 
 // getFileBytes reads the contents of a multipart.File into a byte array.

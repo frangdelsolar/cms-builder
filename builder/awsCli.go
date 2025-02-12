@@ -92,6 +92,14 @@ func (a *AwsManager) UploadFile(directory string, fileName string, file []byte) 
 func (a *AwsManager) DeleteFile(fileName string) error {
 	log.Info().Str("fileName", fileName).Msg("Deleting file from S3.")
 
+	if fileName == "" {
+		return nil
+	}
+
+	if fileName == "cors.json" {
+		return nil
+	}
+
 	ctx := context.Background()
 	objectKey := aws.String(fileName)
 
@@ -135,8 +143,6 @@ func (a *AwsManager) DownloadFile(fileName string) ([]byte, error) {
 
 	defer resp.Body.Close()
 
-	log.Info().Str("fileName", fileName).Msg("Downloading file from S3.")
-
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Error().Err(err).Msg("Error reading file from S3")
@@ -164,8 +170,39 @@ func (a *AwsManager) ListFiles() ([]string, error) {
 	}
 
 	for _, obj := range resp.Contents {
+		if *obj.Key == "cors.json" {
+			continue
+		}
 		output = append(output, *obj.Key)
 	}
 
 	return output, nil
+}
+
+func (a *AwsManager) GetFileInfo(fileName string) (*FileInfo, error) {
+
+	client, err := a.GetClient()
+	if err != nil {
+		log.Error().Err(err).Str("fileName", fileName).Msg("Error getting client")
+		return nil, err
+	}
+
+	ctx := context.Background()
+	resp, err := client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(a.Bucket),
+		Key:    aws.String(fileName),
+	})
+	if err != nil {
+		log.Error().Err(err).Str("fileName", fileName).Msg("Error getting file info from S3")
+		return nil, err
+	}
+
+	fileInfo := &FileInfo{
+		Name:         fileName,
+		Size:         *resp.ContentLength,
+		LastModified: *resp.LastModified,
+		ContentType:  *resp.ContentType,
+	}
+
+	return fileInfo, err
 }
