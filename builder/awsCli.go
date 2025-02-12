@@ -97,6 +97,7 @@ func (a *AwsManager) DeleteFile(fileName string) error {
 	}
 
 	if fileName == "cors.json" {
+		log.Warn().Msg("Skipping cors.json from deletion")
 		return nil
 	}
 
@@ -171,6 +172,7 @@ func (a *AwsManager) ListFiles() ([]string, error) {
 
 	for _, obj := range resp.Contents {
 		if *obj.Key == "cors.json" {
+			log.Info().Msg("Skipping cors.json from listed files")
 			continue
 		}
 		output = append(output, *obj.Key)
@@ -179,6 +181,11 @@ func (a *AwsManager) ListFiles() ([]string, error) {
 	return output, nil
 }
 
+// GetFileInfo gets the file information from S3 for the given file name.
+//
+// It returns a FileInfo object containing the file's name, size, last modified
+// time, and content type. If there is an error, it logs the error and returns
+// it.
 func (a *AwsManager) GetFileInfo(fileName string) (*FileInfo, error) {
 
 	client, err := a.GetClient()

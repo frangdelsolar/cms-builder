@@ -193,6 +193,32 @@ func (a *Admin) registerAPIRoutes(app App) {
 	)
 }
 
+// AddApiRoute adds an endpoint that returns a JSON response with information about
+// all the registered apps, including their name, plural name, snake case name,
+// kebab case name, endpoints, and their respective HTTP methods.
+//
+// The structure of the response is as follows:
+//
+// [
+//
+//	{
+//	  "name": "string",
+//	  "pluralName": "string",
+//	  "snakeName": "string",
+//	  "kebabName": "string",
+//	  "snakePluralName": "string",
+//	  "kebabPluralName": "string",
+//	  "endpoints": {
+//	    "schema": {
+//	      "method": "string",
+//	      "path": "string",
+//	    },
+//	    // ... other endpoints ...
+//	  }
+//	},
+//	// ... other apps ...
+//
+// ]
 func (a *Admin) AddApiRoute() {
 
 	s := a.Builder.Server

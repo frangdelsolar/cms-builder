@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-const builderVersion = "1.4.3"
+const builderVersion = "1.4.4"
 
 // ConfigKeys define the keys used in the configuration file
 type ConfigKeys struct {
@@ -314,8 +314,6 @@ func (b *Builder) InitDatabase() error {
 	dbConfig.Driver = config.GetString(EnvKeys.DbDriver)
 	dbConfig.Builder = b
 
-	log.Info().Str("path", dbConfig.Path).Str("url", dbConfig.URL).Msg("Initializing database...")
-
 	db, err := LoadDB(dbConfig)
 	if err != nil {
 		log.Error().Err(err).Msg("Error initializing database")
@@ -323,7 +321,6 @@ func (b *Builder) InitDatabase() error {
 	}
 	b.DB = db
 
-	log.Info().Msg("Database initialized")
 	return nil
 }
 
@@ -520,7 +517,7 @@ func (b *Builder) InitUploader() error {
 	b.Server.AddRoute(
 		route+"/upload",
 		b.GetFilePostHandler(cfg),
-		"file-new",
+		"file-upload",
 		true, // Requires authentication
 		http.MethodPost,
 		"form with file",
