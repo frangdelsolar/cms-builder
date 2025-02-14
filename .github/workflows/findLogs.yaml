@@ -27,7 +27,7 @@ jobs:
         uses: tj-actions/changed-files@v41
         with:
           files: |
-            builder/**
+            cms-builder-server/**
       # run the check-branch-engines script
       - name: Check Logs
         working-directory: scripts
