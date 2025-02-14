@@ -6,6 +6,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 var (
@@ -158,51 +159,43 @@ type DBConfig struct {
 	// Driver: The driver to use for connecting to the database. postgres or sqlite
 	Driver string
 
+	// Logging: Enable logging for the database connection.
+	Logging bool
+
 	Builder *Builder
 }
 
-// LoadDB establishes a connection to the database based on the provided configuration.
-//
-// It takes a pointer to a DBConfig struct as input, which specifies the connection details.
-// On successful connection, it returns a pointer to a Database instance encapsulating the GORM DB object.
-// Otherwise, it returns an error indicating the connection failure.
+// LoadDB loads a database connection from the provided configuration.
 func LoadDB(config *DBConfig) (*Database, error) {
-
-	if config == nil || (config.URL == "" && config.Path == "") {
+	if config == nil {
 		return nil, ErrDBConfigNotProvided
 	}
 
-	if config.Driver == "" || (config.Driver != "postgres" && config.Driver != "sqlite") {
-		log.Warn().Msg("Driver not provided or invalid. Defaulting to SQLite")
-		config.Driver = "sqlite"
+	dialect := config.Driver
+	if dialect == "" {
+		dialect = "sqlite"
 	}
 
-	db := &Database{}
+	var gormConfig *gorm.Config = &gorm.Config{}
+	if config.Logging {
+		gormConfig = &gorm.Config{Logger: logger.Default.LogMode(logger.Info)}
+	}
 
-	switch config.Driver {
+	var db *gorm.DB
+	var err error
+	switch dialect {
 	case "postgres":
-		connection, err := gorm.Open(postgres.Open(config.URL), &gorm.Config{
-			// Logger: logger.Default.LogMode(logger.Info),
-		})
-		if err != nil {
-			return db, err
-		}
-		db.DB = connection
+		db, err = gorm.Open(postgres.Open(config.URL), gormConfig)
 
 	case "sqlite":
-		connection, err := gorm.Open(sqlite.Open(config.Path), &gorm.Config{
-			// Logger: logger.Default.LogMode(logger.Info),
-		})
-		if err != nil {
-			return db, err
-		}
-		db.DB = connection
+		db, err = gorm.Open(sqlite.Open(config.Path), gormConfig)
 	}
 
-	db.Config = config
-	db.Builder = config.Builder
+	if err != nil {
+		return nil, err
+	}
 
-	return db, nil
+	return &Database{DB: db, Config: config, Builder: config.Builder}, nil
 }
 
 // Migrate calls the AutoMigrate method on the GORM DB instance.

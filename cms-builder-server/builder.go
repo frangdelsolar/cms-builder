@@ -22,6 +22,7 @@ type ConfigKeys struct {
 	Domain                string `json:"domain"`                // Domain
 	DbDriver              string `json:"dbDriver"`              // Database driver
 	DbFile                string `json:"dbFile"`                // Database file
+	DbLogging             string `json:"dbLogging"`             // Database logging
 	DbUrl                 string `json:"dbUrl"`                 // Database URL
 	ServerHost            string `json:"serverHost"`            // Server host
 	ServerPort            string `json:"serverPort"`            // Server port
@@ -53,6 +54,7 @@ var EnvKeys = ConfigKeys{
 	LogWriteToFile:        "LOG_WRITE_TO_FILE",
 	Domain:                "DOMAIN",
 	DbDriver:              "DB_DRIVER",
+	DbLogging:             "DB_LOGGING",
 	DbFile:                "DB_FILE",
 	DbUrl:                 "DB_URL",
 	ServerHost:            "SERVER_HOST",
@@ -85,6 +87,7 @@ var DefaultEnvValues = ConfigKeys{
 	LogWriteToFile:        "true",
 	Domain:                "localhost",
 	DbDriver:              "sqlite",
+	DbLogging:             "false",
 	DbFile:                "database.db",
 	DbUrl:                 "",
 	ServerHost:            "0.0.0.0",
@@ -312,6 +315,7 @@ func (b *Builder) InitDatabase() error {
 	dbConfig.URL = config.GetString(EnvKeys.DbUrl)
 	dbConfig.Path = config.GetString(EnvKeys.DbFile)
 	dbConfig.Driver = config.GetString(EnvKeys.DbDriver)
+	dbConfig.Logging = config.GetBool(EnvKeys.DbLogging)
 	dbConfig.Builder = b
 
 	db, err := LoadDB(dbConfig)

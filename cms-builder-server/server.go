@@ -131,7 +131,7 @@ func CORS(next http.Handler) http.Handler {
 		allowedOrigins := config.GetStringSlice(EnvKeys.CorsAllowedOrigins)
 		origin := r.Header.Get("Origin")
 
-		if allowedOrigins[0] == "*" || contains(allowedOrigins, origin) {
+		if len(allowedOrigins) > 0 && allowedOrigins[0] == "*" || contains(allowedOrigins, origin) {
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 
