@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	builder "github.com/frangdelsolar/cms/cms-builder-server"
+	builder "github.com/frangdelsolar/cms-builder/cms-builder-server"
 	"github.com/stretchr/testify/assert"
 )
 

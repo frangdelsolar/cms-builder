@@ -7,7 +7,7 @@ import (
 	"io"
 	"net/http"
 
-	builder "github.com/frangdelsolar/cms/cms-builder-server"
+	builder "github.com/frangdelsolar/cms-builder/cms-builder-server"
 )
 
 var firebaseLoginUrl = "https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key="
