@@ -17,6 +17,7 @@ jobs:
       LOG_LEVEL: debug
       LOG_WRITE_TO_FILE: false
       DB_FILE: ${{ github.workspace }}/cicd.db
+      DB_DRIVER: sqlite
       FIREBASE_SECRET: ${{ secrets.FIREBASE_SECRET }}
       FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
       UPLOADER_MAX_SIZE: 5000
