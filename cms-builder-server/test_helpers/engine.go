@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/frangdelsolar/cms/builder"
+	builder "github.com/frangdelsolar/cms/cms-builder-server"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 )
@@ -133,7 +133,7 @@ func CreateMockResource(t *testing.T, db *builder.Database, app *builder.App, us
 // Returns:
 // - builder.Response: the parsed response from the API call handler function.
 func ExecuteApiCall(t *testing.T, apiCall builder.HandlerFunc, request *http.Request, v interface{}) (builder.Response, error) {
-	t.Log("Executing API call", request.Method, request.Body, v)
+	// t.Log("Executing API call", request.Method, request.Body, v)
 	writer := MockWriter{}
 	apiCall(&writer, request)
 

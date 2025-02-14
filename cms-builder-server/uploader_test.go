@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/frangdelsolar/cms/builder"
-	th "github.com/frangdelsolar/cms/builder/test_helpers"
+	builder "github.com/frangdelsolar/cms/cms-builder-server"
+	th "github.com/frangdelsolar/cms/cms-builder-server/test_helpers"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -24,9 +24,11 @@ func TestUploaderGetsCreated(t *testing.T) {
 
 	t.Log("Testing Upload routes are registered")
 	expectedRoutes := []builder.RouteHandler{
-		builder.NewRouteHandler("/file/upload", handler, "file-new", true, http.MethodPost, nil),
-		builder.NewRouteHandler("/file/{id}/delete", handler, "file-delete", true, http.MethodDelete, nil),
-		builder.NewRouteHandler("/file/{path:.*}", handler, "file-static", true, http.MethodGet, nil), // static path is configurable as env var
+		builder.NewRouteHandler("/files", handler, "file-list", true, http.MethodGet, nil),
+		builder.NewRouteHandler("/files/upload", handler, "file-upload", true, http.MethodPost, nil),
+		builder.NewRouteHandler("/files/delete", handler, "file-delete", true, http.MethodDelete, nil),
+		builder.NewRouteHandler("/files/download", handler, "file-download", true, http.MethodGet, nil),
+		builder.NewRouteHandler("/files/info", handler, "file-info", true, http.MethodGet, nil),
 	}
 
 	routes := e.Server.GetRoutes()

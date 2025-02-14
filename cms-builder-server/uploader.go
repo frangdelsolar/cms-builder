@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"path"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -138,73 +137,32 @@ func (b *Builder) GetFileDeleteHandler(cfg *UploaderConfig) HandlerFunc {
 			return
 		}
 
-		uploadApp, err := b.Admin.GetApp("upload")
+		file := GetQueryParam("file", r)
+
+		if file == "" {
+			SendJsonResponse(w, http.StatusBadRequest, nil, "File not found")
+			return
+		}
+
+		err = b.Store.DeleteFile(FileData{Path: file})
 		if err != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
 		}
 
-		params := FormatRequestParameters(r, b)
-		isAllowed := uploadApp.Permissions.HasPermission(params.Roles, OperationDelete)
-		if !isAllowed {
-			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to delete this resource")
-			return
-		}
-
-		var instance Upload
-
-		instanceId := GetUrlParam("id", r)
-
-		result := b.DB.FindById(instanceId, &instance, "")
-		if result.Error != nil {
-			SendJsonResponse(w, http.StatusInternalServerError, nil, result.Error.Error())
-			return
-		}
-
-		if instance == (Upload{}) {
-			SendJsonResponse(w, http.StatusNotFound, nil, "File not found")
-			return
-		}
-
-		// Delete the file from disk
-		err = b.Store.DeleteFile(*instance.FileData)
-		if err != nil {
-			log.Error().Err(err).Msg("Error deleting file")
-		}
-
-		// Delete the record from the database
-		result = b.DB.Delete(&instance, params.User)
-		if result.Error != nil {
-			SendJsonResponse(w, http.StatusInternalServerError, nil, result.Error.Error())
-			return
-		}
-
 		msg := "File deleted successfully"
-		if err != nil {
-			msg = err.Error() + ". Database entry deleted successfuly."
-		}
-
 		SendJsonResponse(w, http.StatusOK, nil, msg)
 	}
 }
 
 // getStaticHandler returns a handler function that serves static files from the
 // configured folder.
-func (b *Builder) GetStaticHandler(cfg *UploaderConfig) HandlerFunc {
+func (b *Builder) GetDownloadHandler(cfg *UploaderConfig) HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		requestPath := r.URL.Path
-		if !strings.HasPrefix(requestPath, cfg.StaticPath) {
-			log.Error().Msgf("Invalid request path: %s", requestPath)
-			SendJsonResponse(w, http.StatusNotFound, nil, "File not found")
-			return
-		}
-
-		fileName := strings.TrimPrefix(requestPath, cfg.StaticPath)
-		filePath := filepath.Join(cfg.Folder, filepath.Base(fileName))
-
-		bytes, err := b.Store.ReadFile(&FileData{Path: filePath})
+		file := GetQueryParam("file", r)
+		bytes, err := b.Store.ReadFile(&FileData{Path: file})
 		if err != nil {
 			log.Error().Err(err).Msg("Error reading file")
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
@@ -212,6 +170,22 @@ func (b *Builder) GetStaticHandler(cfg *UploaderConfig) HandlerFunc {
 		}
 
 		w.Write(bytes)
+	}
+}
+
+func (b *Builder) GetFileInfoHandler(cfg *UploaderConfig) HandlerFunc {
+
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		file := GetQueryParam("file", r)
+		fileInfo, err := b.Store.GetFileInfo(&FileData{Path: file})
+		if err != nil {
+			log.Error().Err(err).Msg("Error reading file")
+			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+			return
+		}
+
+		SendJsonResponse(w, http.StatusOK, fileInfo, "file info")
 	}
 }
 

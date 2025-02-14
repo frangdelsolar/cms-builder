@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-const builderVersion = "1.4.3"
+const builderVersion = "1.4.4"
 
 // ConfigKeys define the keys used in the configuration file
 type ConfigKeys struct {
@@ -20,6 +20,7 @@ type ConfigKeys struct {
 	LogFilePath           string `json:"logFilePath"`           // File path for logging
 	LogWriteToFile        string `json:"logWriteToFile"`        // Write logs to file
 	Domain                string `json:"domain"`                // Domain
+	DbDriver              string `json:"dbDriver"`              // Database driver
 	DbFile                string `json:"dbFile"`                // Database file
 	DbUrl                 string `json:"dbUrl"`                 // Database URL
 	ServerHost            string `json:"serverHost"`            // Server host
@@ -51,6 +52,7 @@ var EnvKeys = ConfigKeys{
 	LogFilePath:           "LOG_FILE_PATH",
 	LogWriteToFile:        "LOG_WRITE_TO_FILE",
 	Domain:                "DOMAIN",
+	DbDriver:              "DB_DRIVER",
 	DbFile:                "DB_FILE",
 	DbUrl:                 "DB_URL",
 	ServerHost:            "SERVER_HOST",
@@ -82,6 +84,7 @@ var DefaultEnvValues = ConfigKeys{
 	LogFilePath:           "logs/default.log",
 	LogWriteToFile:        "true",
 	Domain:                "localhost",
+	DbDriver:              "sqlite",
 	DbFile:                "database.db",
 	DbUrl:                 "",
 	ServerHost:            "0.0.0.0",
@@ -308,8 +311,8 @@ func (b *Builder) InitDatabase() error {
 
 	dbConfig.URL = config.GetString(EnvKeys.DbUrl)
 	dbConfig.Path = config.GetString(EnvKeys.DbFile)
-
-	log.Info().Str("path", dbConfig.Path).Str("url", dbConfig.URL).Msg("Initializing database...")
+	dbConfig.Driver = config.GetString(EnvKeys.DbDriver)
+	dbConfig.Builder = b
 
 	db, err := LoadDB(dbConfig)
 	if err != nil {
@@ -318,7 +321,6 @@ func (b *Builder) InitDatabase() error {
 	}
 	b.DB = db
 
-	log.Info().Msg("Database initialized")
 	return nil
 }
 
@@ -500,7 +502,7 @@ func (b *Builder) InitUploader() error {
 	}
 
 	// Define the base route for file operations
-	route := "/file"
+	route := "/files"
 
 	b.Server.AddRoute(
 		route,
@@ -515,7 +517,7 @@ func (b *Builder) InitUploader() error {
 	b.Server.AddRoute(
 		route+"/upload",
 		b.GetFilePostHandler(cfg),
-		"file-new",
+		"file-upload",
 		true, // Requires authentication
 		http.MethodPost,
 		"form with file",
@@ -523,7 +525,7 @@ func (b *Builder) InitUploader() error {
 
 	// Add route for deleting files by ID
 	b.Server.AddRoute(
-		route+"/{id}/delete",
+		route+"/delete",
 		b.GetFileDeleteHandler(cfg),
 		"file-delete",
 		true, // Requires authentication
@@ -533,9 +535,18 @@ func (b *Builder) InitUploader() error {
 
 	// Download route
 	b.Server.AddRoute(
-		route+"/{path:.*}",
-		b.GetStaticHandler(cfg),
-		"file-static",
+		route+"/download",
+		b.GetDownloadHandler(cfg),
+		"file-download",
+		true,
+		http.MethodGet,
+		nil,
+	)
+
+	b.Server.AddRoute(
+		route+"/info",
+		b.GetFileInfoHandler(cfg),
+		"file-info",
 		true,
 		http.MethodGet,
 		nil,
@@ -589,7 +600,7 @@ func (b *Builder) RegisterAdminUser() error {
 
 	user, err := b.CreateUserWithRole(*userData, AdminRole, true)
 	if err != nil {
-		log.Error().Err(err).Msg("Error creating admin user")
+		log.Error().Err(err).Interface("user", user).Msg("Error creating admin user")
 		return err
 	}
 
