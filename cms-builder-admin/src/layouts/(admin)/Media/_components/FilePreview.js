@@ -68,7 +68,7 @@ const FilePreview = (props) => {
       window.location.reload(); // TODO: Consider a more targeted update if possible
     } catch (error) {
       console.error("Error deleting item:", error);
-      toast.show("Error deleting file", "error");
+      toast.show("Error deleting file", error.message);
     }
   };
 
