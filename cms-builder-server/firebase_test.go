@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	builder "github.com/frangdelsolar/cms/cms-builder-server"
-	th "github.com/frangdelsolar/cms/cms-builder-server/test_helpers"
+	builder "github.com/frangdelsolar/cms-builder/cms-builder-server"
+	th "github.com/frangdelsolar/cms-builder/cms-builder-server/test_helpers"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	builder "github.com/frangdelsolar/cms/cms-builder-server"
+	builder "github.com/frangdelsolar/cms-builder/cms-builder-server"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 )

@@ -12,7 +12,7 @@ import (
 	"os"
 	"path/filepath"
 
-	builder "github.com/frangdelsolar/cms/cms-builder-server"
+	builder "github.com/frangdelsolar/cms-builder/cms-builder-server"
 	"github.com/gorilla/mux"
 )
 
