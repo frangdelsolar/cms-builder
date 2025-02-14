@@ -132,7 +132,7 @@ def main():
         print(f"Error: {e}")
 
     if len(files) == 0 or files is None:
-        folder_path = "../builder"
+        folder_path = "../cms-builder-server"
         files = read_go_files(folder_path)
 
     print(files)

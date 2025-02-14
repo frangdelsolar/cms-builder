@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/frangdelsolar/cms/builder"
-	th "github.com/frangdelsolar/cms/builder/test_helpers"
+	builder "github.com/frangdelsolar/cms/cms-builder-server"
+	th "github.com/frangdelsolar/cms/cms-builder-server/test_helpers"
 	"github.com/stretchr/testify/assert"
 )
 

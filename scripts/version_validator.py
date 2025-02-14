@@ -69,7 +69,7 @@ def read_version_from_builder_go():
     return version    
 
 def update_version_in_builder_go(version):
-    readme_path = Path(__file__).parent.parent / "builder" / "builder.go"
+    readme_path = Path(__file__).parent.parent / "cms-builder-server" / "builder.go"
 
     logger.info("Update version in %s", readme_path)
     with readme_path.open() as f:

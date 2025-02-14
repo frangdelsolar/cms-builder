@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/frangdelsolar/cms/builder"
+	builder "github.com/frangdelsolar/cms/cms-builder-server"
 	"github.com/invopop/jsonschema"
 )
 
