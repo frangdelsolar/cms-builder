@@ -213,8 +213,9 @@ func TestUserCanListAllowedResources(t *testing.T) {
 	assert.NotNil(t, response, "ApiList should return a non-nil response")
 	assert.Equal(t, 2, len(result), "List should contain two items")
 
-	resultA := result[0]
-	resultB := result[1]
+	// results are order by id desc, thats why we reverse
+	resultA := result[1]
+	resultB := result[0]
 
 	assert.Equal(t, instanceA.ID, resultA.ID, "ID should be the same")
 	assert.Equal(t, instanceA.Field, resultA.Field, "Field should be the same")

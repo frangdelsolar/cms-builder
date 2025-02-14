@@ -6,7 +6,6 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
 var (
@@ -183,7 +182,7 @@ func LoadDB(config *DBConfig) (*Database, error) {
 	switch config.Driver {
 	case "postgres":
 		connection, err := gorm.Open(postgres.Open(config.URL), &gorm.Config{
-			Logger: logger.Default.LogMode(logger.Info),
+			// Logger: logger.Default.LogMode(logger.Info),
 		})
 		if err != nil {
 			return db, err
@@ -192,7 +191,7 @@ func LoadDB(config *DBConfig) (*Database, error) {
 
 	case "sqlite":
 		connection, err := gorm.Open(sqlite.Open(config.Path), &gorm.Config{
-			Logger: logger.Default.LogMode(logger.Info),
+			// Logger: logger.Default.LogMode(logger.Info),
 		})
 		if err != nil {
 			return db, err
