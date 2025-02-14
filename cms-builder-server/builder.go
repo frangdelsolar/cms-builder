@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-const builderVersion = "1.4.4"
+const builderVersion = "1.5.0"
 
 // ConfigKeys define the keys used in the configuration file
 type ConfigKeys struct {
