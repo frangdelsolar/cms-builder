@@ -52,21 +52,21 @@ jobs:
         run: go test -v -race -covermode atomic -coverprofile=covprofile ./...
         if: always()
 
-      - name: Install goveralls
-        run: go install github.com/mattn/goveralls@latest
+      # - name: Install goveralls
+      #   run: go install github.com/mattn/goveralls@latest
 
-      - name: Send coverage
-        working-directory: cms-builder-server
-        env:
-          COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: $HOME/go/bin/goveralls -coverprofile=covprofile -service=github
+      # - name: Send coverage
+      #   working-directory: cms-builder-server
+      #   env:
+      #     COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   run: $HOME/go/bin/goveralls -coverprofile=covprofile -service=github
 
-      - name: Upload test artifacts (optional)
-        uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: test-results
-          path: ${{ github.workspace }}/
+      # - name: Upload test artifacts (optional)
+      #   uses: actions/upload-artifact@v4
+      #   if: failure()
+      #   with:
+      #     name: test-results
+      #     path: ${{ github.workspace }}/
 
       - name: Fail workflow on test failures (optional)
         uses: styfle/cancel-workflow-action@0.8.0
