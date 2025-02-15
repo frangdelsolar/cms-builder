@@ -35,9 +35,11 @@ func TestAWSUploadDeleteFile(t *testing.T) {
 	file, err := os.ReadFile(testFilePath)
 	assert.NoError(t, err, "ReadFile should not return an error")
 
+	//TODO: UPDATE THIS LOCATION THING!!!
 	t.Log("Testing S3 file upload")
-	err = manager.UploadFile(directory, fileName, file)
+	location, err := manager.UploadFile(directory, fileName, file)
 	assert.NoError(t, err, "UploadFile should not return an error")
+	assert.NotNil(t, location, "UploadFile should not return nil")
 
 	path := directory + "/" + fileName
 	data, err := manager.DownloadFile(path)

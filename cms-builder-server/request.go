@@ -19,6 +19,7 @@ const (
 )
 
 type RequestParameters struct {
+	RequestId     string
 	RequestedById string
 	Auth          bool
 	User          *User
@@ -82,6 +83,7 @@ func FormatRequestParameters(r *http.Request, b *Builder) RequestParameters {
 	params.RequestedById = user.GetIDString()
 	params.Roles = user.GetRoles()
 	params.Auth = true
+	params.RequestId = GetRequestID(r)
 
 	return params
 }
@@ -158,6 +160,15 @@ func FormatRequestBody(r *http.Request, filterKeys map[string]bool) (map[string]
 	}
 
 	return result, nil
+}
+
+// GetRequestID retrieves the request ID from the context.
+func GetRequestID(r *http.Request) string {
+	ctx := r.Context()
+	if requestID, ok := ctx.Value(RequestIDKey{}).(string); ok {
+		return requestID
+	}
+	return ""
 }
 
 // ValidateRequestMethod returns an error if the request method does not match the given

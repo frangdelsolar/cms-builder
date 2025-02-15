@@ -132,11 +132,11 @@ func (a *Admin) registerAPIRoutes(app App) {
 
 	kebabName := app.KebabPluralName()
 
-	baseRoute := "/api/" + kebabName
+	baseRoute := "/api/" + kebabName + "/"
 	protectedRoute := true
 
 	a.Builder.Server.AddRoute(
-		baseRoute+"/schema",
+		baseRoute+"schema/",
 		func(w http.ResponseWriter, r *http.Request) {
 			schema := jsonschema.Reflect(app.Model)
 			SendJsonResponse(w, http.StatusOK, schema, fmt.Sprintf("Schema for %s", app.Name()))
@@ -157,7 +157,7 @@ func (a *Admin) registerAPIRoutes(app App) {
 	)
 
 	a.Builder.Server.AddRoute(
-		baseRoute+"/new",
+		baseRoute+"new/",
 		app.ApiCreate(a.Builder.DB),
 		kebabName+"-new",
 		protectedRoute,
@@ -166,7 +166,7 @@ func (a *Admin) registerAPIRoutes(app App) {
 	)
 
 	a.Builder.Server.AddRoute(
-		baseRoute+"/{id}",
+		baseRoute+"{id}/",
 		app.ApiDetail(a.Builder.DB),
 		kebabName+"-get",
 		protectedRoute,
@@ -175,7 +175,7 @@ func (a *Admin) registerAPIRoutes(app App) {
 	)
 
 	a.Builder.Server.AddRoute(
-		baseRoute+"/{id}/delete",
+		baseRoute+"{id}/delete/",
 		app.ApiDelete(a.Builder.DB),
 		kebabName+"-delete",
 		protectedRoute,
@@ -184,7 +184,7 @@ func (a *Admin) registerAPIRoutes(app App) {
 	)
 
 	a.Builder.Server.AddRoute(
-		baseRoute+"/{id}/update",
+		baseRoute+"{id}/update/",
 		app.ApiUpdate(a.Builder.DB),
 		kebabName+"-update",
 		protectedRoute,

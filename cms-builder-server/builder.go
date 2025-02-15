@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-const builderVersion = "1.5.0"
+const builderVersion = "1.5.1"
 
 // ConfigKeys define the keys used in the configuration file
 type ConfigKeys struct {
@@ -502,7 +502,7 @@ func (b *Builder) InitUploader() error {
 	}
 
 	// Define the base route for file operations
-	route := "/files"
+	route := "/files/"
 
 	b.Server.AddRoute(
 		route,
@@ -515,7 +515,7 @@ func (b *Builder) InitUploader() error {
 
 	// Add route for uploading new files
 	b.Server.AddRoute(
-		route+"/upload",
+		route+"upload/",
 		b.GetFilePostHandler(cfg),
 		"file-upload",
 		true, // Requires authentication
@@ -525,7 +525,7 @@ func (b *Builder) InitUploader() error {
 
 	// Add route for deleting files by ID
 	b.Server.AddRoute(
-		route+"/delete",
+		route+"delete/",
 		b.GetFileDeleteHandler(cfg),
 		"file-delete",
 		true, // Requires authentication
@@ -535,7 +535,7 @@ func (b *Builder) InitUploader() error {
 
 	// Download route
 	b.Server.AddRoute(
-		route+"/download",
+		route+"download/",
 		b.GetDownloadHandler(cfg),
 		"file-download",
 		true,
@@ -544,7 +544,7 @@ func (b *Builder) InitUploader() error {
 	)
 
 	b.Server.AddRoute(
-		route+"/info",
+		route+"info/",
 		b.GetFileInfoHandler(cfg),
 		"file-info",
 		true,
