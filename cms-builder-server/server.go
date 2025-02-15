@@ -62,11 +62,11 @@ func NewServer(svrConfig *ServerConfig) (*Server, error) {
 	}
 
 	if svrConfig.Host == "" {
-		svrConfig.Host = "localhost"
+		svrConfig.Host = config.GetString(EnvKeys.ServerHost)
 	}
 
 	if svrConfig.Port == "" {
-		svrConfig.Port = "8080"
+		svrConfig.Port = config.GetString(EnvKeys.ServerPort)
 	}
 
 	if svrConfig.CSRFToken == "" {
@@ -302,8 +302,6 @@ func RecoveryMiddleware(next http.Handler) http.Handler {
 // TimeoutMiddleware sets a timeout for requests.
 func TimeoutMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-		log.Debug().Msg("Timeout middleware")
 
 		ctx, cancel := context.WithTimeout(r.Context(), TimeoutSeconds*time.Second)
 		defer cancel()
