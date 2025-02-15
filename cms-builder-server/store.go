@@ -196,18 +196,17 @@ func (s *S3Store) StoreFile(cfg *UploaderConfig, fileName string, file multipart
 
 	// Create the uploads directory if it doesn't exist
 	uploadsDir := s.GetPath()
-	err = s.Client.UploadFile(uploadsDir, fileName, fileBytes)
+	location, err := s.Client.UploadFile(uploadsDir, fileName, fileBytes)
 	if err != nil {
 		log.Error().Err(err).Msg("Error uploading file to S3")
 		return fileData, err
 	}
 
-	path := filepath.Join(uploadsDir, fileName)
-	url := "https://" + config.GetString(EnvKeys.AwsBucket) + "/" + uploadsDir + "/" + fileName
+	url := "https://" + config.GetString(EnvKeys.AwsBucket) + location
 
 	fileData = FileData{
 		Name: fileName,
-		Path: path,
+		Path: location,
 		Url:  url,
 	}
 
