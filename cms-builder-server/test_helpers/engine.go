@@ -79,7 +79,7 @@ func GetDefaultEngine() (TestEngineServices, error) {
 		builder.VisitorRole: builder.AllAllowedAccess,
 	}
 
-	app, err := admin.Register(MockStruct{}, false, permission)
+	app, err := admin.Register(MockStruct{}, false, permission, nil)
 	if err != nil {
 		return TestEngineServices{}, err
 	}
@@ -90,7 +90,7 @@ func GetDefaultEngine() (TestEngineServices, error) {
 	}
 	defer admin.Unregister(app.Name())
 
-	return TestEngineServices{e, admin, e.DB, e.Server, e.Firebase, &app, e.Logger, e.Config, e.Store}, nil
+	return TestEngineServices{e, admin, e.DB, e.Server, e.Firebase, app, e.Logger, e.Config, e.Store}, nil
 }
 
 // createMockResource creates a new resource for the given user and returns the created resource, the user, and a function to roll back the resource creation.

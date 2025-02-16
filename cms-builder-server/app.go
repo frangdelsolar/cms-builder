@@ -36,7 +36,7 @@ func (f FieldName) S() string {
 
 type ApiFunction func(a *App, db *Database) HandlerFunc
 
-type API struct {
+type ApiHandlers struct {
 	List   ApiFunction // List is a function that takes an ApiInput, a *Database and an *App and returns a *gorm.DB will be called on GET endpoints (e.g. /api/users)
 	Detail ApiFunction // Detail is a function that takes an ApiInput, a *Database and an *App and returns a *gorm.DB will be called on GET endpoints (e.g. /api/users/{id})
 	Create ApiFunction // Create is a function that takes an ApiInput, a *Database and an *App and returns a *gorm.DB will be called on POST endpoints (e.g. /api/users/new)
@@ -44,7 +44,7 @@ type API struct {
 	Delete ApiFunction // Delete is a function that takes an ApiInput, a *Database and an *App and returns a *gorm.DB will be called on DELETE endpoints (e.g. /api/users/{id}/delete)
 }
 
-var DefaultList ApiFunction = func(a *App, db *Database) HandlerFunc {
+var DefaultListHandler ApiFunction = func(a *App, db *Database) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		err := ValidateRequestMethod(r, http.MethodGet)
@@ -132,7 +132,7 @@ var DefaultList ApiFunction = func(a *App, db *Database) HandlerFunc {
 	}
 }
 
-var DefaultDetail ApiFunction = func(a *App, db *Database) HandlerFunc {
+var DefaultDetailHandler ApiFunction = func(a *App, db *Database) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := ValidateRequestMethod(r, http.MethodGet)
 		if err != nil {
@@ -178,8 +178,9 @@ var DefaultDetail ApiFunction = func(a *App, db *Database) HandlerFunc {
 	}
 }
 
-var DefaultCreate ApiFunction = func(a *App, db *Database) HandlerFunc {
+var DefaultCreateHandler ApiFunction = func(a *App, db *Database) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+
 		err := ValidateRequestMethod(r, http.MethodPost)
 		if err != nil {
 			SendJsonResponse(w, http.StatusMethodNotAllowed, nil, err.Error())
@@ -234,7 +235,7 @@ var DefaultCreate ApiFunction = func(a *App, db *Database) HandlerFunc {
 	}
 }
 
-var DefaultUpdate ApiFunction = func(a *App, db *Database) HandlerFunc {
+var DefaultUpdateHandler ApiFunction = func(a *App, db *Database) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := ValidateRequestMethod(r, http.MethodPut)
 		if err != nil {
@@ -308,7 +309,7 @@ var DefaultUpdate ApiFunction = func(a *App, db *Database) HandlerFunc {
 	}
 }
 
-var DefaultDelete ApiFunction = func(a *App, db *Database) HandlerFunc {
+var DefaultDeleteHandler ApiFunction = func(a *App, db *Database) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		err := ValidateRequestMethod(r, http.MethodDelete)
@@ -389,7 +390,7 @@ type App struct {
 	Admin           *Admin            // The admin instance
 	Validators      ValidatorsMap     // A map of field names to validation functions
 	Permissions     RolePermissionMap // Key is Role name, value is permission
-	Api             *API              // The API struct
+	Api             *ApiHandlers      // The API struct
 }
 
 // Name returns the name of the model as a string, lowercased and without the package name.

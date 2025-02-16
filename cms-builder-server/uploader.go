@@ -1,9 +1,6 @@
 package builder
 
 import (
-	"bytes"
-	"encoding/json"
-	"io"
 	"net/http"
 	"path"
 	"strconv"
@@ -11,56 +8,44 @@ import (
 	"time"
 )
 
-type FileData struct {
+type File struct {
 	*SystemData
-	Name string `json:"name"`
-	Path string `json:"path"` // relative path
-	Url  string `json:"url"`  // absolute path
-}
-
-type Upload struct {
-	*SystemData
-	*FileData
+	Name     string `json:"name"`
+	Path     string `json:"path"` // relative path
+	Url      string `json:"url"`  // absolute path
+	Size     int64  `json:"size"`
+	MimeType string `json:"mimeType"`
 }
 
 type UploaderConfig struct {
 	MaxSize            int64
 	SupportedMimeTypes []string
 	Folder             string
-	StaticPath         string
 }
 
-// getUploadPostHandler returns a handler function that responds to POST requests
-// on the uploads endpoint, e.g. /api/uploads.
-//
-// The handler function will save the uploaded file to disk and store the file
-// information in the database. It will also handle errors and return a 400
-// error if the request body is not valid JSON, or a 500 error if there is an
-// error storing the file or saving the file information to the database.
-func (b *Builder) GetFilePostHandler(cfg *UploaderConfig) HandlerFunc {
+var CreateStoredFilesHandler ApiFunction = func(a *App, db *Database) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		// Validate method
 		err := ValidateRequestMethod(r, http.MethodPost)
 		if err != nil {
 			SendJsonResponse(w, http.StatusMethodNotAllowed, nil, err.Error())
 			return
 		}
 
-		uploadApp, err := b.Admin.GetApp("upload")
-		if err != nil {
-			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
-			return
-		}
-
-		params := FormatRequestParameters(r, b)
-		isAllowed := uploadApp.Permissions.HasPermission(params.Roles, OperationCreate)
+		params := FormatRequestParameters(r, a.Admin.Builder)
+		isAllowed := a.Permissions.HasPermission(params.Roles, OperationCreate)
 		if !isAllowed {
 			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to create this resource")
 			return
 		}
 
-		// Parse the multipart form data
+		cfg := &UploaderConfig{
+			MaxSize:            config.GetInt64(config.GetString(EnvKeys.UploaderMaxSize)),
+			SupportedMimeTypes: config.GetStringSlice(EnvKeys.UploaderSupportedMime),
+			Folder:             config.GetString(config.GetString(EnvKeys.UploaderFolder)),
+		}
+
+		// Store the file
 		err = r.ParseMultipartForm(cfg.MaxSize)
 		if err != nil {
 			log.Error().Err(err).Msg("Error parsing multipart form data")
@@ -90,79 +75,145 @@ func (b *Builder) GetFilePostHandler(cfg *UploaderConfig) HandlerFunc {
 			return
 		}
 
+		store := a.Admin.Builder.Store
+
 		fileName := header.Filename
-		fileData, err := b.Store.StoreFile(cfg, fileName, file)
+		fileData, err := store.StoreFile(cfg, fileName, file)
 		if err != nil {
-			handleUploadError(b.Store, fileData, w, err)
+			handleUploadError(store, fileData, w, err)
 			return
 		}
 
-		uploadRequestBody := map[string]interface{}{
-			"name": fileData.Name,
-			"path": fileData.Path,
-			"url":  fileData.Url,
-		}
-
-		uploadData, err := json.Marshal(uploadRequestBody)
+		fileInfo, err := store.GetFileInfo(&fileData)
 		if err != nil {
-			handleUploadError(b.Store, fileData, w, err)
+			log.Error().Err(err).Msg("Error getting file info")
+			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
 		}
 
-		request := &http.Request{
-			Method: http.MethodPost,
-			Header: r.Header,
-			Body:   io.NopCloser(bytes.NewBuffer(uploadData)),
+		fileData.SystemData = &SystemData{
+			CreatedByID: params.User.ID,
+			UpdatedByID: params.User.ID,
+		}
+		fileData.Name = header.Filename
+		fileData.Size = fileInfo.Size
+		fileData.MimeType = fileInfo.ContentType
+
+		// Run validations
+		validationErrors := a.Validate(fileData)
+		if len(validationErrors.Errors) > 0 {
+			SendJsonResponse(w, http.StatusBadRequest, validationErrors, "Validation failed")
+			return
 		}
 
-		// This will send the response to the client
-		uploadApp.ApiCreate(b.DB)(w, request)
+		res := db.Create(fileData, params.User)
+		if res.Error != nil {
+			SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
+			return
+		}
+
+		SendJsonResponse(w, http.StatusCreated, &fileData, a.Name()+" created")
+
 	}
 }
 
-// getUploadDeleteHandler returns a handler function that responds to DELETE
-// requests on the delete file endpoint, e.g. /file/{id}/delete.
-//
-// It will delete the file from disk and remove the record from the database.
-// If the file is not found, it will return a 404 Not Found response. If the
-// database record is not found, it will return a 500 Internal Server Error
-// response. If the file is deleted successfully, it will return a 200 OK
-// response with a message saying "File deleted successfully".
-func (b *Builder) GetFileDeleteHandler(cfg *UploaderConfig) HandlerFunc {
+var DeleteStoredFilesHandler ApiFunction = func(a *App, db *Database) HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		err := ValidateRequestMethod(r, http.MethodDelete)
 		if err != nil {
-			SendJsonResponse(w, http.StatusMethodNotAllowed, err, err.Error())
+			SendJsonResponse(w, http.StatusMethodNotAllowed, nil, err.Error())
 			return
 		}
 
-		file := GetQueryParam("file", r)
-
-		if file == "" {
-			SendJsonResponse(w, http.StatusBadRequest, nil, "File not found")
+		params := FormatRequestParameters(r, a.Admin.Builder)
+		isAllowed := a.Permissions.HasPermission(params.Roles, OperationDelete)
+		if !isAllowed {
+			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to delete this resource")
 			return
 		}
 
-		err = b.Store.DeleteFile(FileData{Path: file})
+		instanceId := GetUrlParam("id", r)
+
+		instance, err := GetInstanceIfAuthorized(a.Model, a.SkipUserBinding, instanceId, db, &params)
 		if err != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
 		}
 
-		msg := "File deleted successfully"
-		SendJsonResponse(w, http.StatusOK, nil, msg)
+		store := a.Admin.Builder.Store
+
+		fileData := instance.(*File)
+
+		err = store.DeleteFile(*fileData)
+		if err != nil {
+			handleUploadError(store, *fileData, w, err)
+			return
+		}
+
+		res := db.Delete(fileData, params.User)
+		if res.Error != nil {
+			SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
+			return
+		}
+
+		// Send a 204 No Content response
+		SendJsonResponse(w, http.StatusOK, nil, a.Name()+" deleted")
+
 	}
 }
 
-// getStaticHandler returns a handler function that serves static files from the
-// configured folder.
-func (b *Builder) GetDownloadHandler(cfg *UploaderConfig) HandlerFunc {
+var UpdateStoredFilesHandler ApiFunction = func(a *App, db *Database) HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		err := ValidateRequestMethod(r, http.MethodPut)
+		if err != nil {
+			SendJsonResponse(w, http.StatusMethodNotAllowed, nil, err.Error())
+			return
+		}
+
+		SendJsonResponse(w, http.StatusMethodNotAllowed, nil, "You cannot update a file. You may delete and create a new one.")
+	}
+}
+
+func (b *Builder) DownloadStoredFileHandler() HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		file := GetQueryParam("file", r)
-		bytes, err := b.Store.ReadFile(&FileData{Path: file})
+		err := ValidateRequestMethod(r, http.MethodGet)
+		if err != nil {
+			SendJsonResponse(w, http.StatusMethodNotAllowed, err, err.Error())
+			return
+		}
+
+		app, err := b.Admin.GetApp("file")
+		if err != nil {
+			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+			return
+		}
+
+		params := FormatRequestParameters(r, b)
+		isAllowed := app.Permissions.HasPermission(params.Roles, OperationRead)
+		if !isAllowed {
+			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to read this resource")
+			return
+		}
+
+		// Create a new instance of the model
+		instanceId := GetUrlParam("id", r)
+
+		instance, err := GetInstanceIfAuthorized(app.Model, app.SkipUserBinding, instanceId, b.DB, &params)
+		if err != nil {
+			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+			return
+		}
+
+		file := instance.(*File)
+		if file == (*File)(nil) {
+			SendJsonResponse(w, http.StatusNotFound, nil, "File not found")
+			return
+		}
+
+		bytes, err := b.Store.ReadFile(file)
 		if err != nil {
 			log.Error().Err(err).Msg("Error reading file")
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
@@ -170,22 +221,6 @@ func (b *Builder) GetDownloadHandler(cfg *UploaderConfig) HandlerFunc {
 		}
 
 		w.Write(bytes)
-	}
-}
-
-func (b *Builder) GetFileInfoHandler(cfg *UploaderConfig) HandlerFunc {
-
-	return func(w http.ResponseWriter, r *http.Request) {
-
-		file := GetQueryParam("file", r)
-		fileInfo, err := b.Store.GetFileInfo(&FileData{Path: file})
-		if err != nil {
-			log.Error().Err(err).Msg("Error reading file")
-			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
-			return
-		}
-
-		SendJsonResponse(w, http.StatusOK, fileInfo, "file info")
 	}
 }
 
@@ -234,7 +269,7 @@ func ValidateContentType(contentType string, supportedMimeTypes []string) (bool,
 // handleUploadError takes a file path and a writer, and an error.
 // It logs the error, deletes the file from disk, and writes a JSON response
 // with the error message to the writer.
-func handleUploadError(store Store, fileData FileData, w http.ResponseWriter, err error) {
+func handleUploadError(store Store, fileData File, w http.ResponseWriter, err error) {
 	// Log the error at the error level
 	log.Error().Err(err).Msgf("Error uploading file: %s. Rolling back...", fileData.Name)
 

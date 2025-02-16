@@ -56,21 +56,25 @@ func (a *Admin) GetApp(appName string) (App, error) {
 // Parameters:
 // - model: The model to register.
 // - skipUserBinding: Whether to skip user binding which is used for filtering db queries by userId
-func (a *Admin) Register(model interface{}, skipUserBinding bool, permissions RolePermissionMap) (App, error) {
+func (a *Admin) Register(model interface{}, skipUserBinding bool, permissions RolePermissionMap, api *ApiHandlers) (*App, error) {
 
-	app := App{
+	if api == nil {
+		api = &ApiHandlers{
+			Create: DefaultCreateHandler,
+			Delete: DefaultDeleteHandler,
+			Detail: DefaultDetailHandler,
+			List:   DefaultListHandler,
+			Update: DefaultUpdateHandler,
+		}
+	}
+
+	app := &App{
 		Model:           model,
 		SkipUserBinding: skipUserBinding,
 		Admin:           a,
 		Validators:      make(ValidatorsMap),
 		Permissions:     permissions,
-		Api: &API{
-			List:   DefaultList,
-			Detail: DefaultDetail,
-			Create: DefaultCreate,
-			Update: DefaultUpdate,
-			Delete: DefaultDelete,
-		},
+		Api:             api,
 	}
 
 	// check the app is not already registered
@@ -78,18 +82,18 @@ func (a *Admin) Register(model interface{}, skipUserBinding bool, permissions Ro
 	if err == nil {
 		// If app isn't found it will return an error, which means it doesn't exist
 		// In other words. We are expecting an error here. Error means slot is free for the new app
-		return App{}, fmt.Errorf("app already registered: %s", app.Name())
+		return &App{}, fmt.Errorf("app already registered: %s", app.Name())
 	}
 
 	// register the app
 	appName := strings.ToLower(app.Name())
-	a.apps[appName] = app
+	a.apps[appName] = *app
 
 	// apply migrations
 	a.Builder.DB.Migrate(app.Model)
 
-	// register CRUD routes
-	a.registerAPIRoutes(app)
+	// register routes
+	a.registerAPIRoutes(*app)
 
 	return app, nil
 }
@@ -129,6 +133,18 @@ func (a *Admin) Unregister(appName string) error {
 //
 // All CRUD routes are protected by authentication middleware.
 func (a *Admin) registerAPIRoutes(app App) {
+
+	if app.Api == (&ApiHandlers{}) ||
+		app.Api == nil ||
+		app.Api.List == nil ||
+		app.Api.Detail == nil ||
+		app.Api.Create == nil ||
+		app.Api.Update == nil ||
+		app.Api.Delete == nil {
+
+		log.Error().Msg("API routes not registered for app: " + app.Name())
+		return
+	}
 
 	kebabName := app.KebabPluralName()
 

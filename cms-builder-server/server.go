@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 )
 
@@ -74,7 +73,7 @@ func NewServer(svrConfig *ServerConfig) (*Server, error) {
 	}
 
 	r := mux.NewRouter()
-	r.StrictSlash(true)
+	// r.StrictSlash(true)
 
 	svr := &Server{
 		Server: &http.Server{
@@ -90,8 +89,8 @@ func NewServer(svrConfig *ServerConfig) (*Server, error) {
 	}
 
 	// CSRF
-	csrfKey := []byte(config.GetString(EnvKeys.CsrfToken))
-	csrfMiddleware := csrf.Protect(csrfKey, csrf.CookieName("csrftoken"))
+	// csrfKey := []byte(config.GetString(EnvKeys.CsrfToken))
+	// csrfMiddleware := csrf.Protect(csrfKey)
 
 	// Middlewares
 	r.Use(RecoveryMiddleware)
@@ -101,7 +100,7 @@ func NewServer(svrConfig *ServerConfig) (*Server, error) {
 	rateLimiter := NewRateLimiter(RequestsPerMinute, 1*time.Minute)
 	r.Use(RateLimitMiddleware(rateLimiter))
 
-	r.Use(csrfMiddleware)
+	// r.Use(csrfMiddleware)
 	r.Use(CorsMiddleware)
 
 	r.Use(LoggingMiddleware)
@@ -397,10 +396,8 @@ type HandlerFunc func(w http.ResponseWriter, r *http.Request)
 // url, err := r.Get("getUser").URL("id", "123") =>
 // "/users/123"
 func (s *Server) AddRoute(route string, handler HandlerFunc, name string, requiresAuth bool, method string, schema interface{}) {
-	// append slash if not present
-	if !strings.HasSuffix(route, "/") {
-		route += "/"
-	}
+	// Remove trailing slash if present
+	route = strings.TrimSuffix(route, "/")
 
 	s.Routes = append(s.Routes, NewRouteHandler(route, handler, name, requiresAuth, method, schema))
 }
