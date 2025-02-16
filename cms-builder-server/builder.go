@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-const builderVersion = "1.5.0"
+const builderVersion = "1.5.2"
 
 // ConfigKeys define the keys used in the configuration file
 type ConfigKeys struct {
@@ -28,6 +28,7 @@ type ConfigKeys struct {
 	CsrfToken             string `json:"csrfToken"`             // CSRF token
 	FirebaseSecret        string `json:"firebaseSecret"`        // Firebase secret
 	FirebaseApiKey        string `json:"firebaseApiKey"`        // Firebase API key
+	GodToken              string `json:"godToken"`              // God token
 	UploaderMaxSize       string `json:"uploaderMaxSize"`       // Uploader max size in MB
 	UploaderAuthenticate  string `json:"uploaderAuthenticate"`  // Whether files will be public or private accessible
 	UploaderSupportedMime string `json:"uploaderSupportedMime"` // Supported mime types for uploaded files
@@ -55,6 +56,7 @@ var EnvKeys = ConfigKeys{
 	DbDriver:              "DB_DRIVER",
 	DbFile:                "DB_FILE",
 	DbUrl:                 "DB_URL",
+	GodToken:              "GOD_TOKEN",
 	ServerHost:            "SERVER_HOST",
 	ServerPort:            "SERVER_PORT",
 	CsrfToken:             "CSRF_TOKEN",
@@ -87,6 +89,7 @@ var DefaultEnvValues = ConfigKeys{
 	DbDriver:              "sqlite",
 	DbFile:                "database.db",
 	DbUrl:                 "",
+	GodToken:              "someToken",
 	ServerHost:            "0.0.0.0",
 	ServerPort:            "80",
 	CsrfToken:             "someToken",
@@ -382,7 +385,7 @@ func (b *Builder) InitAuth() error {
 		VisitorRole: []CrudOperation{OperationRead},
 	}
 
-	userApp, err := admin.Register(&User{}, true, permissions)
+	userApp, err := admin.Register(&User{}, true, permissions, nil)
 	if err != nil {
 		log.Error().Err(err).Msg("Error registering user app")
 		return err
@@ -457,12 +460,6 @@ func (b *Builder) InitStore() error {
 //
 // If an error occurs while registering the Upload app, it logs the error and panics.
 func (b *Builder) InitUploader() error {
-	cfg := &UploaderConfig{
-		MaxSize:            config.GetInt64(config.GetString(EnvKeys.UploaderMaxSize)),
-		SupportedMimeTypes: config.GetStringSlice(EnvKeys.UploaderSupportedMime),
-		Folder:             config.GetString(config.GetString(EnvKeys.UploaderFolder)),
-		StaticPath:         "private/file/",
-	}
 
 	// TODO: Revisit this permissions
 	permissions := RolePermissionMap{
@@ -470,14 +467,15 @@ func (b *Builder) InitUploader() error {
 		VisitorRole: AllAllowedAccess,
 	}
 
-	// Register the Upload app without authentication
-	_, err := b.Admin.Register(&Upload{}, false, permissions)
-	if err != nil {
-		log.Error().Err(err).Msg("Error registering upload app")
-		return err
+	api := &ApiHandlers{
+		Create: CreateStoredFilesHandler,
+		Delete: DeleteStoredFilesHandler,
+		Detail: DefaultDetailHandler,
+		List:   DefaultListHandler,
+		Update: UpdateStoredFilesHandler,
 	}
 
-	fdApp, err := b.Admin.Register(&FileData{}, false, permissions)
+	fdApp, err := b.Admin.Register(&File{}, false, permissions, api)
 	if err != nil {
 		log.Error().Err(err).Msg("Error registering FileData app")
 		return err
@@ -501,52 +499,11 @@ func (b *Builder) InitUploader() error {
 		return err
 	}
 
-	// Define the base route for file operations
-	route := "/files"
-
-	b.Server.AddRoute(
-		route,
-		b.ListStoredFilesHandler(cfg),
-		"file-list",
-		true, // Requires authentication
-		http.MethodGet,
-		"list files",
-	)
-
-	// Add route for uploading new files
-	b.Server.AddRoute(
-		route+"/upload",
-		b.GetFilePostHandler(cfg),
-		"file-upload",
-		true, // Requires authentication
-		http.MethodPost,
-		"form with file",
-	)
-
-	// Add route for deleting files by ID
-	b.Server.AddRoute(
-		route+"/delete",
-		b.GetFileDeleteHandler(cfg),
-		"file-delete",
-		true, // Requires authentication
-		http.MethodDelete,
-		nil,
-	)
-
 	// Download route
 	b.Server.AddRoute(
-		route+"/download",
-		b.GetDownloadHandler(cfg),
-		"file-download",
-		true,
-		http.MethodGet,
-		nil,
-	)
-
-	b.Server.AddRoute(
-		route+"/info",
-		b.GetFileInfoHandler(cfg),
-		"file-info",
+		"/api/files/{id}/download",
+		b.DownloadStoredFileHandler(),
+		"files-download",
 		true,
 		http.MethodGet,
 		nil,
@@ -562,19 +519,19 @@ func (b *Builder) InitScheduler() error {
 		SchedulerRole: AllAllowedAccess,
 	}
 
-	_, err := b.Admin.Register(&SchedulerJobDefinition{}, false, permissions)
+	_, err := b.Admin.Register(&SchedulerJobDefinition{}, false, permissions, nil)
 	if err != nil {
 		log.Error().Err(err).Msg("Error registering job definition app")
 		return err
 	}
 
-	_, err = b.Admin.Register(&JobFrequency{}, false, permissions)
+	_, err = b.Admin.Register(&JobFrequency{}, false, permissions, nil)
 	if err != nil {
 		log.Error().Err(err).Msg("Error registering job frequency app")
 		return err
 	}
 
-	_, err = b.Admin.Register(&SchedulerTask{}, false, permissions)
+	_, err = b.Admin.Register(&SchedulerTask{}, false, permissions, nil)
 	if err != nil {
 		log.Error().Err(err).Msg("Error registering scheduler task app")
 		return err
@@ -617,7 +574,7 @@ func (b *Builder) InitHistory() error {
 		AdminRole: []CrudOperation{OperationRead},
 	}
 
-	_, err := b.Admin.Register(&HistoryEntry{}, false, permissions)
+	_, err := b.Admin.Register(&HistoryEntry{}, false, permissions, nil)
 	if err != nil {
 		log.Error().Err(err).Msg("Error registering history app")
 		return err

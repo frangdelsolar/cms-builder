@@ -16,10 +16,13 @@ export const projectSlice = createSlice({
     setProjectData: (state, action) => {
       state.data = action.payload;
     },
+    setApiBaseUrl: (state, action) => {
+      state.data.apiBaseUrl = action.payload;
+    },
   },
 });
 
-export const { setProjectData } = projectSlice.actions;
+export const { setProjectData, setApiBaseUrl } = projectSlice.actions;
 
 export default projectSlice.reducer;
 

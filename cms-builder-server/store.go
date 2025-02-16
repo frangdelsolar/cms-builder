@@ -28,11 +28,11 @@ type FileInfo struct {
 
 type Store interface {
 	GetPath() string
-	StoreFile(cfg *UploaderConfig, fileName string, file multipart.File) (fileData FileData, err error)
-	DeleteFile(file FileData) error
+	StoreFile(cfg *UploaderConfig, fileName string, file multipart.File) (fileData File, err error)
+	DeleteFile(file File) error
 	ListFiles() ([]string, error)
-	ReadFile(file *FileData) ([]byte, error)
-	GetFileInfo(file *FileData) (*FileInfo, error)
+	ReadFile(file *File) ([]byte, error)
+	GetFileInfo(file *File) (*FileInfo, error)
 }
 
 type LocalStore struct {
@@ -53,9 +53,9 @@ func (s *LocalStore) GetPath() string {
 // FileData for the stored file, including the path to the file and the URL
 // at which the file can be accessed. If the file cannot be stored, an error
 // is returned.
-func (s *LocalStore) StoreFile(cfg *UploaderConfig, fileName string, file multipart.File) (fileData FileData, err error) {
+func (s *LocalStore) StoreFile(cfg *UploaderConfig, fileName string, file multipart.File) (fileData File, err error) {
 
-	fileData = FileData{}
+	fileData = File{}
 
 	// Create the uploads directory if it doesn't exist
 	uploadsDir := s.GetPath()
@@ -84,14 +84,14 @@ func (s *LocalStore) StoreFile(cfg *UploaderConfig, fileName string, file multip
 		return fileData, err
 	}
 
-	fileData.Url = config.GetString(EnvKeys.BaseUrl) + "/" + cfg.StaticPath + "/" + fileData.Name
+	fileData.Url = config.GetString(EnvKeys.BaseUrl) + "/static/" + fileData.Name
 
 	return fileData, nil
 }
 
 // DeleteFile takes a file path and deletes the file from disk.
 // It returns an error if the file cannot be deleted.
-func (s *LocalStore) DeleteFile(file FileData) error {
+func (s *LocalStore) DeleteFile(file File) error {
 	// Log the file path to be deleted
 	log.Warn().Interface("file", file).Msg("Deleting file from local store")
 
@@ -140,11 +140,11 @@ func (s *LocalStore) ListFiles() ([]string, error) {
 	return output, nil
 }
 
-func (s *LocalStore) ReadFile(file *FileData) ([]byte, error) {
+func (s *LocalStore) ReadFile(file *File) ([]byte, error) {
 	return os.ReadFile(file.Path)
 }
 
-func (s *LocalStore) GetFileInfo(file *FileData) (*FileInfo, error) {
+func (s *LocalStore) GetFileInfo(file *File) (*FileInfo, error) {
 
 	stats, err := os.Stat(file.Path)
 	if err != nil {
@@ -187,27 +187,28 @@ func (s *S3Store) GetPath() string {
 // It reads the file bytes and calls the UploadFile method of the AwsManager client.
 // If successful, it returns a FileData object containing the file's name, path, and URL.
 // If there is an error at any step, it logs the error and returns the error.
-func (s *S3Store) StoreFile(cfg *UploaderConfig, fileName string, file multipart.File) (fileData FileData, err error) {
+func (s *S3Store) StoreFile(cfg *UploaderConfig, fileName string, file multipart.File) (fileData File, err error) {
 	fileBytes, err := getFileBytes(file)
 	if err != nil {
 		log.Error().Err(err).Msg("Error getting file bytes")
 		return fileData, err
 	}
 
+	fileName = randomizeFileName(fileName)
+
 	// Create the uploads directory if it doesn't exist
 	uploadsDir := s.GetPath()
-	err = s.Client.UploadFile(uploadsDir, fileName, fileBytes)
+	location, err := s.Client.UploadFile(uploadsDir, fileName, fileBytes)
 	if err != nil {
 		log.Error().Err(err).Msg("Error uploading file to S3")
 		return fileData, err
 	}
 
-	path := filepath.Join(uploadsDir, fileName)
-	url := "https://" + config.GetString(EnvKeys.AwsBucket) + "/" + uploadsDir + "/" + fileName
+	url := "https://" + config.GetString(EnvKeys.AwsBucket) + location
 
-	fileData = FileData{
+	fileData = File{
 		Name: fileName,
-		Path: path,
+		Path: location,
 		Url:  url,
 	}
 
@@ -217,7 +218,7 @@ func (s *S3Store) StoreFile(cfg *UploaderConfig, fileName string, file multipart
 // DeleteFile deletes a file from the S3 bucket using the provided file path.
 // It calls the DeleteFile method of the AwsManager client.
 // If an error occurs during the deletion, it logs the error and returns it.
-func (s *S3Store) DeleteFile(file FileData) error {
+func (s *S3Store) DeleteFile(file File) error {
 	log.Warn().Interface("file", file).Msg("Deleting file from S3")
 	err := s.Client.DeleteFile(file.Path)
 	if err != nil {
@@ -232,11 +233,11 @@ func (s *S3Store) ListFiles() ([]string, error) {
 	return s.Client.ListFiles()
 }
 
-func (s *S3Store) ReadFile(file *FileData) ([]byte, error) {
+func (s *S3Store) ReadFile(file *File) ([]byte, error) {
 	return s.Client.DownloadFile(file.Path)
 }
 
-func (s *S3Store) GetFileInfo(file *FileData) (*FileInfo, error) {
+func (s *S3Store) GetFileInfo(file *File) (*FileInfo, error) {
 	return s.Client.GetFileInfo(file.Path)
 }
 

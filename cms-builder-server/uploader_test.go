@@ -15,20 +15,19 @@ func TestUploaderGetsCreated(t *testing.T) {
 	e, err := th.GetDefaultEngine()
 	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 
-	t.Log("Testing Upload App is registered")
-	app, err := e.Admin.GetApp("upload")
+	app, err := e.Admin.GetApp("file")
 	assert.NoError(t, err, "GetApp should not return an error")
 	assert.NotNil(t, app, "GetApp should return a non-nil App")
 
 	handler := func(w http.ResponseWriter, r *http.Request) {}
 
-	t.Log("Testing Upload routes are registered")
 	expectedRoutes := []builder.RouteHandler{
-		builder.NewRouteHandler("/files", handler, "file-list", true, http.MethodGet, nil),
-		builder.NewRouteHandler("/files/upload", handler, "file-upload", true, http.MethodPost, nil),
-		builder.NewRouteHandler("/files/delete", handler, "file-delete", true, http.MethodDelete, nil),
-		builder.NewRouteHandler("/files/download", handler, "file-download", true, http.MethodGet, nil),
-		builder.NewRouteHandler("/files/info", handler, "file-info", true, http.MethodGet, nil),
+		builder.NewRouteHandler("/api/files", handler, "files-list", true, http.MethodGet, nil),
+		builder.NewRouteHandler("/api/files/{id}", handler, "files-get", true, http.MethodGet, nil),
+		builder.NewRouteHandler("/api/files/new", handler, "files-new", true, http.MethodPost, nil),
+		builder.NewRouteHandler("/api/files/{id}/delete", handler, "files-delete", true, http.MethodDelete, nil),
+		builder.NewRouteHandler("/api/files/{id}/download", handler, "files-download", true, http.MethodGet, nil),
+		builder.NewRouteHandler("/api/files/{id}/update", handler, "files-update", true, http.MethodGet, nil),
 	}
 
 	routes := e.Server.GetRoutes()
@@ -44,14 +43,21 @@ func TestUploaderGetsCreated(t *testing.T) {
 
 		assert.True(t, found, "Expected route not found: %s", expectedRoute.Route)
 	}
+
+	assert.NotNil(t, app.Api, "Api handlers should not be nil")
+	assert.NotNil(t, app.Api.Create, "Create handlers should not be nil")
+	assert.NotNil(t, app.Api.Delete, "Delete handlers should not be nil")
+	assert.NotNil(t, app.Api.Detail, "Detail handlers should not be nil")
+	assert.NotNil(t, app.Api.List, "List handlers should not be nil")
+	assert.NotNil(t, app.Api.Update, "Update handlers should not be nil")
 }
 
-func TestAnonymousCanUploadAllowed(t *testing.T) {
+func TestAuthenticatedCanUploadAndDeleteAllowed(t *testing.T) {
 	e, err := th.GetDefaultEngine()
 	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 
 	// Create a helper request to get the detail
-	request, _, _ := th.NewRequestWithFile(
+	request, user, rollback := th.NewRequestWithFile(
 		http.MethodPost,
 		"",
 		testFilePath,
@@ -59,35 +65,50 @@ func TestAnonymousCanUploadAllowed(t *testing.T) {
 		nil,
 		nil,
 	)
+	defer rollback()
 
-	var result builder.Upload
+	app, err := e.Admin.GetApp("file")
+	assert.NoError(t, err, "GetApp should not return an error")
+	assert.NotNil(t, app, "GetApp should return a non-nil App")
 
-	cfg := &builder.UploaderConfig{
-		MaxSize:            5000,
-		SupportedMimeTypes: []string{"*"},
-		Folder:             "test_output",
-		StaticPath:         "static",
-	}
-
+	var result builder.File
 	response, err := th.ExecuteApiCall(
 		t,
-		e.Engine.GetFilePostHandler(cfg),
+		app.Api.Create(&app, e.Engine.DB),
 		request,
 		&result,
 	)
 
-	assert.NoError(t, err, "ApiDetail should not return an error")
-	assert.NotNil(t, response, "ApiDetail should return a non-nil response")
+	assert.NoError(t, err, "ApiCreate should not return an error")
+	assert.NotNil(t, response, "ApiCreate should return a non-nil response")
 	assert.Equal(t, response.Success, true, "Success should be true")
 
+	assert.NotNil(t, result.ID, "ID should be something", result.ID)
 	assert.NotNil(t, result.Name, "FileName should be something", result.Name)
 	assert.NotNil(t, result.Path, "FilePath should be something", result.Path)
 	assert.NotNil(t, result.Url, "Url should be something", result.Url)
 
 	// clean up
-	err = e.Store.DeleteFile(*result.FileData)
-	assert.NoError(t, err, "DeleteFile should not return an error")
+	request, _, _ = th.NewRequest(
+		http.MethodDelete,
+		"",
+		true,
+		user,
+		map[string]string{"id": result.GetIDString()},
+	)
+
+	response, err = th.ExecuteApiCall(
+		t,
+		app.ApiDelete(e.Engine.DB),
+		request,
+		&result,
+	)
+
+	assert.NoError(t, err, "ApiDelete should not return an error")
+	assert.NotNil(t, response, "ApiDelete should return a non-nil response")
+	assert.Equal(t, response.Success, true, "Success should be true")
 }
+
 func TestAnonymousCanNotUploadForbidden(t *testing.T) {
 	e, err := th.GetDefaultEngine()
 	assert.NoError(t, err, "GetDefaultEngine should not return an error")
@@ -103,18 +124,15 @@ func TestAnonymousCanNotUploadForbidden(t *testing.T) {
 	)
 	defer rollback()
 
-	var result builder.Upload
+	var result builder.File
 
-	cfg := &builder.UploaderConfig{
-		MaxSize:            5000,
-		SupportedMimeTypes: []string{"*"},
-		Folder:             "test_output",
-		StaticPath:         "static",
-	}
+	app, err := e.Admin.GetApp("file")
+	assert.NoError(t, err, "GetApp should not return an error")
+	assert.NotNil(t, app, "GetApp should return a non-nil App")
 
 	response, err := th.ExecuteApiCall(
 		t,
-		e.Engine.GetFilePostHandler(cfg),
+		app.Api.Create(&app, e.Engine.DB),
 		request,
 		&result,
 	)
@@ -123,5 +141,5 @@ func TestAnonymousCanNotUploadForbidden(t *testing.T) {
 	assert.Equal(t, response.Success, false, "Success should be false")
 	assert.Contains(t, response.Message, "not allowed", "Error should contain not allowed")
 
-	assert.Equal(t, result, (builder.Upload{}), "Result should be nil", result)
+	assert.Equal(t, result, (builder.File{}), "Result should be nil", result)
 }

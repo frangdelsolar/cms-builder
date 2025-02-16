@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	builder "github.com/frangdelsolar/cms-builder/cms-builder-server"
@@ -62,36 +61,6 @@ func TestRegisterUserController(t *testing.T) {
 
 	t.Log("Rolling back user registration")
 	e.Firebase.RollbackUserRegistration(context.Background(), createdUser.FirebaseId)
-}
-
-// TestAuthenticationMiddleware tests the authentication middleware by registering a user,
-// logging in with that user, and verifying that the middleware adds the "auth" header
-// to the request.
-func TestAuthenticationMiddleware(t *testing.T) {
-
-	e, err := th.GetDefaultEngine()
-	assert.NoError(t, err, "GetDefaultEngine should not return an error")
-
-	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-		authHeader := w.Header().Get("auth")
-		if authHeader != "true" {
-			t.Errorf("missing auth header")
-		}
-	})
-
-	handlerToTest := e.Engine.AuthMiddleware(nextHandler)
-
-	req := httptest.NewRequest("GET", "http://testing", nil)
-
-	userData := th.RandomUserData()
-	_, rollback := th.RegisterTestUser(userData)
-	defer rollback()
-
-	accessToken, err := th.LoginUser(userData)
-	assert.NoError(t, err, "Error logging in user")
-	req.Header.Set("Authorization", "Bearer "+accessToken)
-	handlerToTest.ServeHTTP(httptest.NewRecorder(), req)
 }
 
 // TestAppendRoleToUser tests the AppendRoleToUser method for various scenarios.

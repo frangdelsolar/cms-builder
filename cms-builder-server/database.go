@@ -73,7 +73,7 @@ func (db *Database) Find(entity interface{}, query string, pagination *Paginatio
 	}
 
 	// Retrieve total number of records
-	db.DB.Model(entity).Debug().Where(query).Count(&pagination.Total)
+	db.DB.Model(entity).Where(query).Count(&pagination.Total)
 
 	// Apply pagination
 	filtered := db.DB.Where(query).Order(order)
@@ -81,6 +81,18 @@ func (db *Database) Find(entity interface{}, query string, pagination *Paginatio
 	offset := (pagination.Page - 1) * pagination.Limit
 
 	return filtered.Limit(limit).Offset(offset).Find(entity)
+}
+
+// FindOne retrieves a single record from the database that matches the provided query.
+//
+// Parameters:
+//   - entity: the destination where the result will be stored.
+//   - query: the query to be executed, it can be a raw SQL query or a GORM query.
+//
+// Returns:
+//   - *gorm.DB: the result of the database query, which can be used to check for errors.
+func (db *Database) FindOne(entity interface{}, query string) *gorm.DB {
+	return db.DB.Where(query).First(entity)
 }
 
 // Create creates a new record in the database.

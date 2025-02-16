@@ -79,7 +79,7 @@ func GetDefaultEngine() (TestEngineServices, error) {
 		builder.VisitorRole: builder.AllAllowedAccess,
 	}
 
-	app, err := admin.Register(MockStruct{}, false, permission)
+	app, err := admin.Register(MockStruct{}, false, permission, nil)
 	if err != nil {
 		return TestEngineServices{}, err
 	}
@@ -90,7 +90,7 @@ func GetDefaultEngine() (TestEngineServices, error) {
 	}
 	defer admin.Unregister(app.Name())
 
-	return TestEngineServices{e, admin, e.DB, e.Server, e.Firebase, &app, e.Logger, e.Config, e.Store}, nil
+	return TestEngineServices{e, admin, e.DB, e.Server, e.Firebase, app, e.Logger, e.Config, e.Store}, nil
 }
 
 // createMockResource creates a new resource for the given user and returns the created resource, the user, and a function to roll back the resource creation.
@@ -132,7 +132,7 @@ func CreateMockResource(t *testing.T, db *builder.Database, app *builder.App, us
 //
 // Returns:
 // - builder.Response: the parsed response from the API call handler function.
-func ExecuteApiCall(t *testing.T, apiCall builder.HandlerFunc, request *http.Request, v interface{}) (builder.Response, error) {
+func ExecuteApiCall(t *testing.T, apiCall http.HandlerFunc, request *http.Request, v interface{}) (builder.Response, error) {
 	// t.Log("Executing API call", request.Method, request.Body, v)
 	writer := MockWriter{}
 	apiCall(&writer, request)

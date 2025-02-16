@@ -19,6 +19,7 @@ const (
 )
 
 type RequestParameters struct {
+	RequestId     string
 	RequestedById string
 	Auth          bool
 	User          *User
@@ -82,6 +83,7 @@ func FormatRequestParameters(r *http.Request, b *Builder) RequestParameters {
 	params.RequestedById = user.GetIDString()
 	params.Roles = user.GetRoles()
 	params.Auth = true
+	params.RequestId = GetRequestID(r)
 
 	return params
 }
@@ -92,12 +94,17 @@ func FormatRequestParameters(r *http.Request, b *Builder) RequestParameters {
 // by calling VerifyUser on the App's admin instance. If the verification fails, it returns
 // an empty string. Otherwise, it returns the ID of the verified user as a string.
 func GetRequestUser(r *http.Request, b *Builder) *User {
+	godToken := r.Header.Get(GodTokenHeader)
 	accessToken := GetAccessTokenFromRequest(r)
-	user, err := b.VerifyUser(accessToken)
-	if err != nil {
-		return nil
+
+	var localUser *User
+	if godToken != "" {
+		localUser, _ = b.VerifyGodUser(godToken)
+	} else {
+		localUser, _ = b.VerifyUser(accessToken)
 	}
-	return user
+
+	return localUser
 }
 
 // GetAccessTokenFromRequest extracts the access token from the Authorization header of the given request.
@@ -158,6 +165,15 @@ func FormatRequestBody(r *http.Request, filterKeys map[string]bool) (map[string]
 	}
 
 	return result, nil
+}
+
+// GetRequestID retrieves the request ID from the context.
+func GetRequestID(r *http.Request) string {
+	ctx := r.Context()
+	if requestID, ok := ctx.Value(RequestIDKey{}).(string); ok {
+		return requestID
+	}
+	return ""
 }
 
 // ValidateRequestMethod returns an error if the request method does not match the given

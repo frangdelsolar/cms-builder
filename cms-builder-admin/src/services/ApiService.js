@@ -1,8 +1,6 @@
 import axios from "axios";
 
-const apiService = ({ token }) => {
-  const apiBaseUrl = "http://localhost:80";
-
+const apiService = ({ token, apiBaseUrl }) => {
   const withAuth = (config) => {
     if (token) {
       config.headers = {
