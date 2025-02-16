@@ -12,7 +12,8 @@ import (
 	"gorm.io/gorm"
 )
 
-var systemUser = User{
+var SystemUser = User{
+	ID:    6666666666666666666,
 	Name:  "System",
 	Email: "system",
 }
@@ -49,7 +50,7 @@ func (b *Builder) VerifyUser(userIdToken string) (*User, error) {
 		localUser.FirebaseId = accessToken.UID
 		localUser.Roles = string(VisitorRole)
 
-		b.DB.Create(&localUser, &systemUser)
+		b.DB.Create(&localUser, &SystemUser)
 	}
 
 	return &localUser, nil
@@ -266,7 +267,7 @@ func (b *Builder) CreateUserWithRole(input RegisterUserInput, role Role, registe
 		FirebaseId: fbUserId,
 		Roles:      string(role),
 	}
-	b.DB.Create(&user, &systemUser)
+	b.DB.Create(&user, &SystemUser)
 
 	if user.ID == 0 {
 		return nil, fmt.Errorf("error creating user in database")
