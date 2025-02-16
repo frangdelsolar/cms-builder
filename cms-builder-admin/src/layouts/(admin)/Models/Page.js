@@ -12,11 +12,19 @@ export default function EntitiesPage() {
   const entities = useAppSelector(selectEntities);
 
   useEffect(() => {
-    let hash = window.location.hash;
-    if (hash && entities) {
-      let entity = entities.find((e) => e.kebabPluralName === hash.slice(1));
-      dispatch(setSelectedEntity(entity));
+    if (!entities) {
+      return;
     }
+
+    let hash = window.location.hash;
+
+    if (!hash) {
+      hash = entities[0].kebabPluralName;
+      window.location.hash = hash;
+    }
+
+    let entity = entities.find((e) => e.kebabPluralName === hash.slice(1));
+    dispatch(setSelectedEntity(entity));
   }, []);
 
   return (

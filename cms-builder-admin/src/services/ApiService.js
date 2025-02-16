@@ -43,36 +43,25 @@ const apiService = ({ token, apiBaseUrl }) => {
     });
   };
 
-  const getFiles = () => {
-    return executeApiCall({
-      method: "GET",
-      relativePath: "private/files",
-    });
-  };
+  const postFile = (file) => {
+    let path = `private/api/files/new`;
 
-  const downloadFile = (file) => {
-    let path = `private/files/download?file=${file}`;
+    const formData = new FormData(); // Create a FormData object
+    formData.append("file", file);
 
     return executeApiCall({
-      method: "GET",
+      method: "POST",
       relativePath: path,
+      body: formData,
+      contentType: "multipart/form-data",
     });
   };
 
-  const getFileInfo = (file) => {
-    let path = `private/files/info?file=${file}`;
+  const downloadFile = (fileId) => {
+    let path = `private/api/files/${fileId}/download`;
 
     return executeApiCall({
       method: "GET",
-      relativePath: path,
-    });
-  };
-
-  const deleteFile = (file) => {
-    let path = `private/files/delete?file=${file}`;
-
-    return executeApiCall({
-      method: "DELETE",
       relativePath: path,
     });
   };
@@ -160,11 +149,9 @@ const apiService = ({ token, apiBaseUrl }) => {
 
   return {
     getEntities,
-    getFiles,
-    deleteFile,
     downloadFile,
-    getFileInfo,
     getEndpoints,
+    postFile,
     schema,
     post,
     put,
