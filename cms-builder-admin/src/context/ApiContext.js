@@ -14,7 +14,7 @@ const ApiProvider = ({ children }) => {
   const service = useMemo(() => {
     return apiService({
       token,
-      apiBaseUrl: projectData.apiBaseUrl || "http://localhost:80",
+      apiBaseUrl: projectData.apiBaseUrl || process.env.REACT_APP_API_BASE_URL,
     });
   }, [token]);
 

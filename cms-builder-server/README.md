@@ -1,4 +1,4 @@
-# Go App Builder v1.5.2
+# Go App Builder v1.5.3
 
 This is a Go library that provides a foundation for building applications. It offers functionalities for:
 

@@ -187,7 +187,9 @@ const ModelTable = () => {
       console.log("Error updating item: ", error);
       let errorMessage = "Error updating item: " + error.message;
       toast.show(errorMessage, "error");
-      dispatch(setFormErrors(error.data.Errors));
+      if (error.data && error.data.Errors) {
+        dispatch(setFormErrors(error.data.Errors));
+      }
     }
   };
 

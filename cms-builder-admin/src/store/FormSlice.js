@@ -4,6 +4,7 @@ export const formSlice = createSlice({
   name: "form",
   initialState: {
     data: {},
+    file: null,
     saving: false,
     initialized: false,
     errors: [],
@@ -31,6 +32,9 @@ export const formSlice = createSlice({
     setFormSaving: (state, action) => {
       state.saving = action.payload;
     },
+    setFormFile: (state, action) => {
+      state.file = action.payload;
+    },
   },
 });
 
@@ -39,6 +43,7 @@ export const {
   setFormErrors,
   setFormInitialized,
   setFormSaving,
+  setFormFile,
   clearForm,
 } = formSlice.actions;
 

@@ -255,7 +255,7 @@ func NewScheduler(b *Builder) (*Scheduler, error) {
 		return nil, err
 	}
 	s.Start()
-	return &Scheduler{Cron: s, Builder: b, User: schedulerUser}, nil
+	return &Scheduler{Cron: s, Builder: b, User: &SchedulerUser}, nil
 }
 
 func (s *Scheduler) Shutdown() error {
