@@ -23,7 +23,7 @@ type UploaderConfig struct {
 	Folder             string
 }
 
-var CreateStoredFilesHandler ApiFunction = func(a *App, db *Database) HandlerFunc {
+var CreateStoredFilesHandler ApiFunction = func(a *App, db *Database) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		err := ValidateRequestMethod(r, http.MethodPost)
@@ -113,11 +113,10 @@ var CreateStoredFilesHandler ApiFunction = func(a *App, db *Database) HandlerFun
 		}
 
 		SendJsonResponse(w, http.StatusCreated, &fileData, a.Name()+" created")
-
 	}
 }
 
-var DeleteStoredFilesHandler ApiFunction = func(a *App, db *Database) HandlerFunc {
+var DeleteStoredFilesHandler ApiFunction = func(a *App, db *Database) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		err := ValidateRequestMethod(r, http.MethodDelete)
@@ -163,7 +162,7 @@ var DeleteStoredFilesHandler ApiFunction = func(a *App, db *Database) HandlerFun
 	}
 }
 
-var UpdateStoredFilesHandler ApiFunction = func(a *App, db *Database) HandlerFunc {
+var UpdateStoredFilesHandler ApiFunction = func(a *App, db *Database) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := ValidateRequestMethod(r, http.MethodPut)
 		if err != nil {
@@ -175,7 +174,7 @@ var UpdateStoredFilesHandler ApiFunction = func(a *App, db *Database) HandlerFun
 	}
 }
 
-func (b *Builder) DownloadStoredFileHandler() HandlerFunc {
+func (b *Builder) DownloadStoredFileHandler() http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 

@@ -17,6 +17,15 @@ var systemUser = User{
 	Email: "system",
 }
 
+var godUser = User{
+	ID:    7777777777777777777,
+	Name:  "God",
+	Email: "god",
+	Roles: AdminRole.S(),
+}
+
+const GodTokenHeader = "X-God-Token"
+
 // VerifyUser verifies the user based on the access token provided in the userIdToken parameter.
 // The method verifies the token by calling VerifyIDToken on the Firebase Admin instance.
 // If the token is valid, it retrieves the user record from the database and returns it.
@@ -34,8 +43,6 @@ func (b *Builder) VerifyUser(userIdToken string) (*User, error) {
 
 	// Create user if firebase has it but not in database
 	if localUser.ID == 0 {
-		// log.Info().Msg("User exists in Firebase but not in database. Will create it now")
-
 		// create user in database
 		localUser.Name = accessToken.Claims["name"].(string)
 		localUser.Email = strings.ToLower(accessToken.Claims["email"].(string))
@@ -46,6 +53,13 @@ func (b *Builder) VerifyUser(userIdToken string) (*User, error) {
 	}
 
 	return &localUser, nil
+}
+
+func (b *Builder) VerifyGodUser(godToken string) (*User, error) {
+	if godToken != config.GetString(EnvKeys.GodToken) {
+		return nil, errors.New("Unauthorized")
+	}
+	return &godUser, nil
 }
 
 // AuthMiddleware is a middleware function that verifies the user based on the
@@ -59,11 +73,25 @@ func (b *Builder) AuthMiddleware(next http.Handler) http.Handler {
 		// Clear the headers in case someone else set them
 		DeleteHeader(requestedByParamKey, r)
 		DeleteHeader(authParamKey, r)
+		DeleteHeader(rolesParamKey, r)
 
-		// TODO: Maybe I can send ^ this person to hell for trying to hack me
-
+		// Check if the request has a god token
+		godToken := r.Header.Get(GodTokenHeader)
 		accessToken := GetAccessTokenFromRequest(r)
-		localUser, err := b.VerifyUser(accessToken)
+
+		if accessToken == "" && godToken == "" {
+			SendJsonResponse(w, http.StatusUnauthorized, fmt.Errorf("Unauthorized"), "Unauthorized")
+			return
+		}
+
+		var localUser *User
+		var err error
+		if godToken != "" {
+			localUser, err = b.VerifyGodUser(godToken)
+		} else {
+			localUser, err = b.VerifyUser(accessToken)
+		}
+
 		if err != nil {
 			log.Error().Err(err).Msg("Error verifying user")
 			SendJsonResponse(w, http.StatusUnauthorized, err, "Unauthorized")
@@ -76,9 +104,9 @@ func (b *Builder) AuthMiddleware(next http.Handler) http.Handler {
 		}
 
 		// set the writerheader
-		w.Header().Set("requestedBy", localUser.GetIDString())
-		w.Header().Set("auth", "true")
-		w.Header().Set("roles", localUser.Roles)
+		r.Header.Set(requestedByParamKey.S(), localUser.GetIDString())
+		r.Header.Set(authParamKey.S(), "true")
+		r.Header.Set(rolesParamKey.S(), localUser.Roles)
 
 		next.ServeHTTP(w, r)
 	})

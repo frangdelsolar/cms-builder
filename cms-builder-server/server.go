@@ -24,12 +24,12 @@ var (
 
 // RouteHandler defines a structure for storing route information.
 type RouteHandler struct {
-	Route        string      // route is the path for the route. i.e. /users/{id}
-	Handler      HandlerFunc // handler is the handler for the route
-	Name         string      // name is the name of the route
-	RequiresAuth bool        // requiresAuth is a flag indicating if the route requires authentication
-	Schema       interface{} // represents the input
-	Method       string      // method is the HTTP method for the route
+	Route        string           // route is the path for the route. i.e. /users/{id}
+	Handler      http.HandlerFunc // handler is the handler for the route
+	Name         string           // name is the name of the route
+	RequiresAuth bool             // requiresAuth is a flag indicating if the route requires authentication
+	Schema       interface{}      // represents the input
+	Method       string           // method is the HTTP method for the route
 }
 
 // Server defines a structure for managing an HTTP server with middleware and routing capabilities.
@@ -395,7 +395,7 @@ type HandlerFunc func(w http.ResponseWriter, r *http.Request)
 //
 // url, err := r.Get("getUser").URL("id", "123") =>
 // "/users/123"
-func (s *Server) AddRoute(route string, handler HandlerFunc, name string, requiresAuth bool, method string, schema interface{}) {
+func (s *Server) AddRoute(route string, handler http.HandlerFunc, name string, requiresAuth bool, method string, schema interface{}) {
 	// Remove trailing slash if present
 	route = strings.TrimSuffix(route, "/")
 
@@ -415,7 +415,7 @@ func (s *Server) AddRoute(route string, handler HandlerFunc, name string, requir
 //	routeHandler := NewRouteHandler("/users/{id}", func(w http.ResponseWriter, r *http.Request) {
 //	  // Handle user with ID
 //	}, "getUser", false)
-func NewRouteHandler(route string, handler HandlerFunc, name string, requiresAuth bool, method string, schema interface{}) RouteHandler {
+func NewRouteHandler(route string, handler http.HandlerFunc, name string, requiresAuth bool, method string, schema interface{}) RouteHandler {
 	return RouteHandler{
 		Route:        route,
 		Handler:      handler,

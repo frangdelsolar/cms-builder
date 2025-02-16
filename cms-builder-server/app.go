@@ -34,7 +34,7 @@ func (f FieldName) S() string {
 	return string(f)
 }
 
-type ApiFunction func(a *App, db *Database) HandlerFunc
+type ApiFunction func(a *App, db *Database) http.HandlerFunc
 
 type ApiHandlers struct {
 	List   ApiFunction // List is a function that takes an ApiInput, a *Database and an *App and returns a *gorm.DB will be called on GET endpoints (e.g. /api/users)
@@ -44,7 +44,7 @@ type ApiHandlers struct {
 	Delete ApiFunction // Delete is a function that takes an ApiInput, a *Database and an *App and returns a *gorm.DB will be called on DELETE endpoints (e.g. /api/users/{id}/delete)
 }
 
-var DefaultListHandler ApiFunction = func(a *App, db *Database) HandlerFunc {
+var DefaultListHandler ApiFunction = func(a *App, db *Database) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		err := ValidateRequestMethod(r, http.MethodGet)
@@ -132,7 +132,7 @@ var DefaultListHandler ApiFunction = func(a *App, db *Database) HandlerFunc {
 	}
 }
 
-var DefaultDetailHandler ApiFunction = func(a *App, db *Database) HandlerFunc {
+var DefaultDetailHandler ApiFunction = func(a *App, db *Database) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := ValidateRequestMethod(r, http.MethodGet)
 		if err != nil {
@@ -178,7 +178,7 @@ var DefaultDetailHandler ApiFunction = func(a *App, db *Database) HandlerFunc {
 	}
 }
 
-var DefaultCreateHandler ApiFunction = func(a *App, db *Database) HandlerFunc {
+var DefaultCreateHandler ApiFunction = func(a *App, db *Database) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		err := ValidateRequestMethod(r, http.MethodPost)
@@ -235,7 +235,7 @@ var DefaultCreateHandler ApiFunction = func(a *App, db *Database) HandlerFunc {
 	}
 }
 
-var DefaultUpdateHandler ApiFunction = func(a *App, db *Database) HandlerFunc {
+var DefaultUpdateHandler ApiFunction = func(a *App, db *Database) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := ValidateRequestMethod(r, http.MethodPut)
 		if err != nil {
@@ -309,7 +309,7 @@ var DefaultUpdateHandler ApiFunction = func(a *App, db *Database) HandlerFunc {
 	}
 }
 
-var DefaultDeleteHandler ApiFunction = func(a *App, db *Database) HandlerFunc {
+var DefaultDeleteHandler ApiFunction = func(a *App, db *Database) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		err := ValidateRequestMethod(r, http.MethodDelete)
@@ -594,7 +594,7 @@ func JsonifyInterface(instance interface{}) (map[string]interface{}, error) {
 //
 // It will also handle errors and return a 500 Internal Server Error if an error
 // occurs during the retrieval of records.
-func (a *App) ApiList(db *Database) HandlerFunc {
+func (a *App) ApiList(db *Database) http.HandlerFunc {
 	return a.Api.List(a, db)
 }
 
@@ -607,7 +607,7 @@ func (a *App) ApiList(db *Database) HandlerFunc {
 // It will also handle errors and return a 404 Not Found if the error is a
 // gorm.ErrRecordNotFound, or a 500 Internal Server Error if the error is
 // not a gorm.ErrRecordNotFound.
-func (a *App) ApiDetail(db *Database) HandlerFunc {
+func (a *App) ApiDetail(db *Database) http.HandlerFunc {
 	return a.Api.Detail(a, db)
 }
 
@@ -619,7 +619,7 @@ func (a *App) ApiDetail(db *Database) HandlerFunc {
 //
 // It will also handle errors and return a 500 Internal Server Error if an error
 // occurs during the creation of the record.
-func (a *App) ApiCreate(db *Database) HandlerFunc {
+func (a *App) ApiCreate(db *Database) http.HandlerFunc {
 	return a.Api.Create(a, db)
 }
 
@@ -631,7 +631,7 @@ func (a *App) ApiCreate(db *Database) HandlerFunc {
 //
 // It will also handle errors and return a 500 Internal Server Error if an error
 // occurs during the update of the record.
-func (a *App) ApiUpdate(db *Database) HandlerFunc {
+func (a *App) ApiUpdate(db *Database) http.HandlerFunc {
 	return a.Api.Update(a, db)
 }
 
@@ -644,7 +644,7 @@ func (a *App) ApiUpdate(db *Database) HandlerFunc {
 // It will also handle errors and return a 404 Not Found if the error is a
 // gorm.ErrRecordNotFound, or a 500 Internal Server Error if the error is
 // not a gorm.ErrRecordNotFound.
-func (a *App) ApiDelete(db *Database) HandlerFunc {
+func (a *App) ApiDelete(db *Database) http.HandlerFunc {
 	return a.Api.Delete(a, db)
 }
 

@@ -19,6 +19,11 @@ var AllAllowedAccess = []CrudOperation{
 }
 
 type Role string
+
+func (r Role) S() string {
+	return string(r)
+}
+
 type CrudOperation string
 
 type RolePermissionMap map[Role][]CrudOperation

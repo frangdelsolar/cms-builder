@@ -94,12 +94,17 @@ func FormatRequestParameters(r *http.Request, b *Builder) RequestParameters {
 // by calling VerifyUser on the App's admin instance. If the verification fails, it returns
 // an empty string. Otherwise, it returns the ID of the verified user as a string.
 func GetRequestUser(r *http.Request, b *Builder) *User {
+	godToken := r.Header.Get(GodTokenHeader)
 	accessToken := GetAccessTokenFromRequest(r)
-	user, err := b.VerifyUser(accessToken)
-	if err != nil {
-		return nil
+
+	var localUser *User
+	if godToken != "" {
+		localUser, _ = b.VerifyGodUser(godToken)
+	} else {
+		localUser, _ = b.VerifyUser(accessToken)
 	}
-	return user
+
+	return localUser
 }
 
 // GetAccessTokenFromRequest extracts the access token from the Authorization header of the given request.

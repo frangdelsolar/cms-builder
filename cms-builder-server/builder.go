@@ -28,6 +28,7 @@ type ConfigKeys struct {
 	CsrfToken             string `json:"csrfToken"`             // CSRF token
 	FirebaseSecret        string `json:"firebaseSecret"`        // Firebase secret
 	FirebaseApiKey        string `json:"firebaseApiKey"`        // Firebase API key
+	GodToken              string `json:"godToken"`              // God token
 	UploaderMaxSize       string `json:"uploaderMaxSize"`       // Uploader max size in MB
 	UploaderAuthenticate  string `json:"uploaderAuthenticate"`  // Whether files will be public or private accessible
 	UploaderSupportedMime string `json:"uploaderSupportedMime"` // Supported mime types for uploaded files
@@ -55,6 +56,7 @@ var EnvKeys = ConfigKeys{
 	DbDriver:              "DB_DRIVER",
 	DbFile:                "DB_FILE",
 	DbUrl:                 "DB_URL",
+	GodToken:              "GOD_TOKEN",
 	ServerHost:            "SERVER_HOST",
 	ServerPort:            "SERVER_PORT",
 	CsrfToken:             "CSRF_TOKEN",
@@ -87,6 +89,7 @@ var DefaultEnvValues = ConfigKeys{
 	DbDriver:              "sqlite",
 	DbFile:                "database.db",
 	DbUrl:                 "",
+	GodToken:              "someToken",
 	ServerHost:            "0.0.0.0",
 	ServerPort:            "80",
 	CsrfToken:             "someToken",
