@@ -12,19 +12,6 @@ import (
 	"gorm.io/gorm"
 )
 
-var SystemUser = User{
-	ID:    6666666666666666666,
-	Name:  "System",
-	Email: "system",
-}
-
-var godUser = User{
-	ID:    7777777777777777777,
-	Name:  "God",
-	Email: "god",
-	Roles: AdminRole.S(),
-}
-
 const GodTokenHeader = "X-God-Token"
 
 // VerifyUser verifies the user based on the access token provided in the userIdToken parameter.
@@ -60,7 +47,7 @@ func (b *Builder) VerifyGodUser(godToken string) (*User, error) {
 	if godToken != config.GetString(EnvKeys.GodToken) {
 		return nil, errors.New("Unauthorized")
 	}
-	return &godUser, nil
+	return &GodUser, nil
 }
 
 // AuthMiddleware is a middleware function that verifies the user based on the
@@ -258,6 +245,21 @@ func (b *Builder) CreateUserWithRole(input RegisterUserInput, role Role, registe
 			// log.Warn().Msg("User already exists in database.")
 			return &existingUser, nil
 		}
+	}
+
+	// Check if there is a user with the same email in the database
+	var existingUser User
+	q := "email = '" + strings.ToLower(input.Email) + "'"
+	err := b.DB.DB.Where(q).First(&existingUser).Error
+	if err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("error getting user from database")
+		}
+	}
+
+	if existingUser != (User{}) {
+		// log.Warn().Msg("User already exists in database.")
+		return &existingUser, nil
 	}
 
 	// Create user in database

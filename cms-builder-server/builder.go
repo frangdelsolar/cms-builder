@@ -4,9 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+
+	"github.com/google/uuid"
 )
 
-const builderVersion = "1.5.2"
+const builderVersion = "1.5.3"
 
 // ConfigKeys define the keys used in the configuration file
 type ConfigKeys struct {
@@ -122,6 +124,11 @@ var builderErr = BuilderErrors{
 var log *Logger          // Global variable for the logger instance
 var config *ConfigReader // Global variable for the config reader
 
+var AdminUser User
+var GodUser User
+var SystemUser User
+var SchedulerUser User
+
 // init initializes the global logger and config reader instances with default values.
 // It checks if the logger and config reader are initialized and panics if not.
 // It also logs the version and environment at the info level.
@@ -232,6 +239,12 @@ func NewBuilder(input *NewBuilderInput) (*Builder, error) {
 	err = b.InitAuth()
 	if err != nil {
 		log.Err(err).Msg("Error initializing auth")
+		return nil, err
+	}
+
+	err = b.InitUsers()
+	if err != nil {
+		log.Err(err).Msg("Error initializing users")
 		return nil, err
 	}
 
@@ -579,6 +592,61 @@ func (b *Builder) InitHistory() error {
 		log.Error().Err(err).Msg("Error registering history app")
 		return err
 	}
+
+	return nil
+}
+
+func (b *Builder) InitUsers() error {
+	schedulerUserData := &RegisterUserInput{
+		Name:     "Scheduler",
+		Email:    "scheduler@" + config.GetString(EnvKeys.Domain),
+		Password: uuid.New().String(),
+	}
+
+	user, err := b.CreateUserWithRole(*schedulerUserData, SchedulerRole, false)
+	if err != nil {
+		log.Error().Err(err).Interface("user", user).Msg("Error creating scheduler user")
+		return err
+	}
+	SchedulerUser = *user
+
+	systemUserData := &RegisterUserInput{
+		Name:     "System",
+		Email:    "system@" + config.GetString(EnvKeys.Domain),
+		Password: uuid.New().String(),
+	}
+
+	user, err = b.CreateUserWithRole(*systemUserData, AdminRole, false)
+	if err != nil {
+		log.Error().Err(err).Interface("user", user).Msg("Error creating system user")
+		return err
+	}
+	SystemUser = *user
+
+	godUserData := &RegisterUserInput{
+		Name:     "God",
+		Email:    "god@" + config.GetString(EnvKeys.Domain),
+		Password: uuid.New().String(),
+	}
+	user, err = b.CreateUserWithRole(*godUserData, AdminRole, false)
+	if err != nil {
+		log.Error().Err(err).Interface("user", user).Msg("Error creating god user")
+		return err
+	}
+	GodUser = *user
+
+	adminUserData := &RegisterUserInput{
+		Name:     config.GetString(EnvKeys.AdminName),
+		Email:    config.GetString(EnvKeys.AdminEmail),
+		Password: config.GetString(EnvKeys.AdminPassword),
+	}
+
+	user, err = b.CreateUserWithRole(*adminUserData, AdminRole, true)
+	if err != nil {
+		log.Error().Err(err).Interface("user", user).Msg("Error creating admin user")
+		return err
+	}
+	AdminUser = *user
 
 	return nil
 }
