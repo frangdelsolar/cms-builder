@@ -226,8 +226,16 @@ func (b *Builder) DownloadStoredFileHandler() http.HandlerFunc {
 // getMimeTypeAndExtension takes a mime string and returns the mime type and extension
 // split by the "/" character. For example, "audio/wav" would return "audio" and "wav".
 func getMimeTypeAndExtension(mime string) (string, string) {
-	data := strings.Split(mime, "/")
-	return data[0], data[1]
+	parts := strings.Split(mime, "/")
+	if len(parts) == 0 {
+		return "", "" // Or handle this as an error if you prefer
+	}
+	mimeType := parts[0]
+	extension := ""
+	if len(parts) > 1 {
+		extension = parts[len(parts)-1] // Get the last part as the extension
+	}
+	return mimeType, extension
 }
 
 // ValidateContentType takes a content type and a list of supported mime types

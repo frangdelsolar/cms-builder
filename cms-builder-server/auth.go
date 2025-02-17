@@ -25,7 +25,7 @@ func (b *Builder) VerifyUser(userIdToken string) (*User, error) {
 		return nil, err
 	}
 
-	var localUser User
+	var localUser User = User{}
 
 	b.DB.FindUserByFirebaseId(accessToken.UID, &localUser)
 
