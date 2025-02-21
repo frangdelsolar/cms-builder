@@ -29,6 +29,7 @@ type HistoryEntry struct {
 	ResourceId   string     `json:"resourceId"`
 	Timestamp    string     `gorm:"type:timestamp" json:"timestamp"`
 	Detail       string     `json:"detail"`
+	RequestId    string     `json:"requestId"`
 }
 
 // NewLogHistoryEntry takes an action of type CRUDAction, a user ID, and an object, and returns a pointer to a HistoryEntry and an error.
@@ -36,7 +37,7 @@ type HistoryEntry struct {
 // The object is expected to be a struct with a JSON tag for the ID field named "ID".
 // The function returns an error if the object cannot be marshaled or unmarshaled to JSON.
 // The function uses the GetStructName function to get the name of the struct from the object passed in.
-func NewLogHistoryEntry(action CRUDAction, user *User, object interface{}, difference interface{}) (*HistoryEntry, error) {
+func NewLogHistoryEntry(action CRUDAction, user *User, object interface{}, difference interface{}, requestId string) (*HistoryEntry, error) {
 
 	name := GetStructName(object)
 	jsonData, err := json.Marshal(object)
@@ -76,6 +77,7 @@ func NewLogHistoryEntry(action CRUDAction, user *User, object interface{}, diffe
 		ResourceName: name,
 		Timestamp:    time.Now().Format(time.RFC3339Nano),
 		Detail:       detail,
+		RequestId:    requestId,
 	}
 
 	return historyEntry, nil
@@ -278,6 +280,39 @@ func (b *Builder) TimelineHandler() func(w http.ResponseWriter, r *http.Request)
 		}
 
 		SendJsonResponseWithPagination(w, http.StatusOK, instances, a.Name()+" list", pagination)
+
+	}
+}
+
+func (b *Builder) RequestLogHandler() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		err := ValidateRequestMethod(r, http.MethodGet)
+		if err != nil {
+			SendJsonResponse(w, http.StatusMethodNotAllowed, nil, err.Error())
+			return
+		}
+
+		a, err := b.Admin.GetApp("requestlog")
+		if err != nil {
+			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+			return
+		}
+
+		requestId := GetUrlParam("id", r)
+
+		// Create slice to store the model instances.
+		instance := CreateInstanceForUndeterminedType(a.Model)
+
+		query := "request_identifier = '" + requestId + "'"
+
+		res := b.DB.FindOne(instance, query)
+		if res.Error != nil {
+			SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
+			return
+		}
+
+		SendJsonResponse(w, http.StatusOK, instance, a.Name()+" list")
 
 	}
 }

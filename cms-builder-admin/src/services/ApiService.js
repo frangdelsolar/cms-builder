@@ -43,6 +43,13 @@ const apiService = ({ token, apiBaseUrl }) => {
     });
   };
 
+  const getRequestLogEntries = (requestId) => {
+    return executeApiCall({
+      method: "GET",
+      relativePath: `private/api/requests/logs/${requestId}`,
+    });
+  };
+
   const postFile = (file) => {
     let path = `private/api/files/new`;
 
@@ -171,6 +178,7 @@ const apiService = ({ token, apiBaseUrl }) => {
     downloadFile,
     getEndpoints,
     getTimelineForResource,
+    getRequestLogEntries,
     postFile,
     schema,
     post,

@@ -106,11 +106,11 @@ func (db *Database) FindOne(entity interface{}, query string) *gorm.DB {
 //
 // Returns:
 //   - *gorm.DB: the result of the database query, which can be used to check for errors.
-func (db *Database) Create(entity interface{}, user *User) *gorm.DB {
+func (db *Database) Create(entity interface{}, user *User, requestId string) *gorm.DB {
 
 	result := db.DB.Create(entity)
 	if result.Error == nil {
-		historyEntry, err := NewLogHistoryEntry(CreateCRUDAction, user, entity, "")
+		historyEntry, err := NewLogHistoryEntry(CreateCRUDAction, user, entity, "", requestId)
 		if err != nil {
 			return nil
 		}
@@ -127,11 +127,11 @@ func (db *Database) Create(entity interface{}, user *User) *gorm.DB {
 //
 // Returns:
 //   - *gorm.DB: the result of the database query, which can be used to check for errors.
-func (db *Database) Delete(entity interface{}, user *User) *gorm.DB {
+func (db *Database) Delete(entity interface{}, user *User, requestId string) *gorm.DB {
 
 	result := db.DB.Delete(entity)
 	if result.Error == nil {
-		historyEntry, err := NewLogHistoryEntry(DeleteCRUDAction, user, entity, "")
+		historyEntry, err := NewLogHistoryEntry(DeleteCRUDAction, user, entity, "", requestId)
 		if err != nil {
 			return nil
 		}
@@ -148,11 +148,11 @@ func (db *Database) Delete(entity interface{}, user *User) *gorm.DB {
 //
 // Returns:
 //   - *gorm.DB: the result of the database query, which can be used to check for errors.
-func (db *Database) Save(entity interface{}, user *User, differences interface{}) *gorm.DB {
+func (db *Database) Save(entity interface{}, user *User, differences interface{}, requestId string) *gorm.DB {
 
 	result := db.DB.Save(entity)
 	if result.Error == nil {
-		historyEntry, err := NewLogHistoryEntry(UpdateCRUDAction, user, entity, differences)
+		historyEntry, err := NewLogHistoryEntry(UpdateCRUDAction, user, entity, differences, requestId)
 		if err != nil {
 			return db.DB
 		}

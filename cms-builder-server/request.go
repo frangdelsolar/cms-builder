@@ -83,8 +83,20 @@ func FormatRequestParameters(r *http.Request, b *Builder) RequestParameters {
 	params.RequestedById = user.GetIDString()
 	params.Roles = user.GetRoles()
 	params.Auth = true
+	params.RequestId = GetRequestId(r)
 
 	return params
+}
+
+func GetRequestId(r *http.Request) string {
+
+	// get from context requestIdentifier
+	ctx := r.Context()
+	if requestId, ok := ctx.Value("requestIdentifier").(string); ok {
+		return requestId
+	}
+
+	return ""
 }
 
 // getRequestUserId validates the access token in the Authorization header of the request.

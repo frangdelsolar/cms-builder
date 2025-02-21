@@ -7,6 +7,7 @@ import ForgotPasswordPage from "./layouts/auth/ForgotPassword/Page";
 
 import ModelPage from "./layouts/admin/Models/Page";
 import MediaPage from "./layouts/admin/Media/Page";
+import ActivityPage from "./layouts/admin/Activity/Page";
 
 import { useRoutes, Navigate } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
@@ -28,7 +29,7 @@ const PrivateRoute = ({ children }) => {
 };
 
 const RedirectHome = () => {
-  return <Navigate to="admin/models" />;
+  return <Navigate to="admin/activity" />;
 };
 
 export const ROUTES = [
@@ -45,6 +46,10 @@ export const ROUTES = [
       </PrivateRoute>
     ),
     children: [
+      {
+        path: "activity",
+        element: <ActivityPage />,
+      },
       {
         path: "models",
         element: <ModelPage />,

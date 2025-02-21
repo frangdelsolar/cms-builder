@@ -106,7 +106,7 @@ var CreateStoredFilesHandler ApiFunction = func(a *App, db *Database) http.Handl
 			return
 		}
 
-		res := db.Create(fileData, params.User)
+		res := db.Create(fileData, params.User, params.RequestId)
 		if res.Error != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
 			return
@@ -136,7 +136,7 @@ var DeleteStoredFilesHandler ApiFunction = func(a *App, db *Database) http.Handl
 
 		instance, err := GetInstanceIfAuthorized(a.Model, a.SkipUserBinding, instanceId, db, &params)
 		if err != nil {
-			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+			SendJsonResponse(w, http.StatusForbidden, nil, err.Error())
 			return
 		}
 
@@ -150,7 +150,7 @@ var DeleteStoredFilesHandler ApiFunction = func(a *App, db *Database) http.Handl
 			return
 		}
 
-		res := db.Delete(fileData, params.User)
+		res := db.Delete(fileData, params.User, params.RequestId)
 		if res.Error != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
 			return
@@ -202,7 +202,7 @@ func (b *Builder) DownloadStoredFileHandler() http.HandlerFunc {
 
 		instance, err := GetInstanceIfAuthorized(app.Model, app.SkipUserBinding, instanceId, b.DB, &params)
 		if err != nil {
-			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+			SendJsonResponse(w, http.StatusForbidden, nil, err.Error())
 			return
 		}
 

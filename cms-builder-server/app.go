@@ -231,7 +231,7 @@ var DefaultCreateHandler ApiFunction = func(a *App, db *Database) http.HandlerFu
 			return
 		}
 
-		res := db.Create(instance, params.User)
+		res := db.Create(instance, params.User, params.RequestId)
 		if res.Error != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
 			return
@@ -314,7 +314,7 @@ var DefaultUpdateHandler ApiFunction = func(a *App, db *Database) http.HandlerFu
 		}
 
 		// Update the record in the database
-		res := db.Save(instance, params.User, differences)
+		res := db.Save(instance, params.User, differences, params.RequestId)
 		if res.Error != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
 			return
@@ -352,7 +352,7 @@ var DefaultDeleteHandler ApiFunction = func(a *App, db *Database) http.HandlerFu
 			return
 		}
 
-		res := db.Delete(instance, params.User)
+		res := db.Delete(instance, params.User, params.RequestId)
 		if res.Error != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
 			return

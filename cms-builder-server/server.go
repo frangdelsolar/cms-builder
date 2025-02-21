@@ -236,21 +236,22 @@ func RateLimitMiddleware(rl *RateLimiter) func(http.Handler) http.Handler {
 // RequestIDKey is the key used to store the request ID in the context.
 type RequestLog struct {
 	gorm.Model
-	Timestamp  time.Time     `gorm:"type:timestamp" json:"timestamp"`
-	Duration   time.Duration `json:"duration"`
-	Ip         string        `json:"ip"`
-	Origin     string        `json:"origin"`
-	Referer    string        `json:"referrer"`
-	UserId     string        `gorm:"foreignKey:UserId" json:"userId"`
-	User       *User         `json:"user"`
-	Roles      string        `json:"roles"`
-	Method     string        `json:"method"`
-	Path       string        `json:"path"`
-	StatusCode string        `json:"statusCode"`
-	Error      string        `json:"error"`
-	Header     string        `json:"header"`
-	Body       string        `json:"body"`
-	Response   string        `json:"response"`
+	Timestamp         time.Time     `gorm:"type:timestamp" json:"timestamp"`
+	Duration          time.Duration `json:"duration"`
+	Ip                string        `json:"ip"`
+	Origin            string        `json:"origin"`
+	Referer           string        `json:"referrer"`
+	UserId            string        `gorm:"foreignKey:UserId" json:"userId"`
+	User              *User         `json:"user"`
+	Roles             string        `json:"roles"`
+	Method            string        `json:"method"`
+	Path              string        `json:"path"`
+	StatusCode        string        `json:"statusCode"`
+	Error             string        `json:"error"`
+	Header            string        `json:"header"`
+	Body              string        `json:"body"`
+	Response          string        `json:"response"`
+	RequestIdentifier string        `json:"requestIdentifier"`
 }
 
 // RequestLogMiddleware assigns a unique ID to each request and adds it to the context.
@@ -280,6 +281,9 @@ func (b *Builder) RequestLogMiddleware(next http.Handler) http.Handler {
 		var requestHeaders string
 		var responseBody string
 
+		requestIdentifier := uuid.New().String()
+		r = r.WithContext(context.WithValue(r.Context(), "requestIdentifier", requestIdentifier))
+
 		defer func() {
 
 			duration := time.Since(start)
@@ -292,20 +296,21 @@ func (b *Builder) RequestLogMiddleware(next http.Handler) http.Handler {
 			}
 
 			logEntry := RequestLog{
-				Timestamp:  start,
-				Ip:         r.RemoteAddr,
-				UserId:     r.Header.Get(requestedByParamKey.S()),
-				Roles:      r.Header.Get(rolesParamKey.S()),
-				Method:     r.Method,
-				Path:       r.URL.Path,
-				Duration:   duration,
-				StatusCode: fmt.Sprintf("%d", statusCode),
-				Origin:     r.Header.Get("Origin"),
-				Referer:    r.Header.Get("Referer"),
-				Error:      errorMessage,
-				Header:     requestHeaders,
-				Body:       requestBody,
-				Response:   responseBody,
+				Timestamp:         start,
+				Ip:                r.RemoteAddr,
+				UserId:            r.Header.Get(requestedByParamKey.S()),
+				Roles:             r.Header.Get(rolesParamKey.S()),
+				Method:            r.Method,
+				Path:              r.URL.Path,
+				Duration:          duration,
+				StatusCode:        fmt.Sprintf("%d", statusCode),
+				Origin:            r.Header.Get("Origin"),
+				Referer:           r.Header.Get("Referer"),
+				Error:             errorMessage,
+				Header:            requestHeaders,
+				Body:              requestBody,
+				Response:          responseBody,
+				RequestIdentifier: requestIdentifier,
 			}
 
 			b.DB.DB.Create(&logEntry)

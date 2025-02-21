@@ -12,10 +12,18 @@ import {
   Typography,
   MobileStepper,
   Button,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from "@mui/material";
 import Grid from "@mui/material/Grid2";
-import { KeyboardArrowLeft, KeyboardArrowRight } from "@mui/icons-material";
+import {
+  KeyboardArrowLeft,
+  KeyboardArrowRight,
+  ExpandMore,
+} from "@mui/icons-material";
 import SearchIcon from "@mui/icons-material/Search";
+import SyncIcon from "@mui/icons-material/Sync";
 import { useAppSelector } from "../../../../store/Hooks";
 import { selectSelectedEntity } from "../../../../store/EntitySlice";
 import { ApiContext } from "../../../../context/ApiContext";
@@ -28,7 +36,7 @@ function TimelineItemPreview() {
   const apiService = useContext(ApiContext);
   const toast = useNotifications();
 
-  const [resourceId, setResourceId] = useState(null);
+  const [resourceId, setResourceId] = useState(0);
   const [timeline, setTimeline] = useState(null);
   const [pagination, setPagination] = useState({
     page: 1,
@@ -39,12 +47,15 @@ function TimelineItemPreview() {
   const [currentState, setCurrentState] = useState(null);
   const [currentEvent, setCurrentEvent] = useState(null);
   const [activeStep, setActiveStep] = useState(0);
-
   const [lastVisitedPage, setLastVisitedPage] = useState(0);
+
+  // Reset state when entity changes
+  useEffect(() => {
+    resetState();
+  }, [entity?.name]);
 
   const handleResourceIdInputClick = async () => {
     const res = await getItems(1);
-
     setTimeline(res.data);
 
     if (res.data.length > 0) {
@@ -59,6 +70,8 @@ function TimelineItemPreview() {
   };
 
   const getItems = async (page) => {
+    if (!resourceId > 0) return null;
+
     try {
       const res = await apiService.getTimelineForResource(
         resourceId,
@@ -75,6 +88,7 @@ function TimelineItemPreview() {
   };
 
   const resetState = () => {
+    setResourceId(0);
     setCurrentState(null);
     setCurrentEvent(null);
     setInitialState(null);
@@ -83,11 +97,9 @@ function TimelineItemPreview() {
   };
 
   const lookAt = async (stepNumber) => {
-    // am I at the same page?
     const stepPage = Math.floor(stepNumber / pagination.limit) + 1;
     let newTimeline = [...timeline];
     if (stepPage > lastVisitedPage) {
-      // I need to get more items
       const res = await getItems(stepPage);
       newTimeline = [...newTimeline, ...res.data];
       setTimeline(newTimeline);
@@ -99,9 +111,7 @@ function TimelineItemPreview() {
     setActiveStep(stepNumber);
   };
 
-  if (!entity) {
-    return null;
-  }
+  if (!entity) return null;
 
   return (
     <Card>
@@ -109,11 +119,13 @@ function TimelineItemPreview() {
       <CardContent>
         <Grid container direction="column" spacing={2}>
           <ResourceIdInput
+            key={entity?.name}
             resourceId={resourceId}
             setResourceId={setResourceId}
             onClick={handleResourceIdInputClick}
           />
           <ActionLabel event={currentEvent} />
+          <RequestPreview event={currentEvent} />
           <Grid item container direction="row" spacing={2}>
             <Grid item xs={12} sm={6} sx={{ flexGrow: 1 }}>
               <EventPreview event={currentEvent} />
@@ -255,7 +267,6 @@ const ActionLabel = ({ event }) => {
       elevation={0}
       sx={{
         padding: 2,
-        marginTop: 2,
         backgroundColor: "#f5f5f5",
         width: "100%",
         overflowWrap: "break-word",
@@ -276,7 +287,7 @@ const Stepper = ({ pagination, timeline, lookAt, activeStep }) => {
 
   return (
     <MobileStepper
-      variant="dots"
+      variant="progress"
       steps={pagination.total}
       position="static"
       activeStep={activeStep}
@@ -331,5 +342,84 @@ const ResourceIdInput = ({ resourceId, setResourceId, onClick }) => {
         label="Resource Id"
       />
     </FormControl>
+  );
+};
+
+const RequestPreview = ({ event }) => {
+  const apiService = useContext(ApiContext);
+  const toast = useNotifications();
+  const [isLoading, setIsLoading] = useState(false);
+  const [requestDetails, setRequestDetails] = useState(null);
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    if (event?.requestId) {
+      handleFetchClick();
+    } else {
+      resetState();
+    }
+  }, [event?.requestId]);
+
+  const resetState = () => {
+    setRequestDetails(null);
+    setExpanded(false);
+  };
+
+  const handleFetchClick = async () => {
+    setIsLoading(true);
+    try {
+      const resp = await apiService.getRequestLogEntries(event.requestId);
+      const formattedData = formatChanges(resp.data);
+      setRequestDetails(formattedData);
+      setExpanded(false);
+    } catch (error) {
+      toast.show("There was an error fetching the request log", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleChange = (panel) => (event, isExpanded) => {
+    setExpanded(isExpanded ? panel : false);
+  };
+
+  if (!event || !event.requestId) return null;
+
+  return (
+    <Accordion
+      expanded={expanded}
+      onChange={handleChange("panel1")}
+      elevation={0}
+      sx={{ backgroundColor: "#f5f5f5", width: "100%" }}
+    >
+      <AccordionSummary expandIcon={<ExpandMore />}>
+        <Typography sx={{ display: "pre-wrap", wordBreak: "break-word" }}>
+          <strong style={{ marginRight: "5px" }}>Request Id:</strong>
+          {event.requestId}
+        </Typography>
+      </AccordionSummary>
+      <AccordionDetails>
+        <pre
+          style={{
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
+          }}
+        >
+          {requestDetails ? (
+            requestDetails
+          ) : (
+            <Button
+              loading={isLoading}
+              variant="outlined"
+              onClick={handleFetchClick}
+              loadingPosition="end"
+              startIcon={<SyncIcon />}
+            >
+              Fetch
+            </Button>
+          )}
+        </pre>
+      </AccordionDetails>
+    </Accordion>
   );
 };

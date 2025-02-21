@@ -602,6 +602,7 @@ func (b *Builder) InitHistory() error {
 	}
 
 	b.Server.AddRoute("/api/timeline", b.TimelineHandler(), "timeline", true, http.MethodGet, nil)
+	b.Server.AddRoute("/api/requests/logs/{id}", b.RequestLogHandler(), "request-log", true, http.MethodGet, nil)
 
 	return nil
 }

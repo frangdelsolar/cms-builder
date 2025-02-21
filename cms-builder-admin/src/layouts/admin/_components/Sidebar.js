@@ -12,22 +12,28 @@ import {
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import FolderIcon from "@mui/icons-material/Folder";
 import RestoreIcon from "@mui/icons-material/Restore";
+import QueryStatsIcon from "@mui/icons-material/QueryStats";
 
 const routes = [
   {
-    name: "Models",
+    name: "Activity",
+    path: "/admin/activity",
+    icon: <QueryStatsIcon />,
+  },
+  {
+    name: "CRUD",
     path: "/admin/models",
     icon: <DashboardIcon />,
   },
   {
-    name: "Media",
-    path: "/admin/media",
-    icon: <FolderIcon />,
-  },
-  {
-    name: "Timeline",
+    name: "Database Timeline",
     path: "/admin/timeline",
     icon: <RestoreIcon />,
+  },
+  {
+    name: "Storage",
+    path: "/admin/media",
+    icon: <FolderIcon />,
   },
 ];
 

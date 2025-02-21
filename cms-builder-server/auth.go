@@ -50,7 +50,8 @@ func (b *Builder) VerifyUser(userIdToken string) (*User, error) {
 		localUser.FirebaseId = accessToken.UID
 		localUser.Roles = string(VisitorRole)
 
-		res := b.DB.Create(&localUser, &SystemUser)
+		// FIXME: SHould get request id from somewhere
+		res := b.DB.Create(&localUser, &SystemUser, "N/A")
 		if res.Error != nil { // Check for errors during creation
 			err = fmt.Errorf("error creating user in database: %v", res.Error)
 			return nil, err // Return the error if user creation fails
@@ -277,7 +278,8 @@ func (b *Builder) CreateUserWithRole(input RegisterUserInput, role Role, registe
 		FirebaseId: fbUserId,
 		Roles:      string(role),
 	}
-	b.DB.Create(&user, &SystemUser)
+	// FIXME: figure out how to get request id
+	b.DB.Create(&user, &SystemUser, "N/A")
 
 	if user.ID == 0 {
 		return nil, fmt.Errorf("error creating user in database")

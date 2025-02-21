@@ -73,7 +73,7 @@ func TestNewLogHistoryEntry(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := builder.NewLogHistoryEntry(tt.action, &tt.user, tt.object, nil)
+			got, err := builder.NewLogHistoryEntry(tt.action, &tt.user, tt.object, nil, "23")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewLogHistoryEntry() error = %v, wantErr %v", err, tt.wantErr)
 				return
