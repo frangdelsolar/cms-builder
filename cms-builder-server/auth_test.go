@@ -33,7 +33,7 @@ func TestRegisterUserController(t *testing.T) {
 		"Content-Type": []string{"application/json"},
 	}
 
-	responseWriter := th.MockWriter{}
+	responseWriter := builder.LocalResponseWriter{}
 	registerUserRequest := &http.Request{
 		Method: http.MethodPost,
 		Header: header,

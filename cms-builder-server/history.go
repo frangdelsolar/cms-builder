@@ -3,6 +3,9 @@ package builder
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"reflect"
+	"strconv"
 	"time"
 
 	"gorm.io/gorm"
@@ -33,7 +36,8 @@ type HistoryEntry struct {
 // The object is expected to be a struct with a JSON tag for the ID field named "ID".
 // The function returns an error if the object cannot be marshaled or unmarshaled to JSON.
 // The function uses the GetStructName function to get the name of the struct from the object passed in.
-func NewLogHistoryEntry(action CRUDAction, user *User, object interface{}) (*HistoryEntry, error) {
+func NewLogHistoryEntry(action CRUDAction, user *User, object interface{}, difference interface{}) (*HistoryEntry, error) {
+
 	name := GetStructName(object)
 	jsonData, err := json.Marshal(object)
 	if err != nil {
@@ -51,8 +55,18 @@ func NewLogHistoryEntry(action CRUDAction, user *User, object interface{}) (*His
 		resourceId = fmt.Sprintf("%v", objJson["ID"])
 	}
 
-	// TODO: maybe worth trying to store just the differences, specially for updates
-	detail := string(jsonData)
+	detail := ""
+	if action == CreateCRUDAction {
+		detail = string(jsonData)
+	} else if action == UpdateCRUDAction {
+
+		differenceJSON, err := json.Marshal(difference)
+		if err != nil {
+			return nil, err
+		}
+
+		detail = string(differenceJSON)
+	}
 
 	historyEntry := &HistoryEntry{
 		Action:       action,
@@ -65,6 +79,98 @@ func NewLogHistoryEntry(action CRUDAction, user *User, object interface{}) (*His
 	}
 
 	return historyEntry, nil
+}
+
+// CompareInterfaces takes two objects a and b, and returns a map of their differences.
+// The function is used to compare two objects and return a map of the differences.
+// The returned map will have keys that are the names of the fields in the object,
+// and values that are slices of two elements: the value of the field in the first object,
+// and the value of the field in the second object.
+func CompareInterfaces(a, b interface{}) interface{} {
+	if a == nil && b == nil {
+		return map[string]interface{}{}
+	}
+
+	if a == nil || b == nil {
+		return map[string]interface{}{"value": []interface{}{a, b}}
+	}
+
+	aJSON, err := json.Marshal(a)
+	if err != nil {
+		return map[string]interface{}{"error": err.Error()}
+	}
+
+	bJSON, err := json.Marshal(b)
+	if err != nil {
+		return map[string]interface{}{"error": err.Error()}
+	}
+
+	var aMap map[string]interface{}
+	err = json.Unmarshal(aJSON, &aMap)
+	if err != nil {
+		return map[string]interface{}{"error": err.Error()}
+	}
+
+	var bMap map[string]interface{}
+	err = json.Unmarshal(bJSON, &bMap)
+	if err != nil {
+		return map[string]interface{}{"error": err.Error()}
+	}
+
+	// Initialize the result map
+	res := make(map[string]interface{})
+
+	// Iterate over all keys in the first map
+	for k, va := range aMap {
+		// If the key is present in the second map
+		if vb, ok := bMap[k]; ok {
+			// If the values are not equal, add the difference to the result map
+			if !reflect.DeepEqual(va, vb) {
+
+				// Accont for time fields
+				if reflect.TypeOf(va).Kind() == reflect.String && reflect.TypeOf(vb).Kind() == reflect.String {
+					timeA, errA := time.Parse(time.RFC3339Nano, va.(string)) // Parse with nanosecond precision
+					timeB, errB := time.Parse(time.RFC3339Nano, vb.(string))
+
+					if errA == nil && errB == nil { // Both are valid times
+						if !timeA.Equal(timeB) { // Use time.Equal for time comparison
+							res[k] = []interface{}{va, vb}
+						}
+					} else { // Handle parsing errors or non-time strings
+						if !reflect.DeepEqual(va, vb) { //Fallback to DeepEqual
+							res[k] = []interface{}{va, vb}
+						}
+					}
+				} else {
+					// If the values are both maps, recursively call GetDiff
+					// Add nil map checks here
+					if va != nil && vb != nil && reflect.TypeOf(va).Kind() == reflect.Map && reflect.TypeOf(vb).Kind() == reflect.Map {
+						nestedDiff := CompareInterfaces(va, vb)
+						// Add interface{} nil check
+						if len(nestedDiff.(map[string]interface{})) > 0 {
+							res[k] = nestedDiff
+						}
+					} else {
+						res[k] = []interface{}{va, vb}
+					}
+				}
+
+			}
+		} else {
+			// If the key is not present in the second map, add the value from the first map to the result map
+			res[k] = []interface{}{va, nil}
+		}
+	}
+
+	// Iterate over all keys in the second map
+	for k, vb := range bMap {
+		// If the key is not present in the first map, add the value from the second map to the result map
+		if _, ok := aMap[k]; !ok {
+			res[k] = []interface{}{nil, vb}
+		}
+	}
+
+	return res
 }
 
 // GetHistoryEntryForInstanceFromDB returns a HistoryEntry if a record exists in the history table with the given parameters.
@@ -92,4 +198,86 @@ func GetHistoryEntryForInstanceFromDB(db *Database, userId string, resource inte
 
 	err = db.DB.First(&historyEntry).Where(q).Error
 	return historyEntry, err
+}
+
+func (b *Builder) TimelineHandler() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		err := ValidateRequestMethod(r, http.MethodGet)
+		if err != nil {
+			SendJsonResponse(w, http.StatusMethodNotAllowed, nil, err.Error())
+			return
+		}
+
+		limit, err := strconv.Atoi(GetQueryParam("limit", r))
+		if err != nil {
+			log.Error().Err(err).Msgf("Error converting limit")
+			limit = 10
+		}
+
+		page, err := strconv.Atoi(GetQueryParam("page", r))
+		if err != nil {
+			log.Error().Err(err).Msgf("Error converting page")
+			page = 1
+		}
+
+		orderParam := GetQueryParam("order", r)
+		order, err := ValidateOrderParam(orderParam)
+		if err != nil {
+			log.Error().Err(err).Msgf("Error validating order")
+			log.Warn().Msg("Using default order")
+		}
+
+		a, err := b.Admin.GetApp("historyentry")
+		if err != nil {
+			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+			return
+		}
+
+		params := FormatRequestParameters(r, b)
+		isAllowed := a.Permissions.HasPermission(params.Roles, OperationRead)
+		if !isAllowed {
+			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to read this resource")
+			return
+		}
+
+		resourceId, err := strconv.Atoi(GetQueryParam("resource_id", r))
+		if err != nil {
+			SendJsonResponse(w, http.StatusBadRequest, nil, "Resource id must be an integer")
+			return
+		}
+
+		resourceName := GetQueryParam("resource_name", r)
+		// TODO: VALIDATE RESOURCE NAME
+		if resourceName == "" {
+			SendJsonResponse(w, http.StatusBadRequest, nil, "Resource name must be provided")
+			return
+		}
+
+		// Create slice to store the model instances.
+		instances, err := CreateSliceForUndeterminedType(a.Model)
+		if err != nil {
+			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+			return
+		}
+
+		pagination := &Pagination{
+			Total: 0,
+			Page:  page,
+			Limit: limit,
+		}
+
+		query := "resource_id = '" + strconv.Itoa(resourceId) + "'"
+		query += " AND "
+		query += "resource_name = '" + resourceName + "'"
+
+		res := b.DB.Find(instances, query, pagination, order)
+		if res.Error != nil {
+			SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
+			return
+		}
+
+		SendJsonResponseWithPagination(w, http.StatusOK, instances, a.Name()+" list", pagination)
+
+	}
 }

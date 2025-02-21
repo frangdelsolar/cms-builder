@@ -1,4 +1,4 @@
-package test_helpers
+package builder
 
 import (
 	"bytes"
@@ -11,13 +11,13 @@ type ResponseWriter interface {
 	WriteHeader(statusCode int)
 }
 
-type MockWriter struct {
+type LocalResponseWriter struct {
 	Buffer bytes.Buffer
 }
 
 // Header returns a Header that can be used as a response header.
 // The returned Header contains one entry: "Content-Type" set to "application/json".
-func (m *MockWriter) Header() http.Header {
+func (m *LocalResponseWriter) Header() http.Header {
 	return http.Header{
 		"Content-Type": []string{"application/json"},
 	}
@@ -26,14 +26,14 @@ func (m *MockWriter) Header() http.Header {
 // Write writes the given []byte to the internal buffer.
 // It returns 0 and nil because it is not possible to write to the buffer in a
 // way that would return an error.
-func (m *MockWriter) Write(b []byte) (int, error) {
+func (m *LocalResponseWriter) Write(b []byte) (int, error) {
 	m.Buffer.Write(b)
 	return 0, nil
 }
 
-func (m *MockWriter) WriteHeader(statusCode int) {}
+func (m *LocalResponseWriter) WriteHeader(statusCode int) {}
 
 // GetWrittenData returns the data written to the MockWriter as a string.
-func (m *MockWriter) GetWrittenData() string {
+func (m *LocalResponseWriter) GetWrittenData() string {
 	return m.Buffer.String()
 }

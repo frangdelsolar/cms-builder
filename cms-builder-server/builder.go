@@ -587,11 +587,19 @@ func (b *Builder) InitHistory() error {
 		AdminRole: []CrudOperation{OperationRead},
 	}
 
-	_, err := b.Admin.Register(&HistoryEntry{}, false, permissions, nil)
+	_, err := b.Admin.Register(&HistoryEntry{}, true, permissions, nil)
 	if err != nil {
 		log.Error().Err(err).Msg("Error registering history app")
 		return err
 	}
+
+	_, err = b.Admin.Register(&RequestLog{}, true, permissions, nil)
+	if err != nil {
+		log.Error().Err(err).Msg("Error registering request log app")
+		return err
+	}
+
+	b.Server.AddRoute("/api/timeline", b.TimelineHandler(), "timeline", true, http.MethodGet, nil)
 
 	return nil
 }

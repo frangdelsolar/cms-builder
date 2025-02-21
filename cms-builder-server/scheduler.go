@@ -81,7 +81,7 @@ func (s *Scheduler) RegisterJob(name string, frequency JobFrequency, function an
 		CreatedByID: s.User.ID,
 		UpdatedByID: s.User.ID,
 	}
-	s.Builder.DB.Save(&frequency, s.User)
+	s.Builder.DB.Save(&frequency, s.User, nil)
 
 	jobDefinition, err := s.CreateJobDefinition(name, frequency)
 	if err != nil {
@@ -116,7 +116,7 @@ func (s *Scheduler) RegisterJob(name string, frequency JobFrequency, function an
 						CronJobId:       jobID.String(),
 					}
 
-					s.Builder.DB.Save(&task, s.User)
+					s.Builder.DB.Save(&task, s.User, nil)
 
 					schedulerLogger.Info().
 						Interface("Task", task).
@@ -171,7 +171,7 @@ func (s *Scheduler) UpdateTaskStatus(id string, status TaskStatus, errMsg string
 	if errMsg != "" {
 		task.Error = errMsg
 	}
-	return s.Builder.DB.Save(&task, s.User).Error
+	return s.Builder.DB.Save(&task, s.User, nil).Error
 }
 
 func (s *Scheduler) GetSchedulerTask(id string) *SchedulerTask {

@@ -154,7 +154,7 @@ func RegisterTestUser(newUserData *builder.RegisterUserInput) (*builder.User, fu
 		"Content-Type": []string{"application/json"},
 	}
 
-	responseWriter := MockWriter{}
+	responseWriter := builder.LocalResponseWriter{}
 	registerUserRequest := &http.Request{
 		Method: http.MethodPost,
 		Header: header,

@@ -26,6 +26,12 @@ var filterKeys = map[string]bool{
 	"deleted_by":    true,
 	"deletedById":   true,
 	"deleted_by_id": true,
+	"createdAt":     true,
+	"created_at":    true,
+	"updatedAt":     true,
+	"updated_at":    true,
+	"deletedAt":     true,
+	"deleted_at":    true,
 }
 
 type FieldName string
@@ -73,7 +79,7 @@ var DefaultListHandler ApiFunction = func(a *App, db *Database) http.HandlerFunc
 		}
 
 		orderParam := GetQueryParam("order", r)
-		order, err := a.ValidateOrderParam(orderParam)
+		order, err := ValidateOrderParam(orderParam)
 		if err != nil {
 			log.Error().Err(err).Msgf("Error validating order")
 			log.Warn().Msg("Using default order")
@@ -272,10 +278,13 @@ var DefaultUpdateHandler ApiFunction = func(a *App, db *Database) http.HandlerFu
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
 		}
+
 		if instance == nil {
 			SendJsonResponse(w, http.StatusNotFound, nil, "Instance not found")
 			return
 		}
+
+		previousState, _ := GetInstanceIfAuthorized(a.Model, a.SkipUserBinding, instanceId, db, &params)
 
 		err = json.Unmarshal(bodyBytes, instance)
 		if err != nil {
@@ -298,8 +307,14 @@ var DefaultUpdateHandler ApiFunction = func(a *App, db *Database) http.HandlerFu
 			return
 		}
 
+		differences := CompareInterfaces(previousState, instance)
+		if diffMap, ok := differences.(map[string]interface{}); ok && len(diffMap) == 0 {
+			SendJsonResponse(w, http.StatusOK, instance, a.Name()+" is up to date")
+			return
+		}
+
 		// Update the record in the database
-		res := db.Save(instance, params.User)
+		res := db.Save(instance, params.User, differences)
 		if res.Error != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
 			return
@@ -539,7 +554,7 @@ func (a *App) Validate(instance interface{}) ValidationResult {
 // Returns:
 // - string: a valid order string for the given model, or an empty string if the orderParam is empty.
 // - error: an error if one of the fields in the orderParam is not found in the model.
-func (a *App) ValidateOrderParam(orderParam string) (string, error) {
+func ValidateOrderParam(orderParam string) (string, error) {
 	if orderParam == "" {
 		return "", nil
 	}

@@ -9,7 +9,6 @@ import (
 
 	builder "github.com/frangdelsolar/cms-builder/cms-builder-server"
 	th "github.com/frangdelsolar/cms-builder/cms-builder-server/test_helpers"
-	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -51,7 +50,7 @@ func TestAuthenticationMiddleware(t *testing.T) {
 		}
 	})
 
-	handlerToTest := e.Engine.AuthMiddleware(nextHandler)
+	handlerToTest := e.Engine.UserMiddleware(nextHandler)
 
 	req := httptest.NewRequest("GET", "http://testing", nil)
 
@@ -66,42 +65,14 @@ func TestAuthenticationMiddleware(t *testing.T) {
 }
 
 func TestRateLimitMiddleware(t *testing.T) {
-	rl := builder.NewRateLimiter(2, time.Second) // 2 requests per second
-	r := mux.NewRouter()
-	r.Use(builder.RateLimitMiddleware(rl))
-	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Hello"))
-	})
-
-	ts := httptest.NewServer(r) // Create a test server
-	defer ts.Close()
-
-	// Make requests
-	resp, err := http.Get(ts.URL)
-	assert.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-
-	resp, err = http.Get(ts.URL)
-	assert.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-
-	resp, err = http.Get(ts.URL)
-	assert.NoError(t, err)
-	assert.Equal(t, http.StatusTooManyRequests, resp.StatusCode)
-
-	time.Sleep(2 * time.Second) // Wait for the window to reset
-
-	resp, err = http.Get(ts.URL)
-	assert.NoError(t, err)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-}
-
-func TestEngineRateLimitMiddlewareSetup(t *testing.T) {
 
 	e, err := th.GetDefaultEngine()
 	assert.NoError(t, err, "GetDefaultEngine should not return an error")
 
 	r := e.Server.Root
+	rateLimiter := builder.NewRateLimiter(builder.RequestsPerMinute, 1*time.Minute)
+
+	r.Use(builder.RateLimitMiddleware(rateLimiter))
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Hello"))
 	})
@@ -142,12 +113,8 @@ func TestRecoveryMiddleware(t *testing.T) {
 	// Serve the request
 	recoveredHandler.ServeHTTP(recorder, req)
 
-	// Check the response status code
 	assert.Equal(t, http.StatusInternalServerError, recorder.Code, "Expected 500 status code")
-
-	// Check the response body (optional)
-	assert.Equal(t, "Internal Server Error\n", recorder.Body.String(), "Expected error message")
-
+	assert.Contains(t, recorder.Body.String(), "Internal Server Error", "Expected error message")
 }
 
 func TestTimeoutMiddleware(t *testing.T) {

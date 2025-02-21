@@ -134,7 +134,7 @@ func CreateMockResource(t *testing.T, db *builder.Database, app *builder.App, us
 // - builder.Response: the parsed response from the API call handler function.
 func ExecuteApiCall(t *testing.T, apiCall http.HandlerFunc, request *http.Request, v interface{}) (builder.Response, error) {
 	// t.Log("Executing API call", request.Method, request.Body, v)
-	writer := MockWriter{}
+	writer := builder.LocalResponseWriter{}
 	apiCall(&writer, request)
 
 	return builder.ParseResponse(writer.Buffer.Bytes(), v)
