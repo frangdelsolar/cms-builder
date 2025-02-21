@@ -9,6 +9,7 @@ import {
 } from "@mui/material";
 import { useAuth } from "../../../context/AuthContext";
 import { useNavigate, Link } from "react-router-dom";
+import { useNotifications } from "../../../context/ToastContext";
 
 function LoginPage() {
   const [email, setEmail] = useState("");
@@ -16,6 +17,7 @@ function LoginPage() {
   const [error, setError] = useState(null);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const toast = useNotifications();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -27,7 +29,7 @@ function LoginPage() {
       navigate("/");
     } catch (err) {
       setError(err.message || "Invalid credentials");
-      console.error(err);
+      toast.show("Invalid credentials", "error");
     }
   };
 

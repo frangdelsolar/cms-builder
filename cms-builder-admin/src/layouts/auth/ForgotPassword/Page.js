@@ -19,7 +19,7 @@ function ForgotPasswordPage() {
     e.preventDefault();
     setError(null);
     setMessage(null);
-
+    // TODO: implement forgot password
     try {
       const response = await new Promise((resolve) =>
         setTimeout(() => resolve({ success: true }), 500)

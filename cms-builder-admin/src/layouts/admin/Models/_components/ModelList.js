@@ -15,12 +15,14 @@ import {
   setSelectedEntity,
 } from "../../../../store/EntitySlice";
 import { ApiContext } from "../../../../context/ApiContext";
+import { useNotifications } from "../../../../context/ToastContext";
 
 function ModelList() {
   const dispatch = useAppDispatch();
   const apiService = useContext(ApiContext);
   const entities = useAppSelector(selectEntities);
   const selectedEntity = useAppSelector((state) => state.entity.selectedEntity);
+  const toast = useNotifications();
 
   const [listItems, setListItems] = useState([]);
 
@@ -32,8 +34,7 @@ function ModelList() {
         data.sort((a, b) => a.pluralName.localeCompare(b.pluralName));
         dispatch(setEntities(data));
       } catch (error) {
-        // TODO: have a toaster notification
-        alert(error);
+        toast.show("Error fetching models", "error");
       }
     };
 
@@ -43,7 +44,7 @@ function ModelList() {
   const onEntityClick = (entity) => {
     dispatch(setSelectedEntity(entity));
     // add the selected entity to the query params
-    window.location.href = `/models#${entity.kebabPluralName}`;
+    window.location.href = `#${entity.kebabPluralName}`;
   };
 
   useEffect(() => {

@@ -31,7 +31,7 @@ export default function AuthMenu() {
   };
 
   return (
-    <div>
+    <>
       <IconButton
         id="basic-button"
         aria-controls={open ? "basic-menu" : undefined}
@@ -67,7 +67,7 @@ export default function AuthMenu() {
             <ListItemText>{user.email}</ListItemText>
           </MenuItem>
         </Menu>
-      )}{" "}
-    </div>
+      )}
+    </>
   );
 }

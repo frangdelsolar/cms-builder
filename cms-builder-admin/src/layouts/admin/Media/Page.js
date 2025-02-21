@@ -15,9 +15,12 @@ import FilePreview from "./_components/FilePreview";
 import { useDialogs } from "../../../context/DialogContext";
 import UploadFileForm from "./_components/UploadFileForm";
 
+import { useNotifications } from "../../../context/ToastContext";
+
 export default function MediaPage() {
   const apiService = useContext(ApiContext);
   const dialogs = useDialogs();
+  const toast = useNotifications();
 
   const [fileData, setFileData] = useState([]);
   const [treeItems, setTreeItems] = useState([]);
@@ -41,7 +44,7 @@ export default function MediaPage() {
         setSaving(false);
         dialogs.close();
       } catch (error) {
-        console.error("Error uploading file:", error);
+        toast.show("Error uploading file", "error");
         setSaving(false);
       }
     };
@@ -60,7 +63,7 @@ export default function MediaPage() {
         const files = response.data;
         setFileData(files);
       } catch (error) {
-        console.log(error);
+        toast.show(error.message, "error");
       }
     };
 

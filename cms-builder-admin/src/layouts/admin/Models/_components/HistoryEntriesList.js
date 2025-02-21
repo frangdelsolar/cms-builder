@@ -11,9 +11,11 @@ import ClearIcon from "@mui/icons-material/Clear";
 import AddIcon from "@mui/icons-material/Add";
 
 import { ApiContext } from "../../../../context/ApiContext";
+import { useNotifications } from "../../../../context/ToastContext";
 
 const HistoryEntriesList = () => {
   const apiService = useContext(ApiContext);
+  const toast = useNotifications();
 
   const [entries, setEntries] = useState([]);
 
@@ -28,18 +30,12 @@ const HistoryEntriesList = () => {
         );
         setEntries(response.data);
       } catch (error) {
-        console.log(error);
+        toast.show("Error fetching history entries", "error");
       }
     };
 
     fn();
   }, []);
-
-  useEffect(() => {
-    if (!entries) {
-      return;
-    }
-  }, [entries]);
 
   const getIcon = (action) => {
     switch (action) {

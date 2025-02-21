@@ -147,10 +147,30 @@ const apiService = ({ token, apiBaseUrl }) => {
     }
   };
 
+  const getTimelineForResource = async (
+    resourceId,
+    resorceName,
+    limit,
+    page
+  ) => {
+    const url = `private/api/timeline?resource_id=${resourceId}&resource_name=${resorceName}&limit=${limit}&page=${page}&order=id`;
+
+    return executeApiCall({
+      method: "GET",
+      relativePath: url,
+    });
+  };
+
+  const apiUrl = () => {
+    return apiBaseUrl;
+  };
+
   return {
+    apiUrl,
     getEntities,
     downloadFile,
     getEndpoints,
+    getTimelineForResource,
     postFile,
     schema,
     post,

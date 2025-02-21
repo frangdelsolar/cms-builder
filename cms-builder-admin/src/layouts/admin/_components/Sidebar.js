@@ -9,25 +9,25 @@ import {
   ListItemText,
 } from "@mui/material";
 
-import HomeIcon from "@mui/icons-material/Home";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import FolderIcon from "@mui/icons-material/Folder";
+import RestoreIcon from "@mui/icons-material/Restore";
 
 const routes = [
   {
-    name: "Home",
-    path: "/",
-    icon: <HomeIcon />,
-  },
-  {
     name: "Models",
-    path: "/models",
+    path: "/admin/models",
     icon: <DashboardIcon />,
   },
   {
     name: "Media",
-    path: "/media",
+    path: "/admin/media",
     icon: <FolderIcon />,
+  },
+  {
+    name: "Timeline",
+    path: "/admin/timeline",
+    icon: <RestoreIcon />,
   },
 ];
 

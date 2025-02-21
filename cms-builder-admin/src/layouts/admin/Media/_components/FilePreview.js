@@ -1,4 +1,4 @@
-import { useEffect, useState, useContext } from "react";
+import { useEffect, useState, useContext, useRef } from "react";
 import {
   Typography,
   Paper,
@@ -7,8 +7,11 @@ import {
   CardContent,
   CardActions,
   Button,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
 import Grid from "@mui/material/Grid2";
+import FileCopyIcon from "@mui/icons-material/FileCopy";
 
 import { ApiContext } from "../../../../context/ApiContext";
 import { useNotifications } from "../../../../context/ToastContext";
@@ -23,6 +26,31 @@ const FilePreview = (props) => {
 
   const formatDate = (dateString) => {
     return dateString ? new Date(dateString).toLocaleString() : "N/A";
+  };
+
+  const fileUrlRef = useRef(null);
+
+  const [downloadUrl, setDownloadUrl] = useState(null);
+  useEffect(() => {
+    if (file) {
+      setDownloadUrl(
+        `${apiService.apiUrl()}/private/api/files/${file.ID}/download`
+      );
+    }
+  }, [file]);
+
+  const handleCopyUrl = () => {
+    if (fileUrlRef.current) {
+      navigator.clipboard
+        .writeText(fileUrlRef.current.innerText)
+        .then(() => {
+          toast.show("URL copied to clipboard", "success");
+        })
+        .catch((error) => {
+          console.error("Failed to copy URL:", error);
+          toast.show("Failed to copy URL", "error");
+        });
+    }
   };
 
   const handleDownload = async () => {
@@ -84,6 +112,36 @@ const FilePreview = (props) => {
               <Typography>{file.mimeType || "N/A"}</Typography>
             </Grid>
           </Grid>
+        </Paper>
+
+        <Paper
+          elevation={0}
+          sx={{
+            padding: 2,
+            marginTop: 2,
+            backgroundColor: "#f5f5f5",
+            display: "flex",
+            alignItems: "center",
+          }} // Add display: flex
+        >
+          <Typography
+            variant="p"
+            fontFamily={"monospace"}
+            ref={fileUrlRef}
+            sx={{
+              flexGrow: 1,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {downloadUrl}
+          </Typography>
+          <Tooltip title="Copy URL">
+            <IconButton onClick={handleCopyUrl} aria-label="copy">
+              <FileCopyIcon />
+            </IconButton>
+          </Tooltip>
         </Paper>
       </CardContent>
       <CardActions sx={{ display: "flex", justifyContent: "flex-end" }}>

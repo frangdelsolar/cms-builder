@@ -10,6 +10,7 @@ import {
 import { Link } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { useNotifications } from "../../../context/ToastContext";
 
 function RegisterPage() {
   const [email, setEmail] = useState("");
@@ -18,6 +19,7 @@ function RegisterPage() {
   const [error, setError] = useState(null);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const toast = useNotifications();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -34,10 +36,11 @@ function RegisterPage() {
         navigate("/");
       } else {
         setError("Registration failed. Please try again.");
+        toast.show("Registration failed. Please try again.", "error");
       }
     } catch (err) {
       setError(err.message || "An error occurred during registration.");
-      console.error(err);
+      toast.show("Registration failed", "error");
     }
   };
 
