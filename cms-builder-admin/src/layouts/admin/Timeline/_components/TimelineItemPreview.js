@@ -24,6 +24,7 @@ import MobileStepper from "@mui/material/MobileStepper";
 import Button from "@mui/material/Button";
 import KeyboardArrowLeft from "@mui/icons-material/KeyboardArrowLeft";
 import KeyboardArrowRight from "@mui/icons-material/KeyboardArrowRight";
+
 function TimelineItemPreview() {
   const entity = useAppSelector(selectSelectedEntity);
   const apiService = useContext(ApiContext);
@@ -36,9 +37,9 @@ function TimelineItemPreview() {
     pageSize: 10,
     total: 0,
   });
-
+  const [initialState, setInitialState] = useState(null);
   const [currentState, setCurrentState] = useState(null);
-  const [currentEvent, setCurrentEvent] = useState(null); // Store the current event details
+  const [currentEvent, setCurrentEvent] = useState(null);
 
   const handleResourceIdInputClick = async () => {
     try {
@@ -52,69 +53,33 @@ function TimelineItemPreview() {
       setTimeline(res.data);
       setPagination(res.pagination);
       if (res.data.length > 0) {
-        setCurrentState(JSON.parse(res.data[0].detail));
+        const state = JSON.parse(res.data[0].detail);
+        setInitialState(state);
+        setCurrentState(state);
         setCurrentEvent(res.data[0]); // Set the initial event
       } else {
         toast.show("ResourceId has no timeline", "info");
         setCurrentState(null);
         setCurrentEvent(null);
+        setInitialState(null);
+        setTimeline(null);
+        setPagination({ page: 1, pageSize: 10, total: 0 });
       }
     } catch (error) {
       toast.show(`Error fetching timeline: ${error.message}`, "error");
     }
   };
 
-  // Stepper
-
   const [activeStep, setActiveStep] = useState(0);
 
-  useEffect(() => {
-    if (!timeline) {
-      return;
-    }
-
-    const step = timeline[activeStep];
-
-    if (!step || !step.detail) {
-      return;
-    }
-    try {
-      const state = JSON.parse(step.detail);
-      setCurrentState(state);
-      setCurrentEvent(step); // Update current event details
-    } catch (error) {
-      console.error("Error parsing details:", error, step.detail);
-      toast.show(`Error parsing details: ${error.message}`, "error");
-    }
-  }, [activeStep, timeline]); // Add timeline to the dependency array
-
-  const ObjectPreview = ({ props }) => {
-    return (
-      <Paper
-        elevation={0}
-        sx={{
-          padding: 2,
-          marginTop: 2,
-          backgroundColor: "#f5f5f5",
-          overflow: "auto",
-        }}
-      >
-        {currentState && <pre>{JSON.stringify(currentState, null, 2)}</pre>}
-      </Paper>
-    );
+  const lookAt = (stepNumber) => {
+    const nextActiveStep = stepNumber;
+    const step = timeline[stepNumber];
+    const newState = applyChanges(initialState, stepNumber, timeline);
+    setCurrentState(newState);
+    setCurrentEvent(step);
+    setActiveStep(nextActiveStep);
   };
-
-  const EventDetails = ({ event }) => (
-    <Paper
-      elevation={0}
-      sx={{
-        padding: 2,
-        marginTop: 2,
-        backgroundColor: "#f5f5f5",
-        overflow: "auto",
-      }}
-    ></Paper>
-  );
 
   if (!entity) {
     return <></>;
@@ -132,19 +97,23 @@ function TimelineItemPreview() {
           />
           <ActionLabel event={currentEvent} />
 
-          <Grid item container direction="row" spacing={2} sx={{ flexGrow: 1 }}>
+          <Grid item container direction="row" spacing={2}>
             <Grid item xs={12} sm={6} sx={{ flexGrow: 1 }}>
-              <EventDetails />
+              <EventPreview event={currentEvent} />
             </Grid>
             <Grid item xs={12} sm={6} sx={{ flexGrow: 1 }}>
-              <ObjectPreview />
+              <ObjectPreview
+                jsonData={currentState}
+                title="State of the resource after implementing the changes"
+              />
             </Grid>
           </Grid>
 
           <Stepper
             pagination={pagination}
+            lookAt={lookAt}
+            timeline={timeline}
             activeStep={activeStep}
-            setActiveStep={setActiveStep}
           />
         </Grid>
       </CardContent>
@@ -153,6 +122,101 @@ function TimelineItemPreview() {
 }
 
 export default TimelineItemPreview;
+
+const applyChanges = (initialState, stepNumber, timeline) => {
+  let state = initialState;
+  for (let i = 0; i < stepNumber + 1; i++) {
+    const step = timeline[i];
+    if (step.detail == "") {
+      return null;
+    }
+    const changes = JSON.parse(step.detail);
+    state = forwardChanges(state, changes);
+  }
+  return state;
+};
+
+function forwardChanges(originalObject, changes) {
+  if (!originalObject) {
+    return changes ? { ...changes } : {}; // Handle null originalObject
+  }
+  if (!changes) {
+    return originalObject; // Handle null changes
+  }
+
+  const newObject = { ...originalObject };
+
+  for (const key in changes) {
+    if (changes.hasOwnProperty(key)) {
+      const changeValue = changes[key];
+
+      if (Array.isArray(changeValue) && changeValue.length === 2) {
+        // [before, after] format
+        const afterValue = changeValue[1];
+
+        if (
+          typeof afterValue === "object" &&
+          afterValue !== null &&
+          typeof newObject[key] === "object" &&
+          newObject[key] !== null &&
+          !Array.isArray(afterValue) &&
+          !Array.isArray(newObject[key])
+        ) {
+          newObject[key] = forwardChanges(newObject[key], {
+            [key]: afterValue,
+          }); // Recursive call for nested objects. Pass in the nested object and the change {key: afterValue}
+        } else {
+          newObject[key] = afterValue; // Directly replace with the after value
+        }
+      } else {
+        newObject[key] = changeValue; // Handle other change formats if needed.
+      }
+    }
+  }
+
+  return newObject;
+}
+
+const EventPreview = ({ event }) => {
+  if (!event || !event.detail) {
+    return null;
+  }
+
+  const data = JSON.parse(event.detail);
+
+  return <ObjectPreview jsonData={data} title="Introduced changes" />;
+};
+
+const ObjectPreview = ({ jsonData, title }) => {
+  if (!jsonData) {
+    return null;
+  }
+
+  return (
+    <Paper
+      elevation={0}
+      sx={{
+        padding: 2,
+        backgroundColor: "#f5f5f5",
+        overflow: "auto", // Enables scrolling if needed
+        maxWidth: "100%", // Make sure it takes the full width
+      }}
+    >
+      <Typography variant="h6">{title}</Typography>
+      <pre
+        style={{
+          whiteSpace: "pre-wrap", // or 'pre-line' for wrapping
+          wordBreak: "break-word", // For long words
+          maxWidth: "100%",
+          overflow: "auto", // Enables scrolling if needed
+          maxHeight: "400px", // Optional: Set a max height for scrolling
+        }}
+      >
+        {JSON.stringify(jsonData, null, 2)}
+      </pre>
+    </Paper>
+  );
+};
 
 const ActionLabel = ({ event }) => {
   if (!event) {
@@ -188,16 +252,12 @@ const ActionLabel = ({ event }) => {
   );
 };
 
-const Stepper = ({ pagination, activeStep, setActiveStep }) => {
+const Stepper = ({ pagination, timeline, lookAt, activeStep }) => {
   const theme = useTheme();
+  if (!timeline) {
+    return null;
+  }
 
-  const handleNext = () => {
-    setActiveStep((prevActiveStep) => prevActiveStep + 1);
-  };
-
-  const handleBack = () => {
-    setActiveStep((prevActiveStep) => prevActiveStep - 1);
-  };
   return (
     <MobileStepper
       variant="dots"
@@ -206,7 +266,11 @@ const Stepper = ({ pagination, activeStep, setActiveStep }) => {
       activeStep={activeStep}
       sx={{ flexGrow: 1 }}
       nextButton={
-        <Button size="small" onClick={handleNext} disabled={activeStep === 5}>
+        <Button
+          size="small"
+          onClick={() => lookAt(activeStep + 1)}
+          disabled={activeStep === pagination.total - 1}
+        >
           Next
           {theme.direction === "rtl" ? (
             <KeyboardArrowLeft />
@@ -216,7 +280,11 @@ const Stepper = ({ pagination, activeStep, setActiveStep }) => {
         </Button>
       }
       backButton={
-        <Button size="small" onClick={handleBack} disabled={activeStep === 0}>
+        <Button
+          size="small"
+          onClick={() => lookAt(activeStep - 1)}
+          disabled={activeStep === 0}
+        >
           {theme.direction === "rtl" ? (
             <KeyboardArrowRight />
           ) : (
