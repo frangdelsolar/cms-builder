@@ -1,3 +1,4 @@
+import React, { useState, useContext, useEffect } from "react";
 import {
   Card,
   CardHeader,
@@ -8,23 +9,20 @@ import {
   InputAdornment,
   IconButton,
   Paper,
-  Typography, // Import Typography
+  Typography,
+  MobileStepper,
+  Button,
 } from "@mui/material";
 import Grid from "@mui/material/Grid2";
+import { KeyboardArrowLeft, KeyboardArrowRight } from "@mui/icons-material";
+import SearchIcon from "@mui/icons-material/Search";
 import { useAppSelector } from "../../../../store/Hooks";
 import { selectSelectedEntity } from "../../../../store/EntitySlice";
-import SearchIcon from "@mui/icons-material/Search";
-import { useEffect, useState } from "react";
-import { useContext } from "react";
 import { ApiContext } from "../../../../context/ApiContext";
 import { useNotifications } from "../../../../context/ToastContext";
-
 import { useTheme } from "@mui/material/styles";
-import MobileStepper from "@mui/material/MobileStepper";
-import Button from "@mui/material/Button";
-import KeyboardArrowLeft from "@mui/icons-material/KeyboardArrowLeft";
-import KeyboardArrowRight from "@mui/icons-material/KeyboardArrowRight";
 
+// Main Component
 function TimelineItemPreview() {
   const entity = useAppSelector(selectSelectedEntity);
   const apiService = useContext(ApiContext);
@@ -34,60 +32,80 @@ function TimelineItemPreview() {
   const [timeline, setTimeline] = useState(null);
   const [pagination, setPagination] = useState({
     page: 1,
-    pageSize: 10,
+    limit: 10,
     total: 0,
   });
   const [initialState, setInitialState] = useState(null);
   const [currentState, setCurrentState] = useState(null);
   const [currentEvent, setCurrentEvent] = useState(null);
+  const [activeStep, setActiveStep] = useState(0);
+
+  const [lastVisitedPage, setLastVisitedPage] = useState(0);
 
   const handleResourceIdInputClick = async () => {
+    const res = await getItems(1);
+
+    setTimeline(res.data);
+
+    if (res.data.length > 0) {
+      const state = JSON.parse(res.data[0].detail);
+      setInitialState(state);
+      setCurrentState(state);
+      setCurrentEvent(res.data[0]);
+    } else {
+      toast.show("ResourceId has no timeline", "info");
+      resetState();
+    }
+  };
+
+  const getItems = async (page) => {
     try {
       const res = await apiService.getTimelineForResource(
         resourceId,
         entity.name,
-        pagination.pageSize,
-        pagination.page
+        pagination.limit,
+        page
       );
-
-      setTimeline(res.data);
       setPagination(res.pagination);
-      if (res.data.length > 0) {
-        const state = JSON.parse(res.data[0].detail);
-        setInitialState(state);
-        setCurrentState(state);
-        setCurrentEvent(res.data[0]); // Set the initial event
-      } else {
-        toast.show("ResourceId has no timeline", "info");
-        setCurrentState(null);
-        setCurrentEvent(null);
-        setInitialState(null);
-        setTimeline(null);
-        setPagination({ page: 1, pageSize: 10, total: 0 });
-      }
+      setLastVisitedPage(res.pagination.page);
+      return res;
     } catch (error) {
       toast.show(`Error fetching timeline: ${error.message}`, "error");
     }
   };
 
-  const [activeStep, setActiveStep] = useState(0);
+  const resetState = () => {
+    setCurrentState(null);
+    setCurrentEvent(null);
+    setInitialState(null);
+    setTimeline(null);
+    setPagination({ page: 1, limit: 10, total: 0 });
+  };
 
-  const lookAt = (stepNumber) => {
-    const nextActiveStep = stepNumber;
-    const step = timeline[stepNumber];
-    const newState = applyChanges(initialState, stepNumber, timeline);
+  const lookAt = async (stepNumber) => {
+    // am I at the same page?
+    const stepPage = Math.floor(stepNumber / pagination.limit) + 1;
+    let newTimeline = [...timeline];
+    if (stepPage > lastVisitedPage) {
+      // I need to get more items
+      const res = await getItems(stepPage);
+      newTimeline = [...newTimeline, ...res.data];
+      setTimeline(newTimeline);
+    }
+
+    const newState = applyChanges(initialState, stepNumber, newTimeline);
     setCurrentState(newState);
-    setCurrentEvent(step);
-    setActiveStep(nextActiveStep);
+    setCurrentEvent(newTimeline[stepNumber]);
+    setActiveStep(stepNumber);
   };
 
   if (!entity) {
-    return <></>;
+    return null;
   }
 
   return (
     <Card>
-      <CardHeader title={`Timeline for ${entity.name}`}></CardHeader>
+      <CardHeader title={`Timeline for ${entity.name}`} />
       <CardContent>
         <Grid container direction="column" spacing={2}>
           <ResourceIdInput
@@ -96,7 +114,6 @@ function TimelineItemPreview() {
             onClick={handleResourceIdInputClick}
           />
           <ActionLabel event={currentEvent} />
-
           <Grid item container direction="row" spacing={2}>
             <Grid item xs={12} sm={6} sx={{ flexGrow: 1 }}>
               <EventPreview event={currentEvent} />
@@ -108,7 +125,6 @@ function TimelineItemPreview() {
               />
             </Grid>
           </Grid>
-
           <Stepper
             pagination={pagination}
             lookAt={lookAt}
@@ -123,37 +139,29 @@ function TimelineItemPreview() {
 
 export default TimelineItemPreview;
 
+// Utility Functions
 const applyChanges = (initialState, stepNumber, timeline) => {
   let state = initialState;
   for (let i = 0; i < stepNumber + 1; i++) {
     const step = timeline[i];
-    if (step.detail == "") {
-      return null;
-    }
+    if (step.detail === "") return null;
     const changes = JSON.parse(step.detail);
     state = forwardChanges(state, changes);
   }
   return state;
 };
 
-function forwardChanges(originalObject, changes) {
-  if (!originalObject) {
-    return changes ? { ...changes } : {}; // Handle null originalObject
-  }
-  if (!changes) {
-    return originalObject; // Handle null changes
-  }
+const forwardChanges = (originalObject, changes) => {
+  if (!originalObject) return changes ? { ...changes } : {};
+  if (!changes) return originalObject;
 
   const newObject = { ...originalObject };
 
   for (const key in changes) {
     if (changes.hasOwnProperty(key)) {
       const changeValue = changes[key];
-
       if (Array.isArray(changeValue) && changeValue.length === 2) {
-        // [before, after] format
         const afterValue = changeValue[1];
-
         if (
           typeof afterValue === "object" &&
           afterValue !== null &&
@@ -164,33 +172,53 @@ function forwardChanges(originalObject, changes) {
         ) {
           newObject[key] = forwardChanges(newObject[key], {
             [key]: afterValue,
-          }); // Recursive call for nested objects. Pass in the nested object and the change {key: afterValue}
+          });
         } else {
-          newObject[key] = afterValue; // Directly replace with the after value
+          newObject[key] = afterValue;
         }
       } else {
-        newObject[key] = changeValue; // Handle other change formats if needed.
+        newObject[key] = changeValue;
       }
     }
   }
-
   return newObject;
-}
-
-const EventPreview = ({ event }) => {
-  if (!event || !event.detail) {
-    return null;
-  }
-
-  const data = JSON.parse(event.detail);
-
-  return <ObjectPreview jsonData={data} title="Introduced changes" />;
 };
 
-const ObjectPreview = ({ jsonData, title }) => {
-  if (!jsonData) {
-    return null;
+const formatChanges = (changes) => {
+  if (!changes || typeof changes !== "object") return "No changes";
+
+  let formattedChanges = [];
+  for (const key in changes) {
+    if (changes.hasOwnProperty(key)) {
+      const changeValue = changes[key];
+      if (Array.isArray(changeValue) && changeValue.length === 2) {
+        formattedChanges.push(
+          `${key}: ${JSON.stringify(changeValue[0])} -> ${JSON.stringify(
+            changeValue[1]
+          )}`
+        );
+      } else if (typeof changeValue === "object" && changeValue !== null) {
+        const nestedFormattedChanges = formatChanges(changeValue);
+        if (nestedFormattedChanges) {
+          formattedChanges.push(`${key}: { ${nestedFormattedChanges} }`);
+        }
+      } else {
+        formattedChanges.push(`${key}: ${JSON.stringify(changeValue)}`);
+      }
+    }
   }
+  return formattedChanges.join("\n");
+};
+
+// Sub-Components
+const EventPreview = ({ event }) => {
+  if (!event || !event.detail) return null;
+  const data = formatChanges(JSON.parse(event.detail));
+  return <ObjectPreview data={data} title="Introduced changes" />;
+};
+
+const ObjectPreview = ({ jsonData, title, data }) => {
+  if (!jsonData && !data) return null;
 
   return (
     <Paper
@@ -198,32 +226,29 @@ const ObjectPreview = ({ jsonData, title }) => {
       sx={{
         padding: 2,
         backgroundColor: "#f5f5f5",
-        overflow: "auto", // Enables scrolling if needed
-        maxWidth: "100%", // Make sure it takes the full width
+        maxWidth: "100%",
+        overflowWrap: "break-word",
       }}
     >
       <Typography variant="h6">{title}</Typography>
       <pre
         style={{
-          whiteSpace: "pre-wrap", // or 'pre-line' for wrapping
-          wordBreak: "break-word", // For long words
-          maxWidth: "100%",
-          overflow: "auto", // Enables scrolling if needed
-          maxHeight: "400px", // Optional: Set a max height for scrolling
+          whiteSpace: "pre-wrap",
+          wordBreak: "break-word",
+          overflow: "auto",
+          maxHeight: "350px",
         }}
       >
-        {JSON.stringify(jsonData, null, 2)}
+        {jsonData && JSON.stringify(jsonData, null, 2)}
+        {data && data}
       </pre>
     </Paper>
   );
 };
 
 const ActionLabel = ({ event }) => {
-  if (!event) {
-    return null;
-  }
-
-  const formattedTime = new Date(event.UpdatedAt).toLocaleString(); // Format the time
+  if (!event) return null;
+  const formattedTime = new Date(event.UpdatedAt).toLocaleString();
 
   return (
     <Paper
@@ -234,19 +259,12 @@ const ActionLabel = ({ event }) => {
         backgroundColor: "#f5f5f5",
         width: "100%",
         overflowWrap: "break-word",
-        wordWrap: "break-word",
-        hyphens: "auto",
       }}
     >
-      <Typography
-        sx={{
-          display: "pre-wrap",
-          wordBreak: "break-word",
-        }}
-      >
+      <Typography sx={{ display: "pre-wrap", wordBreak: "break-word" }}>
         <strong style={{ marginRight: "5px" }}>{event.username}</strong>{" "}
-        {event.action} {event.resourceName} {event.resourceId} at{" "}
-        {formattedTime}
+        {event.action.toUpperCase()} {event.resourceName} ({event.resourceId})
+        at {formattedTime}
       </Typography>
     </Paper>
   );
@@ -254,9 +272,7 @@ const ActionLabel = ({ event }) => {
 
 const Stepper = ({ pagination, timeline, lookAt, activeStep }) => {
   const theme = useTheme();
-  if (!timeline) {
-    return null;
-  }
+  if (!timeline) return null;
 
   return (
     <MobileStepper
@@ -271,7 +287,7 @@ const Stepper = ({ pagination, timeline, lookAt, activeStep }) => {
           onClick={() => lookAt(activeStep + 1)}
           disabled={activeStep === pagination.total - 1}
         >
-          Next
+          Next{" "}
           {theme.direction === "rtl" ? (
             <KeyboardArrowLeft />
           ) : (
@@ -289,7 +305,7 @@ const Stepper = ({ pagination, timeline, lookAt, activeStep }) => {
             <KeyboardArrowRight />
           ) : (
             <KeyboardArrowLeft />
-          )}
+          )}{" "}
           Back
         </Button>
       }
@@ -299,17 +315,12 @@ const Stepper = ({ pagination, timeline, lookAt, activeStep }) => {
 
 const ResourceIdInput = ({ resourceId, setResourceId, onClick }) => {
   return (
-    <FormControl
-      fullWidth
-      variant="outlined"
-      value={resourceId}
-      onChange={(event) => {
-        setResourceId(event.target.value);
-      }}
-    >
+    <FormControl fullWidth variant="outlined">
       <InputLabel htmlFor="outlined-input">Resource Id</InputLabel>
       <OutlinedInput
         id="outlined-input"
+        value={resourceId}
+        onChange={(event) => setResourceId(event.target.value)}
         endAdornment={
           <InputAdornment position="end">
             <IconButton onClick={onClick} edge="end">
