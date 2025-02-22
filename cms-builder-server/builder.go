@@ -539,12 +539,6 @@ func (b *Builder) InitScheduler() error {
 		return err
 	}
 
-	_, err = b.Admin.Register(&JobFrequency{}, false, permissions, nil)
-	if err != nil {
-		log.Error().Err(err).Msg("Error registering job frequency app")
-		return err
-	}
-
 	_, err = b.Admin.Register(&SchedulerTask{}, false, permissions, nil)
 	if err != nil {
 		log.Error().Err(err).Msg("Error registering scheduler task app")
