@@ -435,7 +435,6 @@ func (b *Builder) InitAuth() error {
 	// No user should be able to delete users, including himself
 
 	svr := b.Server
-	// FIXME: only works if authorized for some reason
 	svr.AddRoute("/auth/register", b.RegisterVisitorController, "register", false, http.MethodPost, RegisterUserInput{})
 	return nil
 }

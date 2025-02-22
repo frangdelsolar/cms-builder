@@ -89,14 +89,14 @@ func (b *Builder) UserMiddleware(next http.Handler) http.Handler {
 		var err error
 		if godToken != "" {
 			localUser, err = b.VerifyGodUser(godToken)
+			if err != nil {
+				log.Error().Err(err).Msg("Error verifying god. God may not be authenticated")
+			}
 		} else {
 			localUser, err = b.VerifyUser(accessToken, requestId)
-		}
-
-		if err != nil {
-			log.Error().Err(err).Msg("Error verifying user")
-			SendJsonResponse(w, http.StatusInternalServerError, nil, "Unauthorized")
-			return
+			if err != nil {
+				log.Error().Err(err).Msg("Error verifying user. User may not be authenticated")
+			}
 		}
 
 		if localUser != nil {

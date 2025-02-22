@@ -166,6 +166,8 @@ func GetRequestId(r *http.Request) string {
 // by calling VerifyUser on the App's admin instance. If the verification fails, it returns
 // an empty string. Otherwise, it returns the ID of the verified user as a string.
 func GetRequestUser(r *http.Request, b *Builder) *User {
+
+	// TODO: should pass user through context instead of verifying agains, as this has been done in the usermiddleware
 	godToken := r.Header.Get(GodTokenHeader)
 	accessToken := GetAccessTokenFromRequest(r)
 	requestId := GetRequestId(r)
