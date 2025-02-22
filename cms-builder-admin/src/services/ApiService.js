@@ -1,6 +1,8 @@
 import axios from "axios";
 
-const apiService = ({ token, apiBaseUrl }) => {
+// Helper function to create the base API service
+const createApiService = ({ token, apiBaseUrl }) => {
+  // Helper function to add authorization headers
   const withAuth = (config) => {
     if (token) {
       config.headers = {
@@ -8,9 +10,10 @@ const apiService = ({ token, apiBaseUrl }) => {
         Authorization: `Bearer ${token}`,
       };
     }
-
     return config;
   };
+
+  // Centralized API call executor
   const executeApiCall = async ({
     method,
     relativePath,
@@ -22,8 +25,7 @@ const apiService = ({ token, apiBaseUrl }) => {
     const config = withAuth({
       method,
       url,
-      headers: {},
-      "Content-Type": contentType,
+      headers: { "Content-Type": contentType },
       data: body,
     });
 
@@ -32,10 +34,15 @@ const apiService = ({ token, apiBaseUrl }) => {
       return response.data;
     } catch (error) {
       console.error("Error executing API call:", error);
-      throw error.response.data;
+      throw error.response?.data || error.message;
     }
   };
 
+  return { executeApiCall };
+};
+
+// Entity Service
+const createEntityService = ({ executeApiCall }) => {
   const getEntities = () => {
     return executeApiCall({
       method: "GET",
@@ -43,6 +50,34 @@ const apiService = ({ token, apiBaseUrl }) => {
     });
   };
 
+  const getEndpoints = async (entity) => {
+    const response = await executeApiCall({
+      method: "GET",
+      relativePath: "api",
+    });
+    const entitiesDetails = response.data;
+    const validEntity = entitiesDetails.find(
+      (item) => item.pluralName === entity
+    );
+
+    if (!validEntity) {
+      throw new Error("Invalid entity");
+    }
+    return validEntity;
+  };
+
+  const schema = (entity) => {
+    return executeApiCall({
+      method: "GET",
+      relativePath: `api/${entity}/schema`,
+    });
+  };
+
+  return { getEntities, getEndpoints, schema };
+};
+
+// Request Service
+const createRequestService = ({ executeApiCall }) => {
   const getRequestLogEntries = (requestId) => {
     return executeApiCall({
       method: "GET",
@@ -57,93 +92,35 @@ const apiService = ({ token, apiBaseUrl }) => {
     });
   };
 
-  const postFile = (file) => {
-    let path = `private/api/files/new`;
+  return { getRequestLogEntries, getRequestStats };
+};
 
-    const formData = new FormData(); // Create a FormData object
+// File Service
+const createFileService = ({ executeApiCall }) => {
+  const postFile = (file) => {
+    const formData = new FormData();
     formData.append("file", file);
 
     return executeApiCall({
       method: "POST",
-      relativePath: path,
+      relativePath: "private/api/files/new",
       body: formData,
       contentType: "multipart/form-data",
     });
   };
 
   const downloadFile = (fileId) => {
-    let path = `private/api/files/${fileId}/download`;
-
     return executeApiCall({
       method: "GET",
-      relativePath: path,
+      relativePath: `private/api/files/${fileId}/download`,
     });
   };
 
-  const getEndpoints = async (entity) => {
-    try {
-      const response = await executeApiCall({
-        method: "GET",
-        relativePath: "api",
-      });
-      const entitiesDetails = response.data;
-      const validEntity = entitiesDetails.find(
-        (item) => item.pluralName === entity
-      );
+  return { postFile, downloadFile };
+};
 
-      if (!validEntity) {
-        throw new Error("Invalid entity");
-      }
-    } catch (error) {
-      throw error;
-    }
-  };
-
-  const schema = (entity) => {
-    return executeApiCall({
-      method: "GET",
-      relativePath: `api/${entity}/schema`,
-    });
-  };
-
-  const post = async (entity, body) => {
-    try {
-      const response = await executeApiCall({
-        method: "POST",
-        relativePath: `private/api/${entity}/new`,
-        body,
-      });
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  };
-
-  const put = async (entity, instance, body) => {
-    try {
-      const response = await executeApiCall({
-        method: "PUT",
-        relativePath: `private/api/${entity}/${instance.ID}/update`,
-        body,
-      });
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  };
-
-  const destroy = async (resourceName, resourceId) => {
-    try {
-      return await executeApiCall({
-        method: "DELETE",
-        relativePath: `private/api/${resourceName}/${resourceId}/delete`,
-      });
-    } catch (error) {
-      throw error;
-    }
-  };
-
-  // order: fieldName or -fieldName
+// Resource Service
+const createResourceService = ({ executeApiCall }) => {
   const list = async (
     entity,
     page = 1,
@@ -151,67 +128,80 @@ const apiService = ({ token, apiBaseUrl }) => {
     order = "",
     query = null
   ) => {
-    let path = `private/api/${entity}`;
-    const params = new URLSearchParams();
-    params.append("page", page);
-    params.append("limit", limit);
-
-    if (order) {
-      params.append("order", order);
-    }
+    const params = new URLSearchParams({ page, limit, order });
     if (query) {
-      for (const [key, value] of Object.entries(query)) {
-        if (Array.isArray(value)) {
-          params.append(key, value.join(",")); // Handle array values
-        } else {
-          params.append(key, value);
-        }
-      }
-    }
-    try {
-      const response = await executeApiCall({
-        method: "GET",
-        relativePath: `${path}?${params.toString()}`,
+      Object.entries(query).forEach(([key, value]) => {
+        params.append(key, Array.isArray(value) ? value.join(",") : value);
       });
-
-      return response;
-    } catch (error) {
-      throw error;
     }
+
+    return executeApiCall({
+      method: "GET",
+      relativePath: `private/api/${entity}?${params.toString()}`,
+    });
   };
 
   const getTimelineForResource = async (
     resourceId,
-    resorceName,
+    resourceName,
     limit,
     page
   ) => {
-    const url = `private/api/timeline?resource_id=${resourceId}&resource_name=${resorceName}&limit=${limit}&page=${page}&order=id`;
-
+    const params = new URLSearchParams({
+      resource_id: resourceId,
+      resource_name: resourceName,
+      limit,
+      page,
+      order: "id",
+    });
     return executeApiCall({
       method: "GET",
-      relativePath: url,
+      relativePath: `private/api/timeline?${params.toString()}`,
     });
   };
 
-  const apiUrl = () => {
-    return apiBaseUrl;
+  return { list, getTimelineForResource };
+};
+
+// CRUD Service
+const createCrudService = ({ executeApiCall }) => {
+  const post = (entity, body) => {
+    return executeApiCall({
+      method: "POST",
+      relativePath: `private/api/${entity}/new`,
+      body,
+    });
   };
 
+  const put = (entity, instance, body) => {
+    return executeApiCall({
+      method: "PUT",
+      relativePath: `private/api/${entity}/${instance.ID}/update`,
+      body,
+    });
+  };
+
+  const destroy = (resourceName, resourceId) => {
+    return executeApiCall({
+      method: "DELETE",
+      relativePath: `private/api/${resourceName}/${resourceId}/delete`,
+    });
+  };
+
+  return { post, put, destroy };
+};
+
+// Main API Service
+const apiService = ({ token, apiBaseUrl }) => {
+  const { executeApiCall } = createApiService({ token, apiBaseUrl });
+
   return {
-    apiUrl,
-    getEntities,
-    downloadFile,
-    getEndpoints,
-    getTimelineForResource,
-    getRequestLogEntries,
-    getRequestStats,
-    postFile,
-    schema,
-    post,
-    put,
-    destroy,
-    list,
+    ...createEntityService({ executeApiCall }),
+    ...createRequestService({ executeApiCall }),
+    ...createFileService({ executeApiCall }),
+    ...createResourceService({ executeApiCall }),
+    ...createCrudService({ executeApiCall }),
+    apiUrl: () => apiBaseUrl,
   };
 };
 
