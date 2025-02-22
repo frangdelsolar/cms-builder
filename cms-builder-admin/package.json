@@ -8,6 +8,7 @@
     "@fontsource/roboto": "^5.1.1",
     "@mui/icons-material": "^6.4.4",
     "@mui/material": "^6.4.4",
+    "@mui/x-charts": "^7.27.0",
     "@mui/x-data-grid": "^7.26.0",
     "@mui/x-tree-view": "^7.26.0",
     "@reduxjs/toolkit": "^2.5.1",

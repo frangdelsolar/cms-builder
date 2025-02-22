@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
-	"strconv"
 	"strings"
 
 	"gorm.io/gorm"
@@ -66,23 +65,10 @@ var DefaultListHandler ApiFunction = func(a *App, db *Database) http.HandlerFunc
 			return
 		}
 
-		limit, err := strconv.Atoi(GetQueryParam("limit", r))
+		queryParams, err := GetQueryParams(r)
 		if err != nil {
-			log.Error().Err(err).Msgf("Error converting limit")
-			limit = 10
-		}
-
-		page, err := strconv.Atoi(GetQueryParam("page", r))
-		if err != nil {
-			log.Error().Err(err).Msgf("Error converting page")
-			page = 1
-		}
-
-		orderParam := GetQueryParam("order", r)
-		order, err := ValidateOrderParam(orderParam)
-		if err != nil {
-			log.Error().Err(err).Msgf("Error validating order")
-			log.Warn().Msg("Using default order")
+			SendJsonResponse(w, http.StatusBadRequest, nil, err.Error())
+			return
 		}
 
 		// Create slice to store the model instances.
@@ -94,8 +80,8 @@ var DefaultListHandler ApiFunction = func(a *App, db *Database) http.HandlerFunc
 
 		pagination := &Pagination{
 			Total: 0,
-			Page:  page,
-			Limit: limit,
+			Page:  queryParams.Page,
+			Limit: queryParams.Limit,
 		}
 		query := ""
 
@@ -103,13 +89,13 @@ var DefaultListHandler ApiFunction = func(a *App, db *Database) http.HandlerFunc
 			// Admin
 			for _, role := range params.Roles {
 				if role == AdminRole {
-					db.Find(instances, query, pagination, order)
+					db.Find(instances, query, pagination, queryParams.Order)
 					SendJsonResponseWithPagination(w, http.StatusOK, instances, a.Name()+" list", pagination)
 					return
 				}
 			}
 
-			response := db.Find(instances, query, pagination, order)
+			response := db.Find(instances, query, pagination, queryParams.Order)
 			if response.Error != nil {
 				log.Error().Err(response.Error).Msgf("Error finding instances")
 				SendJsonResponse(w, http.StatusInternalServerError, nil, response.Error.Error())
@@ -120,14 +106,14 @@ var DefaultListHandler ApiFunction = func(a *App, db *Database) http.HandlerFunc
 			// Admin
 			for _, role := range params.Roles {
 				if role == AdminRole {
-					db.Find(instances, "", pagination, order)
+					db.Find(instances, "", pagination, queryParams.Order)
 					SendJsonResponseWithPagination(w, http.StatusOK, instances, a.Name()+" list", pagination)
 					return
 				}
 			}
 
 			query = "created_by_id = '" + params.RequestedById + "'"
-			res := db.Find(instances, query, pagination, order)
+			res := db.Find(instances, query, pagination, queryParams.Order)
 			if res.Error != nil {
 				SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
 				return

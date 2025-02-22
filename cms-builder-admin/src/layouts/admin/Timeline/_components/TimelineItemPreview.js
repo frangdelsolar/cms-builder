@@ -12,23 +12,18 @@ import {
   Typography,
   MobileStepper,
   Button,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
 } from "@mui/material";
 import Grid from "@mui/material/Grid2";
-import {
-  KeyboardArrowLeft,
-  KeyboardArrowRight,
-  ExpandMore,
-} from "@mui/icons-material";
+import { KeyboardArrowLeft, KeyboardArrowRight } from "@mui/icons-material";
 import SearchIcon from "@mui/icons-material/Search";
-import SyncIcon from "@mui/icons-material/Sync";
 import { useAppSelector } from "../../../../store/Hooks";
 import { selectSelectedEntity } from "../../../../store/EntitySlice";
 import { ApiContext } from "../../../../context/ApiContext";
 import { useNotifications } from "../../../../context/ToastContext";
 import { useTheme } from "@mui/material/styles";
+
+import { formatChanges } from "./utils";
+import RequestPreview from "./RequestPreview";
 
 // Main Component
 function TimelineItemPreview() {
@@ -125,7 +120,7 @@ function TimelineItemPreview() {
             onClick={handleResourceIdInputClick}
           />
           <ActionLabel event={currentEvent} />
-          <RequestPreview event={currentEvent} />
+          <RequestPreview requestId={currentEvent?.requestId} />
           <Grid item container direction="row" spacing={2}>
             <Grid item xs={12} sm={6} sx={{ flexGrow: 1 }}>
               <EventPreview event={currentEvent} />
@@ -194,32 +189,6 @@ const forwardChanges = (originalObject, changes) => {
     }
   }
   return newObject;
-};
-
-const formatChanges = (changes) => {
-  if (!changes || typeof changes !== "object") return "No changes";
-
-  let formattedChanges = [];
-  for (const key in changes) {
-    if (changes.hasOwnProperty(key)) {
-      const changeValue = changes[key];
-      if (Array.isArray(changeValue) && changeValue.length === 2) {
-        formattedChanges.push(
-          `${key}: ${JSON.stringify(changeValue[0])} -> ${JSON.stringify(
-            changeValue[1]
-          )}`
-        );
-      } else if (typeof changeValue === "object" && changeValue !== null) {
-        const nestedFormattedChanges = formatChanges(changeValue);
-        if (nestedFormattedChanges) {
-          formattedChanges.push(`${key}: { ${nestedFormattedChanges} }`);
-        }
-      } else {
-        formattedChanges.push(`${key}: ${JSON.stringify(changeValue)}`);
-      }
-    }
-  }
-  return formattedChanges.join("\n");
 };
 
 // Sub-Components
@@ -342,84 +311,5 @@ const ResourceIdInput = ({ resourceId, setResourceId, onClick }) => {
         label="Resource Id"
       />
     </FormControl>
-  );
-};
-
-const RequestPreview = ({ event }) => {
-  const apiService = useContext(ApiContext);
-  const toast = useNotifications();
-  const [isLoading, setIsLoading] = useState(false);
-  const [requestDetails, setRequestDetails] = useState(null);
-  const [expanded, setExpanded] = useState(false);
-
-  useEffect(() => {
-    if (event?.requestId) {
-      handleFetchClick();
-    } else {
-      resetState();
-    }
-  }, [event?.requestId]);
-
-  const resetState = () => {
-    setRequestDetails(null);
-    setExpanded(false);
-  };
-
-  const handleFetchClick = async () => {
-    setIsLoading(true);
-    try {
-      const resp = await apiService.getRequestLogEntries(event.requestId);
-      const formattedData = formatChanges(resp.data);
-      setRequestDetails(formattedData);
-      setExpanded(false);
-    } catch (error) {
-      toast.show("There was an error fetching the request log", "error");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleChange = (panel) => (event, isExpanded) => {
-    setExpanded(isExpanded ? panel : false);
-  };
-
-  if (!event || !event.requestId) return null;
-
-  return (
-    <Accordion
-      expanded={expanded}
-      onChange={handleChange("panel1")}
-      elevation={0}
-      sx={{ backgroundColor: "#f5f5f5", width: "100%" }}
-    >
-      <AccordionSummary expandIcon={<ExpandMore />}>
-        <Typography sx={{ display: "pre-wrap", wordBreak: "break-word" }}>
-          <strong style={{ marginRight: "5px" }}>Request Id:</strong>
-          {event.requestId}
-        </Typography>
-      </AccordionSummary>
-      <AccordionDetails>
-        <pre
-          style={{
-            whiteSpace: "pre-wrap",
-            wordBreak: "break-word",
-          }}
-        >
-          {requestDetails ? (
-            requestDetails
-          ) : (
-            <Button
-              loading={isLoading}
-              variant="outlined"
-              onClick={handleFetchClick}
-              loadingPosition="end"
-              startIcon={<SyncIcon />}
-            >
-              Fetch
-            </Button>
-          )}
-        </pre>
-      </AccordionDetails>
-    </Accordion>
   );
 };

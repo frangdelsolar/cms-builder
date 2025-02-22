@@ -50,6 +50,13 @@ const apiService = ({ token, apiBaseUrl }) => {
     });
   };
 
+  const getRequestStats = () => {
+    return executeApiCall({
+      method: "GET",
+      relativePath: `private/api/requests/stats`,
+    });
+  };
+
   const postFile = (file) => {
     let path = `private/api/files/new`;
 
@@ -137,15 +144,34 @@ const apiService = ({ token, apiBaseUrl }) => {
   };
 
   // order: fieldName or -fieldName
-  const list = async (entity, page = 1, limit = 10, order = "") => {
-    let path = `private/api/${entity}?page=${page}&limit=${limit}`;
+  const list = async (
+    entity,
+    page = 1,
+    limit = 10,
+    order = "",
+    query = null
+  ) => {
+    let path = `private/api/${entity}`;
+    const params = new URLSearchParams();
+    params.append("page", page);
+    params.append("limit", limit);
+
     if (order) {
-      path += `&order=${order}`;
+      params.append("order", order);
+    }
+    if (query) {
+      for (const [key, value] of Object.entries(query)) {
+        if (Array.isArray(value)) {
+          params.append(key, value.join(",")); // Handle array values
+        } else {
+          params.append(key, value);
+        }
+      }
     }
     try {
       const response = await executeApiCall({
         method: "GET",
-        relativePath: path,
+        relativePath: `${path}?${params.toString()}`,
       });
 
       return response;
@@ -179,6 +205,7 @@ const apiService = ({ token, apiBaseUrl }) => {
     getEndpoints,
     getTimelineForResource,
     getRequestLogEntries,
+    getRequestStats,
     postFile,
     schema,
     post,

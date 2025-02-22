@@ -301,18 +301,115 @@ func (b *Builder) RequestLogHandler() func(w http.ResponseWriter, r *http.Reques
 
 		requestId := GetUrlParam("id", r)
 
-		// Create slice to store the model instances.
-		instance := CreateInstanceForUndeterminedType(a.Model)
+		// Create instance for RequestLog
+		requestLog := RequestLog{}
 
-		query := "request_identifier = '" + requestId + "'"
-
-		res := b.DB.FindOne(instance, query)
+		query := "request_identifier = ?" // Use parameterized query
+		res := b.DB.DB.Where(query, requestId).First(&requestLog)
 		if res.Error != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
 			return
 		}
 
-		SendJsonResponse(w, http.StatusOK, instance, a.Name()+" list")
+		// Create slice to store HistoryEntries
+		var historyEntries []HistoryEntry // Assuming you have a HistoryEntry struct
 
+		// Join HistoryEntries with RequestLog
+		joinQuery := "history_entries.request_id = ?" // Use parameterized query
+		historyRes := b.DB.DB.Where(joinQuery, requestId).Find(&historyEntries)
+		if historyRes.Error != nil {
+			SendJsonResponse(w, http.StatusInternalServerError, nil, historyRes.Error.Error())
+			return
+		}
+
+		// Create a map to hold both RequestLog and HistoryEntries
+		data := map[string]interface{}{
+			"request_log":     requestLog,
+			"history_entries": historyEntries,
+		}
+
+		SendJsonResponse(w, http.StatusOK, data, a.Name()+" details")
+	}
+}
+
+func (b *Builder) RequestStatsHandler() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		err := ValidateRequestMethod(r, http.MethodGet)
+		if err != nil {
+			SendJsonResponse(w, http.StatusMethodNotAllowed, nil, err.Error())
+			return
+		}
+
+		a, err := b.Admin.GetApp("requestlog")
+		if err != nil {
+			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+			return
+		}
+
+		now := time.Now()
+		oneDayAgo := now.AddDate(0, 0, -1)
+
+		query := "timestamp > ? AND timestamp < ?"
+
+		var statusGroupedInstances []map[string]interface{}
+		statusGroupsRes := b.DB.DB.Model(a.Model).
+			Select("status_code, COUNT(*) as count").
+			Where(query, oneDayAgo, now).
+			Group("status_code").
+			Order("status_code").
+			Find(&statusGroupedInstances)
+
+		if statusGroupsRes.Error != nil {
+			SendJsonResponse(w, http.StatusInternalServerError, nil, statusGroupsRes.Error.Error())
+			return
+		}
+
+		var methodGroupedInstances []map[string]interface{}
+		methodGroupedRes := b.DB.DB.Model(a.Model).
+			Select("method, COUNT(*) as count").
+			Where(query, oneDayAgo, now).
+			Group("method").
+			Order("method").
+			Find(&methodGroupedInstances)
+
+		if methodGroupedRes.Error != nil {
+			SendJsonResponse(w, http.StatusInternalServerError, nil, methodGroupedRes.Error.Error())
+			return
+		}
+
+		var endpointGroupedInstances []map[string]interface{}
+		endpointGroupedRes := b.DB.DB.Model(a.Model).
+			Select("path, COUNT(*) as count").
+			Where(query, oneDayAgo, now).
+			Group("path").
+			Order("path").
+			Find(&endpointGroupedInstances)
+
+		if endpointGroupedRes.Error != nil {
+			SendJsonResponse(w, http.StatusInternalServerError, nil, endpointGroupedRes.Error.Error())
+			return
+		}
+
+		var instances []map[string]interface{}
+		requestLogRes := b.DB.DB.Model(a.Model).
+			Select("request_identifier, timestamp, status_code, method, duration, path").
+			Where(query, oneDayAgo, now).
+			Order("timestamp desc").
+			Find(&instances)
+
+		if requestLogRes.Error != nil {
+			SendJsonResponse(w, http.StatusInternalServerError, nil, requestLogRes.Error.Error())
+			return
+		}
+
+		data := map[string]interface{}{
+			"endpoints":     endpointGroupedInstances,
+			"method_groups": methodGroupedInstances,
+			"status_groups": statusGroupedInstances,
+			"requests":      instances,
+		}
+
+		SendJsonResponse(w, http.StatusOK, data, "request-logs")
 	}
 }

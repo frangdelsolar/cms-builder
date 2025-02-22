@@ -1,5 +1,5 @@
 import { Card, CardHeader } from "@mui/material";
-import { useEffect, useState, useContext } from "react";
+import { useEffect, useState, useContext, useRef } from "react";
 
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
@@ -18,8 +18,11 @@ const HistoryEntriesList = () => {
   const toast = useNotifications();
 
   const [entries, setEntries] = useState([]);
+  const isMounted = useRef(false);
 
   useEffect(() => {
+    if (isMounted.current) return;
+
     let fn = async () => {
       try {
         const response = await apiService.list(
@@ -35,6 +38,7 @@ const HistoryEntriesList = () => {
     };
 
     fn();
+    isMounted.current = true;
   }, []);
 
   const getIcon = (action) => {
@@ -68,7 +72,7 @@ const HistoryEntriesList = () => {
 
   return (
     <Card>
-      <CardHeader title="Acciones recientes" />
+      <CardHeader title="En la base de datos" />
       <List dense={true}>
         {entries.map((entry) => {
           return generateListItem(entry);

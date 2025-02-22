@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gorilla/mux"
@@ -53,6 +54,62 @@ func DeleteHeader(param RequestParamKey, request *http.Request) {
 // Returns the value of the specified URL parameter as a string.
 func GetUrlParam(param string, r *http.Request) string {
 	return mux.Vars(r)[param]
+}
+
+// QueryParams struct to hold all query parameters
+type QueryParams struct {
+	Limit int               `json:"limit"`
+	Page  int               `json:"page"`
+	Order string            `json:"order"`
+	Query map[string]string `json:"query"`
+}
+
+func GetQueryParams(r *http.Request) (*QueryParams, error) {
+	params := &QueryParams{
+		Query: make(map[string]string), // Initialize the map
+		Limit: 10,                      // Default limit
+		Page:  1,                       // Default page
+	}
+
+	q := r.URL.Query()
+
+	// Parse limit (with default value and error handling)
+	limitStr := q.Get("limit")
+	if limitStr != "" {
+		limit, err := strconv.Atoi(limitStr)
+		if err != nil {
+			return nil, err // Return error if limit is not a number
+		}
+		params.Limit = limit
+	}
+
+	// Parse page (with default value and error handling)
+	pageStr := q.Get("page")
+	if pageStr != "" {
+		page, err := strconv.Atoi(pageStr)
+		if err != nil {
+			return nil, err // Return error if page is not a number
+		}
+		params.Page = page
+	}
+
+	orderParam := GetQueryParam("order", r)
+	order, err := ValidateOrderParam(orderParam)
+	if err != nil {
+		log.Error().Err(err).Msgf("Error validating order")
+		log.Warn().Msg("Using default order")
+	}
+
+	params.Order = order
+
+	// Parse query parameters into the map
+	for key, values := range q {
+		if key != "limit" && key != "page" && key != "order" { // Exclude standard params
+			params.Query[key] = strings.Join(values, ",") // Assuming only one value per query parameter for now. Can be modified to handle multiple values per key if needed.
+		}
+	}
+
+	return params, nil
 }
 
 // GetQueryParam retrieves the value of a query parameter from the request.

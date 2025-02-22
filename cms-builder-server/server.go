@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"runtime/debug"
 	"strings"
 	"sync"
@@ -151,12 +152,10 @@ func contains(s []string, e string) bool {
 // handler and logs the request URI before calling the original handler.
 func LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// TODO: Fix this
-		// requestId := GetRequestID(r)
+		requestId := GetRequestId(r)
 		// TODO: Make logger unique to each request, I will need to use context for that.
 		// Seems like a massive effort
-		log.Info().Msg(r.RequestURI)
-		// log.Info().Str("requestId", requestId).Msg(r.RequestURI)
+		log.Info().Str("requestId", requestId).Str("method", r.Method).Msg(r.RequestURI)
 		next.ServeHTTP(w, r)
 	})
 }
@@ -242,10 +241,11 @@ type RequestLog struct {
 	Origin            string        `json:"origin"`
 	Referer           string        `json:"referrer"`
 	UserId            string        `gorm:"foreignKey:UserId" json:"userId"`
-	User              *User         `json:"user"`
+	User              *User         `json:"user,omitempty"`
 	Roles             string        `json:"roles"`
 	Method            string        `json:"method"`
 	Path              string        `json:"path"`
+	Query             string        `json:"query"`
 	StatusCode        string        `json:"statusCode"`
 	Error             string        `json:"error"`
 	Header            string        `json:"header"`
@@ -295,6 +295,11 @@ func (b *Builder) RequestLogMiddleware(next http.Handler) http.Handler {
 				errorMessage = err.Error()
 			}
 
+			query, err := url.QueryUnescape(r.URL.RawQuery)
+			if err != nil {
+				log.Error().Err(err).Msg("Error unescaping query")
+			}
+
 			logEntry := RequestLog{
 				Timestamp:         start,
 				Ip:                r.RemoteAddr,
@@ -302,6 +307,7 @@ func (b *Builder) RequestLogMiddleware(next http.Handler) http.Handler {
 				Roles:             r.Header.Get(rolesParamKey.S()),
 				Method:            r.Method,
 				Path:              r.URL.Path,
+				Query:             query,
 				Duration:          duration,
 				StatusCode:        fmt.Sprintf("%d", statusCode),
 				Origin:            r.Header.Get("Origin"),
