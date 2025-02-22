@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const builderVersion = "1.5.4"
+const builderVersion = "1.5.5"
 
 // ConfigKeys define the keys used in the configuration file
 type ConfigKeys struct {

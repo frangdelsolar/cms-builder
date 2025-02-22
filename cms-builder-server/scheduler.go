@@ -113,7 +113,7 @@ func getFrequencyDefinition(jobDefinition *SchedulerJobDefinition) (gocron.JobDe
 }
 
 func GetRequestIdForCronJob(jobID uuid.UUID) string {
-	return fmt.Sprintf("scheduler-worker-%s", jobID.String())
+	return fmt.Sprintf("scheduler-worker::%s", jobID.String())
 }
 
 func (s *Scheduler) Before(jobDefinition *SchedulerJobDefinition) func(jobID uuid.UUID, jobName string) {
@@ -203,7 +203,11 @@ func (s *Scheduler) UpdateTaskStatus(cronJobId string, status TaskStatus, errMsg
 	if errMsg != "" {
 		task.Error = errMsg
 	}
-	return s.Builder.DB.Save(&task, s.User, nil, requestId).Error
+
+	previousState := s.GetSchedulerTask(cronJobId)
+	differences := CompareInterfaces(previousState, task)
+
+	return s.Builder.DB.Save(&task, s.User, differences, requestId).Error
 }
 
 func (s *Scheduler) GetSchedulerTask(cronJobId string) *SchedulerTask {
