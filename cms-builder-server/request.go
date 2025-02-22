@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -71,7 +72,10 @@ func GetQueryParams(r *http.Request) (*QueryParams, error) {
 		Page:  1,                       // Default page
 	}
 
-	q := r.URL.Query()
+	var q url.Values
+	if r.URL != nil {
+		q = r.URL.Query()
+	}
 
 	// Parse limit (with default value and error handling)
 	limitStr := q.Get("limit")
@@ -164,12 +168,13 @@ func GetRequestId(r *http.Request) string {
 func GetRequestUser(r *http.Request, b *Builder) *User {
 	godToken := r.Header.Get(GodTokenHeader)
 	accessToken := GetAccessTokenFromRequest(r)
+	requestId := GetRequestId(r)
 
 	var localUser *User
 	if godToken != "" {
 		localUser, _ = b.VerifyGodUser(godToken)
 	} else {
-		localUser, _ = b.VerifyUser(accessToken)
+		localUser, _ = b.VerifyUser(accessToken, requestId)
 	}
 
 	return localUser

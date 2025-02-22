@@ -55,7 +55,7 @@ func TestRegisterUserController(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Log("Verifying user")
-	retrievedUser, err := e.Engine.VerifyUser(accessToken)
+	retrievedUser, err := e.Engine.VerifyUser(accessToken, "test-request")
 	assert.NoError(t, err)
 	assert.Equal(t, createdUser.GetIDString(), retrievedUser.GetIDString())
 

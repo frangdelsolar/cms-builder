@@ -14,7 +14,7 @@ import (
 
 const GodTokenHeader = "X-God-Token"
 
-func (b *Builder) VerifyUser(userIdToken string) (*User, error) {
+func (b *Builder) VerifyUser(userIdToken string, requestId string) (*User, error) {
 	accessToken, err := b.Firebase.VerifyIDToken(context.Background(), userIdToken)
 	if err != nil {
 		log.Error().Err(err).Msg("Error verifying token")
@@ -50,8 +50,7 @@ func (b *Builder) VerifyUser(userIdToken string) (*User, error) {
 		localUser.FirebaseId = accessToken.UID
 		localUser.Roles = string(VisitorRole)
 
-		// FIXME: SHould get request id from somewhere
-		res := b.DB.Create(&localUser, &SystemUser, "N/A")
+		res := b.DB.Create(&localUser, &SystemUser, requestId)
 		if res.Error != nil { // Check for errors during creation
 			err = fmt.Errorf("error creating user in database: %v", res.Error)
 			return nil, err // Return the error if user creation fails
@@ -84,13 +83,14 @@ func (b *Builder) UserMiddleware(next http.Handler) http.Handler {
 		// Check if the request has a god token
 		godToken := r.Header.Get(GodTokenHeader)
 		accessToken := GetAccessTokenFromRequest(r)
+		requestId := GetRequestId(r)
 
 		var localUser *User
 		var err error
 		if godToken != "" {
 			localUser, err = b.VerifyGodUser(godToken)
 		} else {
-			localUser, err = b.VerifyUser(accessToken)
+			localUser, err = b.VerifyUser(accessToken, requestId)
 		}
 
 		if err != nil {
