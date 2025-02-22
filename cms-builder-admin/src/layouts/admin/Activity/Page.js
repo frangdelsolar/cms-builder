@@ -4,11 +4,13 @@ import { useContext, useEffect, useState, useRef } from "react";
 import { ApiContext } from "../../../context/ApiContext";
 import { useNotifications } from "../../../context/ToastContext";
 import ResearchRequests from "./_components/ResearchRequests";
+import MostActiveUsers from "./_components/MostActiveUsers";
 import {
   LocalLineChart,
   LocalPieChart,
   prepareLineChartData,
 } from "./_components/Charts";
+import ApiLatencyBarChart from "./_components/ApiLatencyBarChart";
 
 const AGGREGATION_INTERVAL = 20; // in minutes
 
@@ -66,7 +68,12 @@ export default function ActivityPage() {
   return (
     <Grid>
       <Grid container padding={1} spacing={2}>
-        <Grid container size={{ xs: 12, sm: 3, md: 3 }} spacing={2}>
+        <Grid
+          container
+          size={{ xs: 12, sm: 3, md: 3 }}
+          style={{ height: "100%" }}
+          spacing={2}
+        >
           <Grid size={{ xs: 12 }}>
             <ResearchRequests data={stats.requests} />
           </Grid>
@@ -82,17 +89,23 @@ export default function ActivityPage() {
                 data={formattedData.requests}
               />
             </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
+            <Grid size={{ xs: 12, md: 4 }}>
+              <MostActiveUsers users={stats.users} />
+            </Grid>
+            <Grid size={{ xs: 12, md: 4 }}>
               <LocalPieChart
                 title="Request Methods"
                 data={formattedData.method_groups}
               />
             </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <LocalPieChart
                 title="Request Status"
                 data={formattedData.status_groups}
               />
+            </Grid>
+            <Grid size={{ xs: 12 }}>
+              <ApiLatencyBarChart data={stats.requests} />
             </Grid>
           </Grid>
         </Grid>

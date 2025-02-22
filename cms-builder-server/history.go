@@ -378,6 +378,20 @@ func (b *Builder) RequestStatsHandler() func(w http.ResponseWriter, r *http.Requ
 			return
 		}
 
+		var userGroupedInstances []map[string]interface{}
+		userGroupedRes := b.DB.DB.Model(a.Model).
+			Select("users.email, COUNT(*) as count").
+			Joins("JOIN users ON users.id = request_logs.user_id"). // Join with the users table
+			Where(query, oneDayAgo, now).
+			Group("users.email"). // Group by email
+			Order("users.email"). // Order by email
+			Find(&userGroupedInstances)
+
+		if userGroupedRes.Error != nil {
+			SendJsonResponse(w, http.StatusInternalServerError, nil, userGroupedRes.Error.Error())
+			return
+		}
+
 		var endpointGroupedInstances []map[string]interface{}
 		endpointGroupedRes := b.DB.DB.Model(a.Model).
 			Select("path, COUNT(*) as count").
@@ -404,6 +418,7 @@ func (b *Builder) RequestStatsHandler() func(w http.ResponseWriter, r *http.Requ
 		}
 
 		data := map[string]interface{}{
+			"users":         userGroupedInstances,
 			"endpoints":     endpointGroupedInstances,
 			"method_groups": methodGroupedInstances,
 			"status_groups": statusGroupedInstances,
