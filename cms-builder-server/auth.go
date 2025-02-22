@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -278,8 +279,9 @@ func (b *Builder) CreateUserWithRole(input RegisterUserInput, role Role, registe
 		FirebaseId: fbUserId,
 		Roles:      string(role),
 	}
-	// FIXME: figure out how to get request id
-	b.DB.Create(&user, &SystemUser, "N/A")
+	// TODO: figure out how to get request id
+	reqId := uuid.New().String()
+	b.DB.Create(&user, &SystemUser, reqId)
 
 	if user.ID == 0 {
 		return nil, fmt.Errorf("error creating user in database")
