@@ -11,6 +11,7 @@ import {
   prepareLineChartData,
 } from "./_components/Charts";
 import ApiLatencyBarChart from "./_components/ApiLatencyBarChart";
+import SchedulerWidget from "./_components/SchedulerWidget";
 
 const AGGREGATION_INTERVAL = 20; // in minutes
 
@@ -104,8 +105,11 @@ export default function ActivityPage() {
                 data={formattedData.status_groups}
               />
             </Grid>
-            <Grid size={{ xs: 12 }}>
+            <Grid size={{ xs: 12, md: 8 }}>
               <ApiLatencyBarChart data={stats.requests} />
+            </Grid>
+            <Grid size={{ xs: 12, md: 4 }}>
+              <SchedulerWidget />
             </Grid>
           </Grid>
         </Grid>

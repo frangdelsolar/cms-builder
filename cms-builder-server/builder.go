@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const builderVersion = "1.5.4"
+const builderVersion = "1.5.5"
 
 // ConfigKeys define the keys used in the configuration file
 type ConfigKeys struct {
@@ -536,12 +536,6 @@ func (b *Builder) InitScheduler() error {
 	_, err := b.Admin.Register(&SchedulerJobDefinition{}, false, permissions, nil)
 	if err != nil {
 		log.Error().Err(err).Msg("Error registering job definition app")
-		return err
-	}
-
-	_, err = b.Admin.Register(&JobFrequency{}, false, permissions, nil)
-	if err != nil {
-		log.Error().Err(err).Msg("Error registering job frequency app")
 		return err
 	}
 
