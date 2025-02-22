@@ -9,24 +9,30 @@ import {
   ListItemText,
 } from "@mui/material";
 
-import HomeIcon from "@mui/icons-material/Home";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import FolderIcon from "@mui/icons-material/Folder";
+import RestoreIcon from "@mui/icons-material/Restore";
+import QueryStatsIcon from "@mui/icons-material/QueryStats";
 
 const routes = [
   {
-    name: "Home",
-    path: "/",
-    icon: <HomeIcon />,
+    name: "Activity",
+    path: "/admin/activity",
+    icon: <QueryStatsIcon />,
   },
   {
-    name: "Models",
-    path: "/models",
+    name: "CRUD",
+    path: "/admin/models",
     icon: <DashboardIcon />,
   },
   {
-    name: "Media",
-    path: "/media",
+    name: "Database Timeline",
+    path: "/admin/timeline",
+    icon: <RestoreIcon />,
+  },
+  {
+    name: "Storage",
+    path: "/admin/media",
     icon: <FolderIcon />,
   },
 ];

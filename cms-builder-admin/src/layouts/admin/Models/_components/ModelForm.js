@@ -1,99 +1,33 @@
-import Form from "@rjsf/mui";
-import validator from "@rjsf/validator-ajv8";
-import { useEffect, useState } from "react";
-import { useAppDispatch, useAppSelector } from "../../../../store/Hooks";
+import GenericForm from "../../../../shared/GenericForm";
+import { useEffect } from "react";
+import { useAppDispatch } from "../../../../store/Hooks";
 import {
-  selectFormData,
+  setFormSchema,
+  setFormUiSchema,
+  setFormWidgets,
   setFormData,
-  selectFormErrors,
-  selectFormInitialized,
-  selectFormSaving,
-  setFormInitialized,
-  setFormSaving,
   clearForm,
 } from "../../../../store/FormSlice";
 
 const ModelForm = ({ schema, data, submitHandler }) => {
-  const [formattedErrors, setFormattedErrors] = useState([]);
-
-  // Clean up schema and data
-  const cleanedSchema = cleanSchema(schema);
-  const cleanedData = cleanData(data, cleanedSchema.removedKeys);
-
-  // Redux hooks
   const dispatch = useAppDispatch();
-  const formData = useAppSelector(selectFormData);
-  const formErrors = useAppSelector(selectFormErrors);
-  const formSaving = useAppSelector(selectFormSaving);
-  const formInitialized = useAppSelector(selectFormInitialized);
 
-  // Initialize the form state with cleaned data
   useEffect(() => {
+    const cleanedSchema = cleanSchema(schema);
+    const cleanedData = cleanData(data, cleanedSchema.removedKeys);
+
+    dispatch(setFormSchema(cleanedSchema.def));
+    dispatch(setFormUiSchema(GetUISchema(data)));
+    dispatch(setFormWidgets({})); // Initialize widgets as needed
     dispatch(setFormData(cleanedData));
-    dispatch(setFormInitialized(true));
 
     return () => {
-      dispatch(clearForm()); // Clear form data on unmount
+      dispatch(clearForm());
     };
-  }, [data, schema]);
+  }, [data, schema, dispatch]);
 
-  useEffect(() => {
-    setFormattedErrors(FormatErrors());
-  }, [formErrors]);
-
-  useEffect(() => {
-    if (formSaving && typeof submitHandler === "function") {
-      submitHandler(formData);
-      dispatch(setFormSaving(false));
-    }
-  }, [formSaving]);
-
-  const handleOnChange = (e) => {
-    dispatch(setFormData(e.formData));
-  };
-
-  const FormatErrors = () => {
-    let output = {};
-    for (const error of formErrors) {
-      let fieldKey = error["Field"];
-      let fieldValue = error["Error"];
-
-      if (Object.keys(output).includes(fieldKey)) {
-        output[fieldKey].__errors.push(fieldValue);
-      } else {
-        output[fieldKey] = { __errors: [fieldValue] };
-      }
-    }
-    return output;
-  };
-
-  return (
-    <>
-      {formInitialized && (
-        <Form
-          uiSchema={GetUISchema(data)}
-          schema={cleanedSchema.def} // The cleaned schema to render the form
-          formData={formData} // Bind the form data from Redux state
-          onChange={handleOnChange} // Handle form data changes
-          validator={validator} // Validator for form
-          templates={GetTemplates()} // Custom submit button template
-          // widgets={ GetWidgets() }
-          extraErrors={formattedErrors}
-        />
-      )}
-    </>
-  );
+  return <GenericForm submitHandler={submitHandler} />;
 };
-
-function SubmitButton() {
-  return <></>; // Placeholder submit button (can be customized or removed)
-}
-
-function GetTemplates() {
-  return {
-    ButtonTemplates: { SubmitButton },
-  };
-}
 
 function GetUISchema(data) {
   let output = {};

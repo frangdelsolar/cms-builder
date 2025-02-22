@@ -200,7 +200,7 @@ func TestUserCanListAllowedResources(t *testing.T) {
 		nil,
 	)
 
-	t.Log("Getting the List for user")
+	t.Log("Getting the List for user", request)
 	var result []th.MockStruct
 	response, err := th.ExecuteApiCall(
 		t,

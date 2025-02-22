@@ -1,16 +1,17 @@
-import MainLayout from "./layouts/(admin)/Layout";
+import MainLayout from "./layouts/admin/Layout";
 import AuthLayout from "./layouts/auth/Layout";
 
 import LoginPage from "./layouts/auth/Login/Page";
 import RegisterPage from "./layouts/auth/Register/Page";
 import ForgotPasswordPage from "./layouts/auth/ForgotPassword/Page";
 
-import HomePage from "./layouts/(admin)/Home/Page";
-import ModelPage from "./layouts/(admin)/Models/Page";
-import MediaPage from "./layouts/(admin)/Media/Page";
+import ModelPage from "./layouts/admin/Models/Page";
+import MediaPage from "./layouts/admin/Media/Page";
+import ActivityPage from "./layouts/admin/Activity/Page";
 
 import { useRoutes, Navigate } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
+import TimelinePage from "./layouts/admin/Timeline/Page";
 
 const PrivateRoute = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -27,9 +28,18 @@ const PrivateRoute = ({ children }) => {
   );
 };
 
+const RedirectHome = () => {
+  return <Navigate to="admin/activity" />;
+};
+
 export const ROUTES = [
   {
     path: "/",
+    element: <RedirectHome />,
+  },
+
+  {
+    path: "admin",
     element: (
       <PrivateRoute>
         <MainLayout />
@@ -37,21 +47,25 @@ export const ROUTES = [
     ),
     children: [
       {
-        path: "/",
-        element: <HomePage />,
+        path: "activity",
+        element: <ActivityPage />,
       },
       {
-        path: "/models",
+        path: "models",
         element: <ModelPage />,
       },
       {
-        path: "/media",
+        path: "timeline",
+        element: <TimelinePage />,
+      },
+      {
+        path: "media",
         element: <MediaPage />,
       },
     ],
   },
   {
-    path: "/auth",
+    path: "auth",
     element: <AuthLayout />,
     children: [
       {

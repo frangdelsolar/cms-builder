@@ -1,5 +1,5 @@
 import { Card, CardHeader } from "@mui/material";
-import { useEffect, useState, useContext } from "react";
+import { useEffect, useState, useContext, useRef } from "react";
 
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
@@ -11,13 +11,18 @@ import ClearIcon from "@mui/icons-material/Clear";
 import AddIcon from "@mui/icons-material/Add";
 
 import { ApiContext } from "../../../../context/ApiContext";
+import { useNotifications } from "../../../../context/ToastContext";
 
 const HistoryEntriesList = () => {
   const apiService = useContext(ApiContext);
+  const toast = useNotifications();
 
   const [entries, setEntries] = useState([]);
+  const isMounted = useRef(false);
 
   useEffect(() => {
+    if (isMounted.current) return;
+
     let fn = async () => {
       try {
         const response = await apiService.list(
@@ -28,18 +33,13 @@ const HistoryEntriesList = () => {
         );
         setEntries(response.data);
       } catch (error) {
-        console.log(error);
+        toast.show("Error fetching history entries", "error");
       }
     };
 
     fn();
+    isMounted.current = true;
   }, []);
-
-  useEffect(() => {
-    if (!entries) {
-      return;
-    }
-  }, [entries]);
 
   const getIcon = (action) => {
     switch (action) {
@@ -72,7 +72,7 @@ const HistoryEntriesList = () => {
 
   return (
     <Card>
-      <CardHeader title="Acciones recientes" />
+      <CardHeader title="En la base de datos" />
       <List dense={true}>
         {entries.map((entry) => {
           return generateListItem(entry);

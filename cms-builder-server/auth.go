@@ -9,35 +9,53 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 const GodTokenHeader = "X-God-Token"
 
-// VerifyUser verifies the user based on the access token provided in the userIdToken parameter.
-// The method verifies the token by calling VerifyIDToken on the Firebase Admin instance.
-// If the token is valid, it retrieves the user record from the database and returns it.
-// If the token is invalid, it returns an error.
-func (b *Builder) VerifyUser(userIdToken string) (*User, error) {
+func (b *Builder) VerifyUser(userIdToken string, requestId string) (*User, error) {
 	accessToken, err := b.Firebase.VerifyIDToken(context.Background(), userIdToken)
 	if err != nil {
 		log.Error().Err(err).Msg("Error verifying token")
 		return nil, err
 	}
 
-	var localUser User
+	var localUser User = User{}
 
 	b.DB.FindUserByFirebaseId(accessToken.UID, &localUser)
 
-	// Create user if firebase has it but not in database
 	if localUser.ID == 0 {
-		// create user in database
-		localUser.Name = accessToken.Claims["name"].(string)
-		localUser.Email = strings.ToLower(accessToken.Claims["email"].(string))
+		claims := accessToken.Claims
+
+		// Safer way to get the name, handling missing claims and type issues
+		name, ok := claims["name"].(string)
+		if !ok {
+			name, ok = claims["displayName"].(string) // Try displayName as fallback
+			if !ok {
+				log.Warn().Msg("Name claim not found in token")
+				name = "" // Or a suitable default like "Unknown User"
+			}
+		}
+
+		// Safer way to get the email, handling missing claims and type issues
+		email, ok := claims["email"].(string)
+		if !ok {
+			log.Warn().Msg("Email claim not found in token")
+			email = "" //  Consider a default like "no-email@example.com" or handle differently
+		}
+
+		localUser.Name = name
+		localUser.Email = strings.ToLower(email)
 		localUser.FirebaseId = accessToken.UID
 		localUser.Roles = string(VisitorRole)
 
-		b.DB.Create(&localUser, &SystemUser)
+		res := b.DB.Create(&localUser, &SystemUser, requestId)
+		if res.Error != nil { // Check for errors during creation
+			err = fmt.Errorf("error creating user in database: %v", res.Error)
+			return nil, err // Return the error if user creation fails
+		}
 	}
 
 	return &localUser, nil
@@ -55,7 +73,7 @@ func (b *Builder) VerifyGodUser(godToken string) (*User, error) {
 // verification fails, it will return a 401 error. If the verification is
 // successful, it will continue to the next handler in the chain, setting a
 // "requested_by" header in the request with the ID of the verified user.
-func (b *Builder) AuthMiddleware(next http.Handler) http.Handler {
+func (b *Builder) UserMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		// Clear the headers in case someone else set them
@@ -66,35 +84,27 @@ func (b *Builder) AuthMiddleware(next http.Handler) http.Handler {
 		// Check if the request has a god token
 		godToken := r.Header.Get(GodTokenHeader)
 		accessToken := GetAccessTokenFromRequest(r)
-
-		if accessToken == "" && godToken == "" {
-			SendJsonResponse(w, http.StatusUnauthorized, fmt.Errorf("Unauthorized"), "Unauthorized")
-			return
-		}
+		requestId := GetRequestId(r)
 
 		var localUser *User
 		var err error
 		if godToken != "" {
 			localUser, err = b.VerifyGodUser(godToken)
+			if err != nil {
+				log.Error().Err(err).Msg("Error verifying god. God may not be authenticated")
+			}
 		} else {
-			localUser, err = b.VerifyUser(accessToken)
+			localUser, err = b.VerifyUser(accessToken, requestId)
+			if err != nil {
+				log.Error().Err(err).Msg("Error verifying user. User may not be authenticated")
+			}
 		}
 
-		if err != nil {
-			log.Error().Err(err).Msg("Error verifying user")
-			SendJsonResponse(w, http.StatusUnauthorized, err, "Unauthorized")
-			return
+		if localUser != nil {
+			r.Header.Set(requestedByParamKey.S(), localUser.GetIDString())
+			r.Header.Set(authParamKey.S(), "true")
+			r.Header.Set(rolesParamKey.S(), localUser.Roles)
 		}
-
-		if localUser == nil {
-			SendJsonResponse(w, http.StatusUnauthorized, fmt.Errorf("User not found"), "Unauthorized")
-			return
-		}
-
-		// set the writerheader
-		r.Header.Set(requestedByParamKey.S(), localUser.GetIDString())
-		r.Header.Set(authParamKey.S(), "true")
-		r.Header.Set(rolesParamKey.S(), localUser.Roles)
 
 		next.ServeHTTP(w, r)
 	})
@@ -269,7 +279,9 @@ func (b *Builder) CreateUserWithRole(input RegisterUserInput, role Role, registe
 		FirebaseId: fbUserId,
 		Roles:      string(role),
 	}
-	b.DB.Create(&user, &SystemUser)
+	// TODO: figure out how to get request id
+	reqId := uuid.New().String()
+	b.DB.Create(&user, &SystemUser, reqId)
 
 	if user.ID == 0 {
 		return nil, fmt.Errorf("error creating user in database")

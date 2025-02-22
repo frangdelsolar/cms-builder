@@ -41,6 +41,8 @@ func NewAdmin(builder *Builder) *Admin {
 // Returns:
 // - App: The App instance associated with the given name if found.
 // - error: An error if the App is not found.
+
+// TODO: Fix so that accepts the interface and then looks for the name just like the model would do.... i.e. User{} -> user
 func (a *Admin) GetApp(appName string) (App, error) {
 	lowerAppName := strings.ToLower(appName)
 	if app, ok := a.apps[lowerAppName]; ok {
@@ -284,5 +286,4 @@ func (a *Admin) AddApiRoute() {
 		http.MethodGet,
 		nil,
 	)
-
 }

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
-	"strconv"
 	"strings"
 
 	"gorm.io/gorm"
@@ -26,6 +25,12 @@ var filterKeys = map[string]bool{
 	"deleted_by":    true,
 	"deletedById":   true,
 	"deleted_by_id": true,
+	"createdAt":     true,
+	"created_at":    true,
+	"updatedAt":     true,
+	"updated_at":    true,
+	"deletedAt":     true,
+	"deleted_at":    true,
 }
 
 type FieldName string
@@ -60,23 +65,10 @@ var DefaultListHandler ApiFunction = func(a *App, db *Database) http.HandlerFunc
 			return
 		}
 
-		limit, err := strconv.Atoi(GetQueryParam("limit", r))
+		queryParams, err := GetQueryParams(r)
 		if err != nil {
-			log.Error().Err(err).Msgf("Error converting limit")
-			limit = 10
-		}
-
-		page, err := strconv.Atoi(GetQueryParam("page", r))
-		if err != nil {
-			log.Error().Err(err).Msgf("Error converting page")
-			page = 1
-		}
-
-		orderParam := GetQueryParam("order", r)
-		order, err := a.ValidateOrderParam(orderParam)
-		if err != nil {
-			log.Error().Err(err).Msgf("Error validating order")
-			log.Warn().Msg("Using default order")
+			SendJsonResponse(w, http.StatusBadRequest, nil, err.Error())
+			return
 		}
 
 		// Create slice to store the model instances.
@@ -88,8 +80,8 @@ var DefaultListHandler ApiFunction = func(a *App, db *Database) http.HandlerFunc
 
 		pagination := &Pagination{
 			Total: 0,
-			Page:  page,
-			Limit: limit,
+			Page:  queryParams.Page,
+			Limit: queryParams.Limit,
 		}
 		query := ""
 
@@ -97,13 +89,13 @@ var DefaultListHandler ApiFunction = func(a *App, db *Database) http.HandlerFunc
 			// Admin
 			for _, role := range params.Roles {
 				if role == AdminRole {
-					db.Find(instances, query, pagination, order)
+					db.Find(instances, query, pagination, queryParams.Order)
 					SendJsonResponseWithPagination(w, http.StatusOK, instances, a.Name()+" list", pagination)
 					return
 				}
 			}
 
-			response := db.Find(instances, query, pagination, order)
+			response := db.Find(instances, query, pagination, queryParams.Order)
 			if response.Error != nil {
 				log.Error().Err(response.Error).Msgf("Error finding instances")
 				SendJsonResponse(w, http.StatusInternalServerError, nil, response.Error.Error())
@@ -114,14 +106,14 @@ var DefaultListHandler ApiFunction = func(a *App, db *Database) http.HandlerFunc
 			// Admin
 			for _, role := range params.Roles {
 				if role == AdminRole {
-					db.Find(instances, "", pagination, order)
+					db.Find(instances, "", pagination, queryParams.Order)
 					SendJsonResponseWithPagination(w, http.StatusOK, instances, a.Name()+" list", pagination)
 					return
 				}
 			}
 
 			query = "created_by_id = '" + params.RequestedById + "'"
-			res := db.Find(instances, query, pagination, order)
+			res := db.Find(instances, query, pagination, queryParams.Order)
 			if res.Error != nil {
 				SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
 				return
@@ -225,7 +217,7 @@ var DefaultCreateHandler ApiFunction = func(a *App, db *Database) http.HandlerFu
 			return
 		}
 
-		res := db.Create(instance, params.User)
+		res := db.Create(instance, params.User, params.RequestId)
 		if res.Error != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
 			return
@@ -272,10 +264,13 @@ var DefaultUpdateHandler ApiFunction = func(a *App, db *Database) http.HandlerFu
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
 		}
+
 		if instance == nil {
 			SendJsonResponse(w, http.StatusNotFound, nil, "Instance not found")
 			return
 		}
+
+		previousState, _ := GetInstanceIfAuthorized(a.Model, a.SkipUserBinding, instanceId, db, &params)
 
 		err = json.Unmarshal(bodyBytes, instance)
 		if err != nil {
@@ -298,8 +293,14 @@ var DefaultUpdateHandler ApiFunction = func(a *App, db *Database) http.HandlerFu
 			return
 		}
 
+		differences := CompareInterfaces(previousState, instance)
+		if diffMap, ok := differences.(map[string]interface{}); ok && len(diffMap) == 0 {
+			SendJsonResponse(w, http.StatusOK, instance, a.Name()+" is up to date")
+			return
+		}
+
 		// Update the record in the database
-		res := db.Save(instance, params.User)
+		res := db.Save(instance, params.User, differences, params.RequestId)
 		if res.Error != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
 			return
@@ -337,7 +338,7 @@ var DefaultDeleteHandler ApiFunction = func(a *App, db *Database) http.HandlerFu
 			return
 		}
 
-		res := db.Delete(instance, params.User)
+		res := db.Delete(instance, params.User, params.RequestId)
 		if res.Error != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
 			return
@@ -539,7 +540,7 @@ func (a *App) Validate(instance interface{}) ValidationResult {
 // Returns:
 // - string: a valid order string for the given model, or an empty string if the orderParam is empty.
 // - error: an error if one of the fields in the orderParam is not found in the model.
-func (a *App) ValidateOrderParam(orderParam string) (string, error) {
+func ValidateOrderParam(orderParam string) (string, error) {
 	if orderParam == "" {
 		return "", nil
 	}

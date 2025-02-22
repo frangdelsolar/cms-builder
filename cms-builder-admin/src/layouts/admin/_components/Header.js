@@ -26,7 +26,7 @@ function Header({ handleDrawerToggle }) {
               <MenuIcon />
             </IconButton>
             <Typography variant="h6" color="inherit" component="div">
-              CMS Admin
+              Alla Carta Admin
             </Typography>
           </Box>
           <AuthMenu />

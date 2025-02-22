@@ -1,10 +1,14 @@
 package builder
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"net/url"
 	"runtime/debug"
 	"strings"
 	"sync"
@@ -12,6 +16,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"gorm.io/gorm"
 )
 
 const RequestsPerMinute = 100
@@ -73,7 +78,6 @@ func NewServer(svrConfig *ServerConfig) (*Server, error) {
 	}
 
 	r := mux.NewRouter()
-	// r.StrictSlash(true)
 
 	svr := &Server{
 		Server: &http.Server{
@@ -87,41 +91,6 @@ func NewServer(svrConfig *ServerConfig) (*Server, error) {
 		Root:        r,
 		Builder:     svrConfig.Builder,
 	}
-
-	// CSRF
-	// csrfKey := []byte(config.GetString(EnvKeys.CsrfToken))
-	// csrfMiddleware := csrf.Protect(csrfKey)
-
-	// Middlewares
-	r.Use(RecoveryMiddleware)
-	r.Use(RequestIDMiddleware)
-	r.Use(TimeoutMiddleware)
-
-	rateLimiter := NewRateLimiter(RequestsPerMinute, 1*time.Minute)
-	r.Use(RateLimitMiddleware(rateLimiter))
-
-	// r.Use(csrfMiddleware)
-	r.Use(CorsMiddleware)
-
-	r.Use(LoggingMiddleware)
-
-	// Public Routes
-	svr.AddRoute(
-		"/",
-		func(w http.ResponseWriter, r *http.Request) {
-			err := ValidateRequestMethod(r, "GET")
-			if err != nil {
-				SendJsonResponse(w, http.StatusMethodNotAllowed, err, err.Error())
-				return
-			}
-
-			SendJsonResponse(w, http.StatusOK, nil, "ok")
-		},
-		"healthz",
-		false,
-		http.MethodGet,
-		nil,
-	)
 
 	return svr, nil
 }
@@ -183,10 +152,10 @@ func contains(s []string, e string) bool {
 // handler and logs the request URI before calling the original handler.
 func LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestId := GetRequestID(r)
+		requestId := GetRequestId(r)
 		// TODO: Make logger unique to each request, I will need to use context for that.
 		// Seems like a massive effort
-		log.Info().Str("requestId", requestId).Msg(r.RequestURI)
+		log.Info().Str("requestId", requestId).Str("method", r.Method).Msg(r.RequestURI)
 		next.ServeHTTP(w, r)
 	})
 }
@@ -252,45 +221,168 @@ func RateLimitMiddleware(rl *RateLimiter) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			address := r.RemoteAddr
 			clientIP := strings.Split(address, ":")[0]
+
 			if !rl.Allow(clientIP) {
 				http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
 				return
 			}
+
 			next.ServeHTTP(w, r)
 		})
 	}
 }
 
 // RequestIDKey is the key used to store the request ID in the context.
-type RequestIDKey struct{}
+type RequestLog struct {
+	gorm.Model
+	Timestamp         time.Time `gorm:"type:timestamp" json:"timestamp"`
+	Duration          int64     `json:"duration"`
+	Ip                string    `json:"ip"`
+	Origin            string    `json:"origin"`
+	Referer           string    `json:"referrer"`
+	UserId            string    `gorm:"foreignKey:UserId" json:"userId"`
+	User              *User     `json:"user,omitempty"`
+	Roles             string    `json:"roles"`
+	Method            string    `json:"method"`
+	Path              string    `json:"path"`
+	Query             string    `json:"query"`
+	StatusCode        string    `json:"statusCode"`
+	Error             string    `json:"error"`
+	Header            string    `json:"header"`
+	Body              string    `json:"body"`
+	Response          string    `json:"response"`
+	RequestIdentifier string    `json:"requestIdentifier"`
+}
 
-// RequestIDMiddleware assigns a unique ID to each request and adds it to the context.
-func RequestIDMiddleware(next http.Handler) http.Handler {
+// RequestLogMiddleware assigns a unique ID to each request and adds it to the context.
+func (b *Builder) RequestLogMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Generate a UUID
-		requestID := uuid.New().String()
 
-		// Add the request ID to the context
+		if r.Method == "OPTIONS" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		start := time.Now()
 		ctx := r.Context()
-		ctx = context.WithValue(ctx, RequestIDKey{}, requestID)
 
-		// Add the request ID to the response headers
-		w.Header().Set("X-Request-ID", requestID)
+		// Add start time to the context for later use if needed
+		ctx = context.WithValue(ctx, "requestStartTime", start) // Use a key type if you have one
 
-		// Call the next handler with the updated context
-		next.ServeHTTP(w, r.WithContext(ctx))
+		r = r.WithContext(ctx) // Important: Update the request with the new context
+		wrappedWriter := &WriterWrapper{
+			ResponseWriter: w,
+			StatusCode:     http.StatusOK,
+			Body:           new(bytes.Buffer),
+		}
+
+		var err error
+		var requestBody string
+		var requestHeaders string
+		var responseBody string
+
+		requestIdentifier := uuid.New().String()
+		r = r.WithContext(context.WithValue(r.Context(), "requestIdentifier", requestIdentifier))
+
+		defer func() {
+
+			duration := time.Since(start)
+
+			statusCode := wrappedWriter.StatusCode
+
+			errorMessage := ""
+			if err != nil {
+				errorMessage = err.Error()
+			}
+
+			query, err := url.QueryUnescape(r.URL.RawQuery)
+			if err != nil {
+				log.Error().Err(err).Msg("Error unescaping query")
+			}
+
+			logEntry := RequestLog{
+				Timestamp:         start,
+				Ip:                r.RemoteAddr,
+				UserId:            r.Header.Get(requestedByParamKey.S()),
+				Roles:             r.Header.Get(rolesParamKey.S()),
+				Method:            r.Method,
+				Path:              r.URL.Path,
+				Query:             query,
+				Duration:          duration.Nanoseconds() / 1e6,
+				StatusCode:        fmt.Sprintf("%d", statusCode),
+				Origin:            r.Header.Get("Origin"),
+				Referer:           r.Header.Get("Referer"),
+				Error:             errorMessage,
+				Header:            requestHeaders,
+				Body:              requestBody,
+				Response:          responseBody,
+				RequestIdentifier: requestIdentifier,
+			}
+
+			b.DB.DB.Create(&logEntry)
+		}()
+
+		bodyBytes, readErr := io.ReadAll(r.Body)
+		if readErr != nil {
+			err = readErr // Capture the error
+			log.Error().Err(err).Msg("Error reading request body")
+		}
+
+		r.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+
+		// Capture headers before next.ServeHTTP
+		headers := make(map[string][]string)
+		for name, values := range r.Header {
+			headers[name] = values
+		}
+
+		headerJSON, marshalErr := json.Marshal(headers)
+		if marshalErr != nil {
+			err = marshalErr
+			log.Error().Err(err).Msg("Error marshaling headers")
+		}
+
+		next.ServeHTTP(wrappedWriter, r)
+
+		// Check for errors after the handler has run
+		if wrappedWriter.StatusCode >= 400 || readErr != nil || marshalErr != nil {
+			// If there was an error during the request, log the body and headers
+			if wrappedWriter.StatusCode >= 400 {
+				err = errors.New(http.StatusText(wrappedWriter.StatusCode))
+				requestHeaders = string(headerJSON)
+				requestBody = string(bodyBytes)
+				responseBody = wrappedWriter.Body.String()
+			}
+		}
 	})
+}
+
+type WriterWrapper struct {
+	http.ResponseWriter
+	StatusCode int
+	Body       *bytes.Buffer
+}
+
+func (w *WriterWrapper) WriteHeader(statusCode int) {
+	w.StatusCode = statusCode
+	w.ResponseWriter.WriteHeader(statusCode)
+}
+
+func (w *WriterWrapper) Write(b []byte) (int, error) {
+	if w.Body != nil { // Write to the buffer only if it's initialized
+		w.Body.Write(b)
+	}
+	return w.ResponseWriter.Write(b)
 }
 
 // RecoveryMiddleware catches panics and logs them.
 func RecoveryMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
-			if err := recover(); err != nil {
+			err := recover()
+			if err != nil {
 				log.Error().Interface("panic", err).Bytes("stack", debug.Stack()).Msg("Panic recovered")
-
-				// Optionally, you can customize the error response
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				SendJsonResponse(w, http.StatusInternalServerError, nil, "Internal Server Error")
 			}
 		}()
 
@@ -324,6 +416,19 @@ func TimeoutMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+func ProtectedRouteMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		auth := r.Header.Get(authParamKey.S())
+		user := r.Header.Get(requestedByParamKey.S())
+
+		if auth != "true" || user == "" || user == "0" {
+			SendJsonResponse(w, http.StatusUnauthorized, nil, "Unauthorized")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // Run starts the server and listens for incoming connections on the configured address.
 //
 // It logs a message indicating the server is running on the specified port,
@@ -334,16 +439,35 @@ func (s *Server) Run() error {
 	// Include schema endpoint
 	s.Builder.Admin.AddApiRoute()
 
-	// Create separate routers for authenticated and public routes
-	authRouter := s.Root.PathPrefix("/private").Subrouter()
+	// Middlewares
 	publicRouter := s.Root
+	publicRouter.Use(s.Builder.RequestLogMiddleware)
+	publicRouter.Use(RecoveryMiddleware) // should be first
+	// CSRF
+	// csrfKey := []byte(config.GetString(EnvKeys.CsrfToken))
+	// csrfMiddleware := csrf.Protect(csrfKey)
 
+	// Middlewares
+	publicRouter.Use(CorsMiddleware) // needs to be before user middleware
+	publicRouter.Use(s.Builder.UserMiddleware)
+	publicRouter.Use(TimeoutMiddleware)
+
+	rateLimiter := NewRateLimiter(RequestsPerMinute, 1*time.Minute)
+	publicRouter.Use(RateLimitMiddleware(rateLimiter))
+
+	// publicRouter.Use(csrfMiddleware)
+	publicRouter.Use(LoggingMiddleware)
+
+	// apply custom middlewares
 	for _, middleware := range s.Middlewares {
 		s.Handler = middleware(s.Handler)
 	}
 
-	// Apply authMiddleware only to the authenticated router
-	authRouter.Use(s.Builder.AuthMiddleware)
+	// Public Routes
+	publicRouter.HandleFunc(
+		"/",
+		HealthCheck,
+	).Name("healthcheck")
 
 	log.Info().Msg("Public routes")
 	for _, route := range s.Routes {
@@ -354,6 +478,10 @@ func (s *Server) Run() error {
 	}
 
 	log.Info().Msg("Authenticated routes")
+	// Create separate routers for authenticated and public routes
+	authRouter := publicRouter.PathPrefix("/private").Subrouter()
+	authRouter.Use(ProtectedRouteMiddleware)
+
 	for _, route := range s.Routes {
 		if route.RequiresAuth {
 			log.Info().Msgf("Route: /private%s", route.Route)
@@ -432,4 +560,14 @@ func NewRouteHandler(route string, handler http.HandlerFunc, name string, requir
 // the slice or its elements will not affect the server's internal state.
 func (s *Server) GetRoutes() []RouteHandler {
 	return s.Routes
+}
+
+func HealthCheck(w http.ResponseWriter, r *http.Request) {
+	err := ValidateRequestMethod(r, "GET")
+	if err != nil {
+		SendJsonResponse(w, http.StatusMethodNotAllowed, err, err.Error())
+		return
+	}
+
+	SendJsonResponse(w, http.StatusOK, nil, "OK")
 }

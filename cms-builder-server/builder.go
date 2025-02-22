@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const builderVersion = "1.5.3"
+const builderVersion = "1.5.4"
 
 // ConfigKeys define the keys used in the configuration file
 type ConfigKeys struct {
@@ -394,7 +394,8 @@ func (b *Builder) InitAuth() error {
 	admin := b.Admin
 
 	permissions := RolePermissionMap{
-		AdminRole:   []CrudOperation{OperationRead, OperationUpdate},
+		// AdminRole:   []CrudOperation{OperationRead, OperationUpdate},
+		AdminRole:   AllAllowedAccess,
 		VisitorRole: []CrudOperation{OperationRead},
 	}
 
@@ -587,11 +588,21 @@ func (b *Builder) InitHistory() error {
 		AdminRole: []CrudOperation{OperationRead},
 	}
 
-	_, err := b.Admin.Register(&HistoryEntry{}, false, permissions, nil)
+	_, err := b.Admin.Register(&HistoryEntry{}, true, permissions, nil)
 	if err != nil {
 		log.Error().Err(err).Msg("Error registering history app")
 		return err
 	}
+
+	_, err = b.Admin.Register(&RequestLog{}, true, permissions, nil)
+	if err != nil {
+		log.Error().Err(err).Msg("Error registering request log app")
+		return err
+	}
+
+	b.Server.AddRoute("/api/timeline", b.TimelineHandler(), "timeline", true, http.MethodGet, nil)
+	b.Server.AddRoute("/api/requests/stats", b.RequestStatsHandler(), "request-log:error", true, http.MethodGet, nil)
+	b.Server.AddRoute("/api/requests/logs/{id}", b.RequestLogHandler(), "request-log:detail", true, http.MethodGet, nil)
 
 	return nil
 }

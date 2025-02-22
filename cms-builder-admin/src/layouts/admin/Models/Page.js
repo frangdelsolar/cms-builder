@@ -1,6 +1,5 @@
 import ModelList from "./_components/ModelList";
 import ModelTable from "./_components/ModelTable";
-import HistoryEntriesList from "./_components/HistoryEntriesList";
 import Grid from "@mui/material/Grid2";
 import { useEffect } from "react";
 
@@ -35,9 +34,6 @@ export default function EntitiesPage() {
         </Grid>
         <Grid size="grow">
           <ModelTable />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 4, md: 3 }}>
-          <HistoryEntriesList />
         </Grid>
       </Grid>
     </Grid>

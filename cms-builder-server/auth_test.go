@@ -33,7 +33,7 @@ func TestRegisterUserController(t *testing.T) {
 		"Content-Type": []string{"application/json"},
 	}
 
-	responseWriter := th.MockWriter{}
+	responseWriter := builder.LocalResponseWriter{}
 	registerUserRequest := &http.Request{
 		Method: http.MethodPost,
 		Header: header,
@@ -55,7 +55,7 @@ func TestRegisterUserController(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Log("Verifying user")
-	retrievedUser, err := e.Engine.VerifyUser(accessToken)
+	retrievedUser, err := e.Engine.VerifyUser(accessToken, "test-request")
 	assert.NoError(t, err)
 	assert.Equal(t, createdUser.GetIDString(), retrievedUser.GetIDString())
 
@@ -130,7 +130,7 @@ func TestAppendRoleToUser(t *testing.T) {
 				Email: th.RandomEmail(),
 				Roles: roles,
 			}
-			e.DB.Create(&user, systemUser)
+			e.DB.Create(&user, systemUser, "N/A")
 
 			// first test should pass an invalid id.
 			if ix == 0 {
@@ -230,7 +230,7 @@ func TestRemoveRoleFromUser(t *testing.T) {
 				Email: th.RandomEmail(),
 				Roles: roles,
 			}
-			e.DB.Create(&user, systemUser)
+			e.DB.Create(&user, systemUser, "N/A")
 
 			// first test should pass an invalid id.
 			if ix == 0 {

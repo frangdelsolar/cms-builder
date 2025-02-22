@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/gorilla/mux"
@@ -55,6 +57,65 @@ func GetUrlParam(param string, r *http.Request) string {
 	return mux.Vars(r)[param]
 }
 
+// QueryParams struct to hold all query parameters
+type QueryParams struct {
+	Limit int               `json:"limit"`
+	Page  int               `json:"page"`
+	Order string            `json:"order"`
+	Query map[string]string `json:"query"`
+}
+
+func GetQueryParams(r *http.Request) (*QueryParams, error) {
+	params := &QueryParams{
+		Query: make(map[string]string), // Initialize the map
+		Limit: 10,                      // Default limit
+		Page:  1,                       // Default page
+	}
+
+	var q url.Values
+	if r.URL != nil {
+		q = r.URL.Query()
+	}
+
+	// Parse limit (with default value and error handling)
+	limitStr := q.Get("limit")
+	if limitStr != "" {
+		limit, err := strconv.Atoi(limitStr)
+		if err != nil {
+			return nil, err // Return error if limit is not a number
+		}
+		params.Limit = limit
+	}
+
+	// Parse page (with default value and error handling)
+	pageStr := q.Get("page")
+	if pageStr != "" {
+		page, err := strconv.Atoi(pageStr)
+		if err != nil {
+			return nil, err // Return error if page is not a number
+		}
+		params.Page = page
+	}
+
+	orderParam := GetQueryParam("order", r)
+	order, err := ValidateOrderParam(orderParam)
+	if err != nil {
+		log.Error().Err(err).Msgf("Error validating order")
+		log.Warn().Msg("Using default order")
+	}
+
+	params.Order = order
+
+	// Parse query parameters into the map
+	for key, values := range q {
+		if key != "limit" && key != "page" && key != "order" { // Exclude standard params
+			params.Query[key] = strings.Join(values, ",") // Assuming only one value per query parameter for now. Can be modified to handle multiple values per key if needed.
+		}
+	}
+
+	return params, nil
+}
+
 // GetQueryParam retrieves the value of a query parameter from the request.
 // The function takes the parameter name as a string and the HTTP request object.
 // Returns the value of the specified query parameter as a string.
@@ -83,9 +144,20 @@ func FormatRequestParameters(r *http.Request, b *Builder) RequestParameters {
 	params.RequestedById = user.GetIDString()
 	params.Roles = user.GetRoles()
 	params.Auth = true
-	params.RequestId = GetRequestID(r)
+	params.RequestId = GetRequestId(r)
 
 	return params
+}
+
+func GetRequestId(r *http.Request) string {
+
+	// get from context requestIdentifier
+	ctx := r.Context()
+	if requestId, ok := ctx.Value("requestIdentifier").(string); ok {
+		return requestId
+	}
+
+	return ""
 }
 
 // getRequestUserId validates the access token in the Authorization header of the request.
@@ -94,14 +166,17 @@ func FormatRequestParameters(r *http.Request, b *Builder) RequestParameters {
 // by calling VerifyUser on the App's admin instance. If the verification fails, it returns
 // an empty string. Otherwise, it returns the ID of the verified user as a string.
 func GetRequestUser(r *http.Request, b *Builder) *User {
+
+	// TODO: should pass user through context instead of verifying agains, as this has been done in the usermiddleware
 	godToken := r.Header.Get(GodTokenHeader)
 	accessToken := GetAccessTokenFromRequest(r)
+	requestId := GetRequestId(r)
 
 	var localUser *User
 	if godToken != "" {
 		localUser, _ = b.VerifyGodUser(godToken)
 	} else {
-		localUser, _ = b.VerifyUser(accessToken)
+		localUser, _ = b.VerifyUser(accessToken, requestId)
 	}
 
 	return localUser
@@ -165,15 +240,6 @@ func FormatRequestBody(r *http.Request, filterKeys map[string]bool) (map[string]
 	}
 
 	return result, nil
-}
-
-// GetRequestID retrieves the request ID from the context.
-func GetRequestID(r *http.Request) string {
-	ctx := r.Context()
-	if requestID, ok := ctx.Value(RequestIDKey{}).(string); ok {
-		return requestID
-	}
-	return ""
 }
 
 // ValidateRequestMethod returns an error if the request method does not match the given

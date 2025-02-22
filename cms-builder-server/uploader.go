@@ -106,7 +106,7 @@ var CreateStoredFilesHandler ApiFunction = func(a *App, db *Database) http.Handl
 			return
 		}
 
-		res := db.Create(fileData, params.User)
+		res := db.Create(fileData, params.User, params.RequestId)
 		if res.Error != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
 			return
@@ -136,7 +136,7 @@ var DeleteStoredFilesHandler ApiFunction = func(a *App, db *Database) http.Handl
 
 		instance, err := GetInstanceIfAuthorized(a.Model, a.SkipUserBinding, instanceId, db, &params)
 		if err != nil {
-			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+			SendJsonResponse(w, http.StatusForbidden, nil, err.Error())
 			return
 		}
 
@@ -150,7 +150,7 @@ var DeleteStoredFilesHandler ApiFunction = func(a *App, db *Database) http.Handl
 			return
 		}
 
-		res := db.Delete(fileData, params.User)
+		res := db.Delete(fileData, params.User, params.RequestId)
 		if res.Error != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
 			return
@@ -202,7 +202,7 @@ func (b *Builder) DownloadStoredFileHandler() http.HandlerFunc {
 
 		instance, err := GetInstanceIfAuthorized(app.Model, app.SkipUserBinding, instanceId, b.DB, &params)
 		if err != nil {
-			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+			SendJsonResponse(w, http.StatusForbidden, nil, err.Error())
 			return
 		}
 
@@ -226,8 +226,16 @@ func (b *Builder) DownloadStoredFileHandler() http.HandlerFunc {
 // getMimeTypeAndExtension takes a mime string and returns the mime type and extension
 // split by the "/" character. For example, "audio/wav" would return "audio" and "wav".
 func getMimeTypeAndExtension(mime string) (string, string) {
-	data := strings.Split(mime, "/")
-	return data[0], data[1]
+	parts := strings.Split(mime, "/")
+	if len(parts) == 0 {
+		return "", "" // Or handle this as an error if you prefer
+	}
+	mimeType := parts[0]
+	extension := ""
+	if len(parts) > 1 {
+		extension = parts[len(parts)-1] // Get the last part as the extension
+	}
+	return mimeType, extension
 }
 
 // ValidateContentType takes a content type and a list of supported mime types
