@@ -4,76 +4,76 @@ import (
 	"fmt"
 	"testing"
 
-	pkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth"
+	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestHasPermission(t *testing.T) {
 	tests := []struct {
 		name          string
-		roles         []pkg.Role
-		action        pkg.CrudOperation
-		permissionMap pkg.RolePermissionMap
+		roles         []Role
+		action        CrudOperation
+		permissionMap RolePermissionMap
 		expected      bool
 	}{
 		{
 			name:   "User has a role with the requested permission",
-			roles:  []pkg.Role{pkg.AdminRole},
-			action: pkg.OperationCreate,
-			permissionMap: pkg.RolePermissionMap{
-				pkg.AdminRole: []pkg.CrudOperation{pkg.OperationCreate},
+			roles:  []Role{AdminRole},
+			action: OperationCreate,
+			permissionMap: RolePermissionMap{
+				AdminRole: []CrudOperation{OperationCreate},
 			},
 			expected: true,
 		},
 		{
 			name:   "User has multiple roles, one of which has the requested permission",
-			roles:  []pkg.Role{pkg.VisitorRole, pkg.AdminRole},
-			action: pkg.OperationCreate,
-			permissionMap: pkg.RolePermissionMap{
-				pkg.AdminRole: []pkg.CrudOperation{pkg.OperationCreate},
+			roles:  []Role{VisitorRole, AdminRole},
+			action: OperationCreate,
+			permissionMap: RolePermissionMap{
+				AdminRole: []CrudOperation{OperationCreate},
 			},
 			expected: true,
 		},
 		{
 			name:   "User has multiple roles, none of which have the requested permission",
-			roles:  []pkg.Role{pkg.VisitorRole, pkg.SchedulerRole},
-			action: pkg.OperationCreate,
-			permissionMap: pkg.RolePermissionMap{
-				pkg.AdminRole: []pkg.CrudOperation{pkg.OperationCreate},
+			roles:  []Role{VisitorRole, SchedulerRole},
+			action: OperationCreate,
+			permissionMap: RolePermissionMap{
+				AdminRole: []CrudOperation{OperationCreate},
 			},
 			expected: false,
 		},
 		{
 			name:   "User has a role that is not in the permission map",
-			roles:  []pkg.Role{pkg.Role("unknown")},
-			action: pkg.OperationCreate,
-			permissionMap: pkg.RolePermissionMap{
-				pkg.AdminRole: []pkg.CrudOperation{pkg.OperationCreate},
+			roles:  []Role{Role("unknown")},
+			action: OperationCreate,
+			permissionMap: RolePermissionMap{
+				AdminRole: []CrudOperation{OperationCreate},
 			},
 			expected: false,
 		},
 		{
 			name:   "User has no roles",
-			roles:  []pkg.Role{},
-			action: pkg.OperationCreate,
-			permissionMap: pkg.RolePermissionMap{
-				pkg.AdminRole: []pkg.CrudOperation{pkg.OperationCreate},
+			roles:  []Role{},
+			action: OperationCreate,
+			permissionMap: RolePermissionMap{
+				AdminRole: []CrudOperation{OperationCreate},
 			},
 			expected: false,
 		},
 		{
 			name:          "Permission map is empty",
-			roles:         []pkg.Role{pkg.AdminRole},
-			action:        pkg.OperationCreate,
-			permissionMap: pkg.RolePermissionMap{},
+			roles:         []Role{AdminRole},
+			action:        OperationCreate,
+			permissionMap: RolePermissionMap{},
 			expected:      false,
 		},
 		{
 			name:   "Action is not in the permission map",
-			roles:  []pkg.Role{pkg.AdminRole},
+			roles:  []Role{AdminRole},
 			action: "unknown",
-			permissionMap: pkg.RolePermissionMap{
-				pkg.AdminRole: []pkg.CrudOperation{pkg.OperationCreate},
+			permissionMap: RolePermissionMap{
+				AdminRole: []CrudOperation{OperationCreate},
 			},
 			expected: false,
 		},

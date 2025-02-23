@@ -3,14 +3,14 @@ package models_test
 import (
 	"testing"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
+	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth"
+	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	"github.com/stretchr/testify/assert"
 )
 
 // TestGetIDString verifies that GetIDString returns the correct string representation of the user's ID.
 func TestGetIDString(t *testing.T) {
-	user := &models.User{ID: 123}
+	user := &User{ID: 123}
 	assert.Equal(t, "123", user.GetIDString())
 }
 
@@ -19,33 +19,33 @@ func TestGetRoles(t *testing.T) {
 	tests := []struct {
 		name     string
 		roles    string
-		expected []auth.Role
+		expected []Role
 	}{
 		{
 			name:     "Single role",
 			roles:    "admin",
-			expected: []auth.Role{auth.AdminRole},
+			expected: []Role{AdminRole},
 		},
 		{
 			name:     "Multiple roles",
 			roles:    "admin,visitor",
-			expected: []auth.Role{auth.AdminRole, auth.VisitorRole},
+			expected: []Role{AdminRole, VisitorRole},
 		},
 		{
 			name:     "Empty roles",
 			roles:    "",
-			expected: []auth.Role{},
+			expected: []Role{},
 		},
 		{
 			name:     "Roles with spaces",
 			roles:    "admin, visitor, scheduler",
-			expected: []auth.Role{auth.AdminRole, auth.VisitorRole, auth.SchedulerRole},
+			expected: []Role{AdminRole, VisitorRole, SchedulerRole},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			user := &models.User{Roles: tt.roles}
+			user := &User{Roles: tt.roles}
 			assert.Equal(t, tt.expected, user.GetRoles())
 		})
 	}
@@ -56,36 +56,36 @@ func TestSetRole(t *testing.T) {
 	tests := []struct {
 		name          string
 		initialRoles  string
-		roleToAdd     auth.Role
+		roleToAdd     Role
 		expectedRoles string
 		expectedError error
 	}{
 		{
 			name:          "Add role to empty roles",
 			initialRoles:  "",
-			roleToAdd:     auth.AdminRole,
+			roleToAdd:     AdminRole,
 			expectedRoles: "admin",
 			expectedError: nil,
 		},
 		{
 			name:          "Add role to existing roles",
 			initialRoles:  "admin",
-			roleToAdd:     auth.VisitorRole,
+			roleToAdd:     VisitorRole,
 			expectedRoles: "admin,visitor",
 			expectedError: nil,
 		},
 		{
 			name:          "Add duplicate role",
 			initialRoles:  "admin,visitor",
-			roleToAdd:     auth.AdminRole,
+			roleToAdd:     AdminRole,
 			expectedRoles: "admin,visitor",
-			expectedError: models.ErrorRoleAlreadyAssigned,
+			expectedError: ErrorRoleAlreadyAssigned,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			user := &models.User{Roles: tt.initialRoles}
+			user := &User{Roles: tt.initialRoles}
 			err := user.SetRole(tt.roleToAdd)
 			assert.Equal(t, tt.expectedError, err)
 			assert.Equal(t, tt.expectedRoles, user.Roles)
@@ -98,38 +98,38 @@ func TestRemoveRole(t *testing.T) {
 	tests := []struct {
 		name          string
 		initialRoles  string
-		roleToRemove  auth.Role
+		roleToRemove  Role
 		expectedRoles string
 	}{
 		{
 			name:          "Remove existing role",
 			initialRoles:  "admin,visitor",
-			roleToRemove:  auth.AdminRole,
+			roleToRemove:  AdminRole,
 			expectedRoles: "visitor",
 		},
 		{
 			name:          "Remove non-existent role",
 			initialRoles:  "admin,visitor",
-			roleToRemove:  auth.SchedulerRole,
+			roleToRemove:  SchedulerRole,
 			expectedRoles: "admin,visitor",
 		},
 		{
 			name:          "Remove role from empty roles",
 			initialRoles:  "",
-			roleToRemove:  auth.AdminRole,
+			roleToRemove:  AdminRole,
 			expectedRoles: "",
 		},
 		{
 			name:          "Remove last role",
 			initialRoles:  "admin",
-			roleToRemove:  auth.AdminRole,
+			roleToRemove:  AdminRole,
 			expectedRoles: "",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			user := &models.User{Roles: tt.initialRoles}
+			user := &User{Roles: tt.initialRoles}
 			user.RemoveRole(tt.roleToRemove)
 			assert.Equal(t, tt.expectedRoles, user.Roles)
 		})

@@ -3,20 +3,20 @@ package database_test
 import (
 	"testing"
 
-	pkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	"github.com/stretchr/testify/assert"
 )
 
 // TestLoadDB_Success_SQLite tests that LoadDB successfully connects to a SQLite database.
 func TestLoadDB_Success_SQLite(t *testing.T) {
 	// Use an in-memory SQLite database for testing
-	testConfig := &pkg.DBConfig{
+	testConfig := &DBConfig{
 		Driver: "sqlite",
 		Path:   ":memory:", // In-memory database for isolated testing
 	}
 
 	// Call LoadDB with the test config
-	db, err := pkg.LoadDB(testConfig, nil)
+	db, err := LoadDB(testConfig, nil)
 
 	// Assert that no error occurred and the database instance is valid
 	assert.NoError(t, err)
@@ -34,22 +34,22 @@ func TestLoadDB_Success_SQLite(t *testing.T) {
 // TestLoadDB_MissingConfig tests that LoadDB returns an error when no configuration is provided.
 func TestLoadDB_MissingConfig(t *testing.T) {
 	// Call LoadDB with no config
-	db, err := pkg.LoadDB(nil, nil)
+	db, err := LoadDB(nil, nil)
 
 	// Assert that the expected error is returned and the database instance is nil
-	assert.Equal(t, pkg.ErrDBConfigNotProvided, err)
+	assert.Equal(t, ErrDBConfigNotProvided, err)
 	assert.Nil(t, db)
 }
 
 // TestLoadDB_EmptyURLAndPath tests that LoadDB returns an error when both URL and Path are empty in the configuration.
 func TestLoadDB_EmptyURLAndPath(t *testing.T) {
 	// Create a config with empty URL and Path
-	testConfig := &pkg.DBConfig{}
+	testConfig := &DBConfig{}
 
 	// Call LoadDB with the test config
-	db, err := pkg.LoadDB(testConfig, nil)
+	db, err := LoadDB(testConfig, nil)
 
 	// Assert that the expected error is returned and the database instance is nil
-	assert.Equal(t, pkg.ErrDBConfigNotProvided, err)
+	assert.Equal(t, ErrDBConfigNotProvided, err)
 	assert.Nil(t, db)
 }
