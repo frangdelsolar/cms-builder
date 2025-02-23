@@ -20,6 +20,12 @@ func TestMain(m *testing.M) {
 	os.Exit(exitCode)
 }
 
+func TestInitDatabase(t *testing.T) {
+	o, err := orc.NewOrchestrator()
+	assert.NoError(t, err)
+	assert.NotNil(t, o.DB)
+}
+
 func TestInitConfigReader(t *testing.T) {
 	o, err := orc.NewOrchestrator()
 	assert.NoError(t, err)

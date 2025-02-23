@@ -2,8 +2,8 @@ package config
 
 import (
 	"errors"
+	"fmt"
 
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
 
@@ -64,11 +64,11 @@ func NewConfigReader(cfg *ReaderConfig) (*ConfigReader, error) {
 	}
 
 	if cfg.ReadFile && cfg.ConfigFilePath != "" {
-		log.Info().Msgf("Reading config file: %s", cfg.ConfigFilePath)
+		fmt.Printf("Reading config file: %s\n", cfg.ConfigFilePath)
 		viper.SetConfigFile(cfg.ConfigFilePath)
 		err := viper.ReadInConfig()
 		if err != nil {
-			log.Error().Err(err).Msgf("Error reading config file: %s", cfg.ConfigFilePath)
+			fmt.Printf("Error reading config file: %s\n", cfg.ConfigFilePath)
 			return nil, ErrConfigFileNotFound
 		}
 	}

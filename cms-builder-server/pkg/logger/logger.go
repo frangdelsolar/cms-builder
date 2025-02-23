@@ -14,6 +14,8 @@ type Logger struct {
 	*zerolog.Logger
 }
 
+var Default *Logger = &Logger{&zerolog.Logger{}}
+
 // LoggerConfig defines the configuration options for the logger
 type LoggerConfig struct {
 	// LogLevel defines the desired logging level (e.g., "debug", "info", "warn", "error")
