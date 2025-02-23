@@ -47,6 +47,7 @@ const ResearchRequests = ({ data }) => {
       const uniqueApiPaths = [
         ...new Set(filteredRequests.map((request) => request.path)),
       ];
+      uniqueApiPaths.sort();
       setApiPaths(uniqueApiPaths);
 
       // If an API path is selected, ensure it's still valid for the new status code
