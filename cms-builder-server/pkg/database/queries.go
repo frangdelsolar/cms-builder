@@ -1,11 +1,10 @@
 package database
 
-// import (
-// 	"errors"
+import (
+	"gorm.io/gorm"
 
-// 	"github.com/rs/zerolog/log"
-// 	"gorm.io/gorm"
-// )
+	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
+)
 
 // // FindById retrieves a single record from the database that matches the provided ID.
 // // It allows for an optional query extension to refine the search criteria.
@@ -86,26 +85,26 @@ package database
 // 	return db.DB.Where(query).First(entity)
 // }
 
-// // Create creates a new record in the database.
-// //
-// // Parameters:
-// //   - entity: the model instance to be created.
-// //
-// // Returns:
-// //   - *gorm.DB: the result of the database query, which can be used to check for errors.
-// func (db *Database) Create(entity interface{}, user *User, requestId string) *gorm.DB {
+// Create creates a new record in the database.
+//
+// Parameters:
+//   - entity: the model instance to be created.
+//
+// Returns:
+//   - *gorm.DB: the result of the database query, which can be used to check for errors.
+func (db *Database) Create(entity interface{}, user *User, requestId string) *gorm.DB {
 
-// 	result := db.DB.Create(entity)
-// 	if result.Error == nil {
-// 		historyEntry, err := NewLogHistoryEntry(CreateCRUDAction, user, entity, "", requestId)
-// 		if err != nil {
-// 			return nil
-// 		}
-// 		_ = db.DB.Create(historyEntry)
-// 	}
+	result := db.DB.Create(entity)
+	if result.Error == nil {
+		historyEntry, err := NewLogHistoryEntry(CreateCRUDAction, user, entity, "", requestId)
+		if err != nil {
+			return nil
+		}
+		_ = db.DB.Create(historyEntry)
+	}
 
-// 	return result
-// }
+	return result
+}
 
 // // Delete deletes the record in the database.
 // //

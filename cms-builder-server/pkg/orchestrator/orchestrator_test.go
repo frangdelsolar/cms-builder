@@ -47,4 +47,5 @@ func TestOrchestratorCreatesLogger(t *testing.T) {
 	o, err := orc.NewOrchestrator()
 	assert.NoError(t, err)
 	assert.NotNil(t, o.Logger)
+	assert.NotNil(t, o.LoggerConfig)
 }

@@ -6,6 +6,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/clients"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog/log"
 )
@@ -30,17 +34,30 @@ type RouteHandler struct {
 
 // Server defines a structure for managing an HTTP server with middleware and routing capabilities.
 type Server struct {
-	*http.Server                                   // Server is the underlying HTTP server
-	Middlewares  []func(http.Handler) http.Handler // middlewares is a slice of middleware functions
-	Routes       []RouteHandler                    // routes is a slice of route handlers
-	Root         *mux.Router                       // root is the root handler for the server
+	*http.Server                                     // Server is the underlying HTTP server
+	Middlewares    []func(http.Handler) http.Handler // middlewares is a slice of middleware functions
+	Routes         []RouteHandler                    // routes is a slice of route handlers
+	Root           *mux.Router                       // root is the root handler for the server
+	DB             *database.Database                // DB is the database connection
+	AllowedOrigins []string
+	LoggerConfig   *logger.LoggerConfig
+	GodToken       string
+	GodUser        *models.User
+	SystemUser     *models.User
+	Firebase       *clients.FirebaseManager
 }
 
 // ServerConfig defines the configuration options for creating a new Server.
 type ServerConfig struct {
-	Host      string // Host is the hostname or IP address to listen on.
-	Port      string // Port is the port number to listen on.
-	CSRFToken string // CSRFToken is the CSRF token to use for CSRF protection.
+	Host           string // Host is the hostname or IP address to listen on.
+	Port           string // Port is the port number to listen on.
+	CSRFToken      string // CSRFToken is the CSRF token to use for CSRF protection.
+	AllowedOrigins []string
+	LoggerConfig   *logger.LoggerConfig
+	GodToken       string
+	GodUser        *models.User
+	SystemUser     *models.User
+	Firebase       *clients.FirebaseManager
 }
 
 // NewServer creates a new Server instance with the provided configuration.
@@ -48,7 +65,7 @@ type ServerConfig struct {
 // It checks for missing configuration (Host and Port) and returns an error if necessary.
 // Otherwise, it creates a new Gorilla Mux router, sets up the server address and handler,
 // and adds a basic logging middleware by default.
-func NewServer(svrConfig *ServerConfig) (*Server, error) {
+func NewServer(svrConfig *ServerConfig, db *database.Database) (*Server, error) {
 
 	if svrConfig == nil {
 		return nil, ErrServerConfigNotProvided
@@ -63,9 +80,15 @@ func NewServer(svrConfig *ServerConfig) (*Server, error) {
 			WriteTimeout: TimeoutSeconds * time.Second,
 			ReadTimeout:  TimeoutSeconds * time.Second,
 		},
-		Middlewares: []func(http.Handler) http.Handler{},
-		Routes:      []RouteHandler{},
-		Root:        r,
+		Middlewares:  []func(http.Handler) http.Handler{},
+		Routes:       []RouteHandler{},
+		Root:         r,
+		DB:           db,
+		LoggerConfig: svrConfig.LoggerConfig,
+		GodToken:     svrConfig.GodToken,
+		GodUser:      svrConfig.GodUser,
+		Firebase:     svrConfig.Firebase,
+		SystemUser:   svrConfig.SystemUser,
 	}
 
 	return svr, nil
@@ -83,22 +106,22 @@ func (s *Server) Run() error {
 
 	// Middlewares
 	publicRouter := s.Root
-	// publicRouter.Use(s.Builder.RequestLogMiddleware)
-	// publicRouter.Use(RecoveryMiddleware) // should be first
+	publicRouter.Use(RecoveryMiddleware)                // graceful shutdown
+	publicRouter.Use(RequestLoggerMiddleware(s.DB))     // will generate a request log
+	publicRouter.Use(LoggingMiddleware(s.LoggerConfig)) // will store a logger with requestId
 	// CSRF
 	// csrfKey := []byte(config.GetString(EnvKeys.CsrfToken))
 	// csrfMiddleware := csrf.Protect(csrfKey)
 
 	// Middlewares
-	// publicRouter.Use(CorsMiddleware) // needs to be before user middleware
-	// publicRouter.Use(s.Builder.UserMiddleware)
+	publicRouter.Use(CorsMiddleware(s.AllowedOrigins)) // needs to be before user middleware
+	publicRouter.Use(AuthMiddleware(s.GodToken, s.GodUser, s.Firebase, s.DB, s.SystemUser))
 	// publicRouter.Use(TimeoutMiddleware)
 
 	// rateLimiter := NewRateLimiter(RequestsPerMinute, 1*time.Minute)
 	// publicRouter.Use(RateLimitMiddleware(rateLimiter))
 
 	// // publicRouter.Use(csrfMiddleware)
-	// publicRouter.Use(LoggingMiddleware)
 
 	// apply custom middlewares
 	for _, middleware := range s.Middlewares {

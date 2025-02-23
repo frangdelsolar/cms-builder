@@ -3,7 +3,6 @@ package models_test
 import (
 	"testing"
 
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	"github.com/stretchr/testify/assert"
 )

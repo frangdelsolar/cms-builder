@@ -5,13 +5,44 @@ import (
 	"strings"
 
 	"gorm.io/gorm"
-
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth"
 )
 
 var (
 	ErrorRoleAlreadyAssigned = fmt.Errorf("role already assigned to user")
 )
+
+// Role represents a user role.
+type Role string
+
+// S converts a Role to its string representation.
+func (r Role) S() string {
+	return string(r)
+}
+
+// Predefined user roles.
+const (
+	AdminRole     Role = "admin"
+	VisitorRole   Role = "visitor"
+	SchedulerRole Role = "scheduler"
+)
+
+// RegisterUser registers a new user in Firebase with the given name, email, and password.
+//
+// Parameters:
+// - name: the display name of the user.
+// - email: the email address of the user.
+// - password: the password for the user.
+//
+// Returns:
+// - *auth.UserRecord: the user record of the newly created user.
+// - error: an error if the user creation fails.
+type RegisterUserInput struct {
+	Name             string `json:"name"`
+	Email            string `json:"email"`
+	Password         string `json:"password"`
+	Roles            []Role
+	RegisterFirebase bool
+}
 
 type User struct {
 	gorm.Model
@@ -35,8 +66,8 @@ func (u *User) GetIDString() string {
 //
 // Returns:
 // - []authPkg.Role: a slice of authPkg.Role objects, or an empty slice if the Roles field is empty.
-func (u *User) GetRoles() []auth.Role {
-	roles := []auth.Role{}
+func (u *User) GetRoles() []Role {
+	roles := []Role{}
 
 	// Trim leading/trailing spaces and check if the Roles field is empty
 	trimmedRoles := strings.TrimSpace(u.Roles)
@@ -48,7 +79,7 @@ func (u *User) GetRoles() []auth.Role {
 	for _, role := range strings.Split(trimmedRoles, ",") {
 		role = strings.TrimSpace(role)
 		if role != "" { // Skip empty roles
-			roles = append(roles, auth.Role(role))
+			roles = append(roles, Role(role))
 		}
 	}
 	return roles
@@ -59,7 +90,7 @@ func (u *User) GetRoles() []auth.Role {
 //
 // Parameters:
 // - role: the authPkg.Role to be added to the User's Roles field.
-func (u *User) SetRole(role auth.Role) error {
+func (u *User) SetRole(role Role) error {
 	if u.Roles == "" {
 		u.Roles = string(role)
 	} else {
@@ -72,7 +103,7 @@ func (u *User) SetRole(role auth.Role) error {
 }
 
 // RemoveRole removes a role from the User's Roles field. If the role is not present, it has no effect.
-func (u *User) RemoveRole(role auth.Role) {
+func (u *User) RemoveRole(role Role) {
 	roles := strings.Split(u.Roles, ",")
 	for i, r := range roles {
 		if r == string(role) {

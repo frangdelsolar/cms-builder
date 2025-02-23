@@ -3,19 +3,32 @@ package orchestrator
 import (
 	"fmt"
 
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/clients"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/config"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
+	"github.com/google/uuid"
 )
 
 const orchestratorVersion = "1.6.0"
 
+type OrchestratorUsers struct {
+	God       *models.User
+	Admin     *models.User
+	Scheduler *models.User
+	System    *models.User
+}
+
 type Orchestrator struct {
-	Config *config.ConfigReader
-	Logger *logger.Logger
-	DB     *database.Database
-	Server *server.Server
+	Config         *config.ConfigReader
+	Logger         *logger.Logger
+	LoggerConfig   *logger.LoggerConfig
+	DB             *database.Database
+	Server         *server.Server
+	Users          OrchestratorUsers
+	FirebaseClient *clients.FirebaseManager
 }
 
 func NewOrchestrator() (*Orchestrator, error) {
@@ -29,15 +42,27 @@ func NewOrchestrator() (*Orchestrator, error) {
 		return nil, err
 	}
 
-	err = o.InitLogger()
+	err = o.InitLogger() // config
 	if err != nil {
 		fmt.Println("Error initializing logger:", err)
 		return nil, err
 	}
 
-	err = o.InitDatabase()
+	err = o.InitDatabase() // config and logger
 	if err != nil {
 		o.Logger.Error().Err(err).Msg("Error initializing database")
+		return nil, err
+	}
+
+	err = o.InitFirebase() // config, db and logger
+	if err != nil {
+		o.Logger.Error().Err(err).Msg("Error initializing firebase")
+		return nil, err
+	}
+
+	err = o.InitUsers() // config, db, firebase and logger
+	if err != nil {
+		o.Logger.Error().Err(err).Msg("Error initializing users")
 		return nil, err
 	}
 
@@ -56,15 +81,80 @@ func NewOrchestrator() (*Orchestrator, error) {
 	return o, nil
 }
 
+func (o *Orchestrator) InitUsers() error {
+
+	usersData := []models.RegisterUserInput{
+		{
+			Name:             "God",
+			Email:            "god@" + o.Config.GetString(EnvKeys.Domain),
+			Password:         uuid.New().String(),
+			Roles:            []models.Role{models.AdminRole},
+			RegisterFirebase: false,
+		},
+		{
+			Name:             o.Config.GetString(EnvKeys.AdminName),
+			Email:            o.Config.GetString(EnvKeys.AdminEmail),
+			Password:         o.Config.GetString(EnvKeys.AdminPassword),
+			Roles:            []models.Role{models.AdminRole},
+			RegisterFirebase: true,
+		},
+		{
+			Name:             "Scheduler",
+			Email:            "scheduler@" + o.Config.GetString(EnvKeys.Domain),
+			Password:         uuid.New().String(),
+			Roles:            []models.Role{models.SchedulerRole},
+			RegisterFirebase: false,
+		},
+		{
+			Name:             "System",
+			Email:            "system@" + o.Config.GetString(EnvKeys.Domain),
+			Password:         uuid.New().String(),
+			Roles:            []models.Role{models.SchedulerRole},
+			RegisterFirebase: false,
+		},
+	}
+
+	requestId := uuid.New().String()
+	requestId = "automated::" + requestId
+
+	for _, userData := range usersData {
+		_, err := server.CreateUserWithRole(userData, o.FirebaseClient, o.DB, o.Users.System, requestId)
+		if err != nil {
+			o.Logger.Error().Err(err).Interface("user", userData).Msg("Error creating user")
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (o *Orchestrator) InitFirebase() error {
+	cfg := &clients.FirebaseConfig{
+		Secret: o.Config.GetString(EnvKeys.FirebaseSecret),
+	}
+	fb, err := clients.NewFirebaseAdmin(cfg)
+	if err != nil {
+		return err
+	}
+	o.FirebaseClient = fb
+
+	return nil
+}
+
 func (o *Orchestrator) InitServer() error {
 
 	config := &server.ServerConfig{
-		Host:      o.Config.GetString(EnvKeys.ServerHost),
-		Port:      o.Config.GetString(EnvKeys.ServerPort),
-		CSRFToken: o.Config.GetString(EnvKeys.CsrfToken),
+		Host:           o.Config.GetString(EnvKeys.ServerHost),
+		Port:           o.Config.GetString(EnvKeys.ServerPort),
+		CSRFToken:      o.Config.GetString(EnvKeys.CsrfToken),
+		AllowedOrigins: o.Config.GetStringSlice(EnvKeys.CorsAllowedOrigins),
+		GodToken:       o.Config.GetString(EnvKeys.GodToken),
+		GodUser:        o.Users.God,
+		SystemUser:     o.Users.System,
+		Firebase:       o.FirebaseClient,
 	}
 
-	server, err := server.NewServer(config)
+	server, err := server.NewServer(config, o.DB)
 	if err != nil {
 		o.Logger.Error().Err(err).Msg("Error initializing server")
 		return err
@@ -121,5 +211,6 @@ func (o *Orchestrator) InitLogger() error {
 		return err
 	}
 	o.Logger = logger
+	o.LoggerConfig = config
 	return nil
 }
