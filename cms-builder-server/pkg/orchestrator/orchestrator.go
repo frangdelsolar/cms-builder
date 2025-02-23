@@ -1,9 +1,12 @@
 package orchestrator
 
 import (
+	"fmt"
+
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/config"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 )
 
 const orchestratorVersion = "1.6.0"
@@ -12,6 +15,7 @@ type Orchestrator struct {
 	Config *config.ConfigReader
 	Logger *logger.Logger
 	DB     *database.Database
+	Server *server.Server
 }
 
 func NewOrchestrator() (*Orchestrator, error) {
@@ -21,16 +25,25 @@ func NewOrchestrator() (*Orchestrator, error) {
 	// Respect the order of initialization
 	err = o.InitConfigReader()
 	if err != nil {
+		fmt.Println("Error initializing config reader:", err)
 		return nil, err
 	}
 
 	err = o.InitLogger()
 	if err != nil {
+		fmt.Println("Error initializing logger:", err)
 		return nil, err
 	}
 
 	err = o.InitDatabase()
 	if err != nil {
+		o.Logger.Error().Err(err).Msg("Error initializing database")
+		return nil, err
+	}
+
+	err = o.InitServer()
+	if err != nil {
+		o.Logger.Error().Err(err).Msg("Error initializing server")
 		return nil, err
 	}
 
@@ -41,6 +54,25 @@ func NewOrchestrator() (*Orchestrator, error) {
 		Msg("Orchestrator initialized")
 
 	return o, nil
+}
+
+func (o *Orchestrator) InitServer() error {
+
+	config := &server.ServerConfig{
+		Host:      o.Config.GetString(EnvKeys.ServerHost),
+		Port:      o.Config.GetString(EnvKeys.ServerPort),
+		CSRFToken: o.Config.GetString(EnvKeys.CsrfToken),
+	}
+
+	server, err := server.NewServer(config)
+	if err != nil {
+		o.Logger.Error().Err(err).Msg("Error initializing server")
+		return err
+	}
+
+	o.Server = server
+
+	return nil
 }
 
 func (o *Orchestrator) InitDatabase() error {
@@ -69,6 +101,7 @@ func (o *Orchestrator) InitConfigReader() error {
 		},
 	)
 	if err != nil {
+		fmt.Println("Error initializing config reader:", err)
 		return err
 	}
 	o.Config = config
@@ -84,6 +117,7 @@ func (o *Orchestrator) InitLogger() error {
 
 	logger, err := logger.NewLogger(config)
 	if err != nil {
+		fmt.Println("Error initializing logger:", err)
 		return err
 	}
 	o.Logger = logger

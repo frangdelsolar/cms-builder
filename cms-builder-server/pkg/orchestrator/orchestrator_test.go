@@ -20,6 +20,12 @@ func TestMain(m *testing.M) {
 	os.Exit(exitCode)
 }
 
+func TestInitServer(t *testing.T) {
+	o, err := orc.NewOrchestrator()
+	assert.NoError(t, err)
+	assert.NotNil(t, o.Server)
+}
+
 func TestInitDatabase(t *testing.T) {
 	o, err := orc.NewOrchestrator()
 	assert.NoError(t, err)
