@@ -1,40 +1,35 @@
-package builder_test
+package logger_test
 
 import (
 	"io/ioutil"
 	"os"
 	"testing"
 
-	builder "github.com/frangdelsolar/cms-builder/cms-builder-server"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNewLogger_DefaultConfig(t *testing.T) {
+func TestNewLogger_NoConfig(t *testing.T) {
 	// Call NewLogger with nil config (default will be used)
-	logger, err := builder.NewLogger(nil)
+	logger, err := logger.NewLogger(nil)
 
 	// Assert that no error occurred
-	assert.NoError(t, err)
+	assert.Error(t, err, "expected error but got nil")
+	assert.Nil(t, logger)
 
-	// Assert that the logger is not nil
-	assert.NotNil(t, logger)
-
-	// Check the actual log level (may require additional verification depending on your setup)
-	actualLevel := zerolog.GlobalLevel()
-	assert.Equal(t, builder.DefaultEnvValues.LogLevel, actualLevel.String())
 }
 
 func TestNewLogger_ValidConfig(t *testing.T) {
 	// Define a valid configuration
-	testConfig := &builder.LoggerConfig{
+	testConfig := &logger.LoggerConfig{
 		LogLevel:    "info",
 		WriteToFile: true,
 		LogFilePath: "test.log",
 	}
 
 	// Call NewLogger with the test config
-	logger, err := builder.NewLogger(testConfig)
+	logger, err := logger.NewLogger(testConfig)
 
 	// Assert that no error occurred
 	assert.NoError(t, err)
@@ -49,14 +44,14 @@ func TestNewLogger_ValidConfig(t *testing.T) {
 
 func TestNewLogger_InvalidLogLevel(t *testing.T) {
 	// Define a config with invalid log level
-	testConfig := &builder.LoggerConfig{
+	testConfig := &logger.LoggerConfig{
 		LogLevel:    "invalid_level",
 		WriteToFile: true,
 		LogFilePath: "test.log",
 	}
 
 	// Call NewLogger with the test config
-	logger, err := builder.NewLogger(testConfig)
+	logger, err := logger.NewLogger(testConfig)
 
 	// Assert that an error occurred
 	assert.NoError(t, err)
@@ -64,21 +59,21 @@ func TestNewLogger_InvalidLogLevel(t *testing.T) {
 
 	// Check the actual log level (may require additional verification depending on your setup)
 	actualLevel := zerolog.GlobalLevel()
-	assert.Equal(t, builder.DefaultEnvValues.LogLevel, actualLevel.String())
+	assert.Equal(t, zerolog.DebugLevel, actualLevel)
 }
 
 func TestNewLogger_WriteToFile_Success(t *testing.T) {
 	defer os.Remove("test.log") // Clean up after the test
 
 	// Define a config for writing to a file
-	testConfig := &builder.LoggerConfig{
+	testConfig := &logger.LoggerConfig{
 		LogLevel:    "debug",
 		WriteToFile: true,
 		LogFilePath: "test.log",
 	}
 
 	// Call NewLogger with the test config
-	logger, err := builder.NewLogger(testConfig)
+	logger, err := logger.NewLogger(testConfig)
 
 	// Assert that no error occurred
 	assert.NoError(t, err)
@@ -99,14 +94,14 @@ func TestNewLogger_WriteToFile_Success(t *testing.T) {
 
 func TestNewLogger_WriteToFile_Error(t *testing.T) {
 	// Define a config with invalid file path
-	testConfig := &builder.LoggerConfig{
+	testConfig := &logger.LoggerConfig{
 		LogLevel:    "debug",
 		WriteToFile: true,
 		LogFilePath: "/invalid/path/test.log",
 	}
 
 	// Call NewLogger with the test config
-	logger, err := builder.NewLogger(testConfig)
+	logger, err := logger.NewLogger(testConfig)
 
 	// Assert that an error occurred
 	assert.Error(t, err)

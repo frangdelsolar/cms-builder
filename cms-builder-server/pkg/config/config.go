@@ -1,8 +1,9 @@
-package builder
+package config
 
 import (
 	"errors"
 
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
 

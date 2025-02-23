@@ -1,4 +1,4 @@
-package builder
+package logger
 
 import (
 	"fmt"
@@ -29,11 +29,7 @@ func NewLogger(config *LoggerConfig) (*Logger, error) {
 
 	// Handle nil config by providing a default configuration
 	if config == nil {
-		config = &LoggerConfig{
-			LogLevel:    DefaultEnvValues.LogLevel,
-			WriteToFile: DefaultEnvValues.LogWriteToFile == "true",
-			LogFilePath: DefaultEnvValues.LogFilePath,
-		}
+		return nil, fmt.Errorf("nil config provided")
 	}
 
 	// Validate log level

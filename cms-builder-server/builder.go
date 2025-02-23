@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	logger "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	"github.com/google/uuid"
 )
 
@@ -121,7 +122,7 @@ var builderErr = BuilderErrors{
 	ConfigurationNotProvided:   errors.New("configuration not provided"),
 }
 
-var log *Logger          // Global variable for the logger instance
+var log *logger.Logger   // Global variable for the logger instance
 var config *ConfigReader // Global variable for the config reader
 
 var AdminUser User
@@ -134,7 +135,7 @@ var SchedulerUser User
 // It also logs the version and environment at the info level.
 func init() {
 	var err error
-	log, err = NewLogger(&LoggerConfig{
+	log, err = logger.NewLogger(&logger.LoggerConfig{
 		LogLevel:    DefaultEnvValues.LogLevel,
 		WriteToFile: DefaultEnvValues.LogWriteToFile == "true",
 		LogFilePath: DefaultEnvValues.LogFilePath,
@@ -159,7 +160,7 @@ type Builder struct {
 	Config    *ConfigReader  // Reference to the Viper instance used for configuration
 	DB        *Database      // Reference to the connected database instance
 	Firebase  *FirebaseAdmin // Reference to the created Firebase instance
-	Logger    *Logger        // Reference to the application's logger instance
+	Logger    *logger.Logger // Reference to the application's logger instance
 	Server    *Server        // Reference to the created Server instance
 	Store     Store          // Reference to the created Store instance
 	Scheduler *Scheduler     // Reference to the created Scheduler instance
@@ -303,13 +304,13 @@ func (b *Builder) InitConfigReader(cfg *NewBuilderInput) error {
 // It retrieves the log configuration from the environment variables and uses it to create a new logger.
 // If the logger initialization fails, it returns an error. On success, the logger is assigned to the Builder instance.
 func (b *Builder) InitLogger() error {
-	config := &LoggerConfig{
+	config := &logger.LoggerConfig{
 		LogLevel:    config.GetString(EnvKeys.LogLevel),
 		LogFilePath: config.GetString(EnvKeys.LogFilePath),
 		WriteToFile: config.GetBool(EnvKeys.LogWriteToFile),
 	}
 
-	logger, err := NewLogger(config)
+	logger, err := logger.NewLogger(config)
 	if err != nil {
 		return err
 	}
