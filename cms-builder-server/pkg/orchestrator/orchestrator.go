@@ -37,7 +37,7 @@ type Orchestrator struct {
 	ResourceManager *manager.ResourceManager
 	Scheduler       *scheduler.Scheduler
 	Server          *server.Server
-	Store           *store.Store
+	Store           store.Store
 	Users           *OrchestratorUsers
 }
 
@@ -112,7 +112,7 @@ func NewOrchestrator() (*Orchestrator, error) {
 }
 
 func (o *Orchestrator) InitFiles() {
-	fileConfig := file.SetupFileResource(o.ResourceManager, o.DB)
+	fileConfig := file.SetupFileResource(o.ResourceManager, o.DB, o.Store)
 	o.ResourceManager.AddResource(fileConfig)
 }
 
@@ -158,6 +158,12 @@ func (o *Orchestrator) InitStore() error {
 	folder := o.Config.GetString(EnvKeys.UploaderFolder)
 	baseUrl := o.Config.GetString(EnvKeys.BaseUrl)
 
+	storeConfig := &store.StoreConfig{
+		MaxSize:            o.Config.GetInt64(EnvKeys.UploaderMaxSize),
+		SupportedMimeTypes: o.Config.GetStringSlice(EnvKeys.UploaderSupportedMime),
+		Folder:             o.Config.GetString(EnvKeys.UploaderFolder),
+	}
+
 	switch storeType {
 	case string(store.StoreS3):
 
@@ -169,19 +175,24 @@ func (o *Orchestrator) InitStore() error {
 			Folder:    folder,
 		}
 
-		s3Store, err := store.NewS3Store(s3Config)
+		s3Store, err := store.NewS3Store(storeConfig, s3Config)
 		if err != nil {
 			o.Logger.Error().Err(err).Msg("Error initializing S3 store")
 			return err
 		}
 		s = s3Store
 	case string(store.StoreLocal):
-		s = store.NewLocalStore(folder, baseUrl)
+		localStore, err := store.NewLocalStore(storeConfig, folder, baseUrl)
+		if err != nil {
+			o.Logger.Error().Err(err).Msg("Error initializing local store")
+			return err
+		}
+		s = localStore
 	default:
 		return fmt.Errorf("unknown store type: %s", storeType)
 	}
 
-	o.Store = &s
+	o.Store = s
 	return nil
 }
 

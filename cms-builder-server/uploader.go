@@ -162,7 +162,7 @@ var DeleteStoredFilesHandler ApiFunction = func(a *App, db *Database) http.Handl
 	}
 }
 
-var UpdateStoredFilesHandler ApiFunction = func(a *App, db *Database) http.HandlerFunc {
+var UpdateStoredFilesHandler ApiFunction = func(a *App, db *dataDatabase) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := ValidateRequestMethod(r, http.MethodPut)
 		if err != nil {

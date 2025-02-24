@@ -107,7 +107,7 @@ func (s *LocalStore) StoreFile(fileName string, file multipart.File, header *mul
 
 // DeleteFile takes a file path and deletes the file from disk.
 // It returns an error if the file cannot be deleted.
-func (s *LocalStore) DeleteFile(file models.File) error {
+func (s *LocalStore) DeleteFile(file *models.File) error {
 
 	// Attempt to delete the file
 	if err := os.Remove(file.Path); err != nil {

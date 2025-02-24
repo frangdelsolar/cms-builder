@@ -80,7 +80,7 @@ func (s *S3Store) StoreFile(fileName string, file multipart.File, header *multip
 // DeleteFile deletes a file from the S3 bucket using the provided file path.
 // It calls the DeleteFile method of the AwsManager client.
 // If an error occurs during the deletion, it logs the error and returns it.
-func (s *S3Store) DeleteFile(file models.File) error {
+func (s *S3Store) DeleteFile(file *models.File) error {
 	log.Warn().Interface("file", file).Msg("Deleting file from S3")
 	err := s.Client.DeleteFile(file.Path)
 	if err != nil {
