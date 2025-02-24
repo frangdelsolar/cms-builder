@@ -1,40 +1,57 @@
-package builder
+package scheduler
 
 import (
 	"fmt"
 
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
-	gocron "github.com/go-co-op/gocron/v2"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/queries"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
+	"github.com/go-co-op/gocron/v2"
 	"github.com/google/uuid"
-	"github.com/rs/zerolog/log"
 )
 
 const (
-	TaskStatusRunning TaskStatus = "running"
-	TaskStatusFailed  TaskStatus = "failed"
-	TaskStatusDone    TaskStatus = "done"
+	TaskStatusRunning models.TaskStatus = "running"
+	TaskStatusFailed  models.TaskStatus = "failed"
+	TaskStatusDone    models.TaskStatus = "done"
 )
 
 const (
-	JobFrequencyTypeImmediate JobFrequencyType = "immediate"
-	JobFrequencyTypeScheduled JobFrequencyType = "scheduled"
-	JobFrequencyTypeCron      JobFrequencyType = "cron"
+	JobFrequencyTypeImmediate models.JobFrequencyType = "immediate"
+	JobFrequencyTypeScheduled models.JobFrequencyType = "scheduled"
+	JobFrequencyTypeCron      models.JobFrequencyType = "cron"
 )
 
 type Scheduler struct {
-	Cron    gocron.Scheduler
-	Builder *Builder
-	User    *User
+	Cron   gocron.Scheduler
+	User   *models.User
+	DB     *database.Database
+	Logger *logger.Logger
 }
 
-func (s *Scheduler) GetOrCreateJobDefinition(jdInput SchedulerJobDefinition) (*SchedulerJobDefinition, error) {
-	db := s.Builder.DB
+func NewScheduler(db *database.Database, schedulerUser *models.User, log *logger.Logger) (*Scheduler, error) {
+	s, err := gocron.NewScheduler()
+	if err != nil {
+		return nil, err
+	}
+	s.Start()
+	return &Scheduler{
+		Cron:   s,
+		User:   schedulerUser,
+		DB:     db,
+		Logger: log,
+	}, nil
+}
+
+func (s *Scheduler) GetOrCreateJobDefinition(jdInput models.SchedulerJobDefinition) (*models.SchedulerJobDefinition, error) {
 
 	// If there is a job definition with the same name, return it
 	// Name must be unique
-	var instance SchedulerJobDefinition
-	q := fmt.Sprintf("name = '%s'", jdInput.Name)
-	res := db.Find(&instance, q, nil, "")
+	var instance models.SchedulerJobDefinition
+	q := "name = ?"
+	res := queries.FindOne(s.DB, &instance, q, jdInput.Name)
 	if res.Error != nil {
 		return nil, res.Error
 	}
@@ -44,8 +61,8 @@ func (s *Scheduler) GetOrCreateJobDefinition(jdInput SchedulerJobDefinition) (*S
 	}
 
 	// If there is no job definition with the same name, create it
-	instance = SchedulerJobDefinition{
-		SystemData: &SystemData{
+	instance = models.SchedulerJobDefinition{
+		SystemData: &models.SystemData{
 			CreatedByID: s.User.ID,
 			UpdatedByID: s.User.ID,
 		},
@@ -56,8 +73,10 @@ func (s *Scheduler) GetOrCreateJobDefinition(jdInput SchedulerJobDefinition) (*S
 		WithSeconds:   jdInput.WithSeconds,
 	}
 
-	requestId := fmt.Sprintf("scheduler-worker-%s", instance.Name)
-	res = db.Create(&instance, s.User, requestId)
+	id := uuid.New()
+	requestId := fmt.Sprintf("scheduler-worker::%s", id.String())
+
+	res = queries.Create(s.DB, &instance, s.User, requestId)
 	if res.Error != nil {
 		return nil, res.Error
 	}
@@ -65,7 +84,7 @@ func (s *Scheduler) GetOrCreateJobDefinition(jdInput SchedulerJobDefinition) (*S
 	return &instance, nil
 }
 
-func getFrequencyDefinition(jobDefinition *SchedulerJobDefinition) (gocron.JobDefinition, error) {
+func getFrequencyDefinition(jobDefinition *models.SchedulerJobDefinition) (gocron.JobDefinition, error) {
 
 	switch jobDefinition.FrequencyType {
 	case JobFrequencyTypeImmediate:
@@ -96,10 +115,10 @@ func GetRequestIdForCronJob(jobID uuid.UUID) string {
 	return fmt.Sprintf("scheduler-worker::%s", jobID.String())
 }
 
-func (s *Scheduler) Before(jobDefinition *SchedulerJobDefinition) func(jobID uuid.UUID, jobName string) {
+func (s *Scheduler) Before(jobDefinition *models.SchedulerJobDefinition) func(jobID uuid.UUID, jobName string) {
 	return func(jobID uuid.UUID, jobName string) {
-		task := SchedulerTask{
-			SystemData: &SystemData{
+		task := models.SchedulerTask{
+			SystemData: &models.SystemData{
 				CreatedByID: s.User.ID,
 				UpdatedByID: s.User.ID,
 			},
@@ -109,44 +128,44 @@ func (s *Scheduler) Before(jobDefinition *SchedulerJobDefinition) func(jobID uui
 		}
 
 		requestId := GetRequestIdForCronJob(jobID)
-		err := s.Builder.DB.Save(&task, s.User, nil, requestId).Error
+		err := queries.Update(s.DB, &task, s.User, nil, requestId).Error
 		if err != nil {
-			log.Error().Err(err).Msg("Error saving task")
+			s.Logger.Error().Err(err).Msg("Error saving task")
 		}
 	}
 }
 
-func (s *Scheduler) WithErrors(jobDefinition *SchedulerJobDefinition) func(jobID uuid.UUID, jobName string, jobError error) {
+func (s *Scheduler) WithErrors(jobDefinition *models.SchedulerJobDefinition) func(jobID uuid.UUID, jobName string, jobError error) {
 	return func(jobID uuid.UUID, jobName string, jobError error) {
 		requestId := GetRequestIdForCronJob(jobID)
 		err := s.UpdateTaskStatus(jobID.String(), TaskStatusFailed, jobError.Error(), requestId)
 		if err != nil {
-			log.Error().Err(err).Msg("Error updating task status")
+			s.Logger.Error().Err(err).Msg("Error updating task status")
 		}
 	}
 }
 
-func (s *Scheduler) After(jobDefinition *SchedulerJobDefinition) func(jobID uuid.UUID, jobName string) {
+func (s *Scheduler) After(jobDefinition *models.SchedulerJobDefinition) func(jobID uuid.UUID, jobName string) {
 	return func(jobID uuid.UUID, jobName string) {
 		requestId := GetRequestIdForCronJob(jobID)
 		err := s.UpdateTaskStatus(jobID.String(), TaskStatusDone, "", requestId)
 		if err != nil {
-			log.Error().Err(err).Msg("Error updating task status")
+			s.Logger.Error().Err(err).Msg("Error updating task status")
 		}
 	}
 }
 
-func (s *Scheduler) RegisterJob(jdInput SchedulerJobDefinition, function any, parameters ...any) error {
+func (s *Scheduler) RegisterJob(jdInput models.SchedulerJobDefinition, function any, parameters ...any) error {
 
 	jobDefinition, err := s.GetOrCreateJobDefinition(jdInput)
 	if err != nil {
-		log.Error().Err(err).Msg("Error creating job")
+		s.Logger.Error().Err(err).Msg("Error creating job")
 		return err
 	}
 
 	frequencyDefinition, err := getFrequencyDefinition(jobDefinition)
 	if err != nil {
-		log.Error().Err(err).Msg("Error creating frequency definition")
+		s.Logger.Error().Err(err).Msg("Error creating frequency definition")
 		return err
 	}
 
@@ -170,14 +189,14 @@ func (s *Scheduler) RegisterJob(jdInput SchedulerJobDefinition, function any, pa
 		),
 	)
 	if err != nil {
-		log.Error().Err(err).Msg("Error creating job")
+		s.Logger.Error().Err(err).Msg("Error creating job")
 		return err
 	}
 
 	return nil
 }
 
-func (s *Scheduler) UpdateTaskStatus(cronJobId string, status TaskStatus, errMsg string, requestId string) error {
+func (s *Scheduler) UpdateTaskStatus(cronJobId string, status models.TaskStatus, errMsg string, requestId string) error {
 	task := s.GetSchedulerTask(cronJobId)
 	task.Status = status
 	if errMsg != "" {
@@ -185,30 +204,21 @@ func (s *Scheduler) UpdateTaskStatus(cronJobId string, status TaskStatus, errMsg
 	}
 
 	previousState := s.GetSchedulerTask(cronJobId)
-	differences := CompareInterfaces(previousState, task)
+	differences := utils.CompareInterfaces(previousState, task)
 
-	return s.Builder.DB.Save(&task, s.User, differences, requestId).Error
+	return queries.Update(s.DB, &task, s.User, differences, requestId).Error
 }
 
-func (s *Scheduler) GetSchedulerTask(cronJobId string) *SchedulerTask {
-	var task SchedulerTask
+func (s *Scheduler) GetSchedulerTask(cronJobId string) *models.SchedulerTask {
+	var task models.SchedulerTask
 
-	q := "cron_job_id = '" + cronJobId + "'"
-	err := s.Builder.DB.Find(&task, q, nil, "").Error
+	q := "cron_job_id = ?"
+
+	err := queries.FindOne(s.DB, &task, q, cronJobId).Error
 	if err != nil {
-		log.Error().Err(err).Msg("Error finding task")
+		s.Logger.Error().Err(err).Msg("Error finding task")
 	}
 	return &task
-}
-
-func NewScheduler(b *Builder) (*Scheduler, error) {
-	s, err := gocron.NewScheduler()
-	if err != nil {
-		log.Error().Err(err).Msg("Error creating scheduler")
-		return nil, err
-	}
-	s.Start()
-	return &Scheduler{Cron: s, Builder: b, User: &SchedulerUser}, nil
 }
 
 func (s *Scheduler) Shutdown() error {

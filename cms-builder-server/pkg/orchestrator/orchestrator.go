@@ -10,7 +10,9 @@ import (
 	dbLogger "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database-logger"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
+	requestLogger "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/request-logger"
 	manager "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/scheduler"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store"
 	"github.com/google/uuid"
@@ -27,14 +29,15 @@ type OrchestratorUsers struct {
 
 type Orchestrator struct {
 	Config          *config.ConfigReader
+	DB              *database.Database
+	FirebaseClient  *clients.FirebaseManager
 	Logger          *logger.Logger
 	LoggerConfig    *logger.LoggerConfig
-	DB              *database.Database
-	Server          *server.Server
-	Users           *OrchestratorUsers
-	FirebaseClient  *clients.FirebaseManager
-	Store           *store.Store
 	ResourceManager *manager.ResourceManager
+	Scheduler       *scheduler.Scheduler
+	Server          *server.Server
+	Store           *store.Store
+	Users           *OrchestratorUsers
 }
 
 func NewOrchestrator() (*Orchestrator, error) {
@@ -98,11 +101,11 @@ func NewOrchestrator() (*Orchestrator, error) {
 	// 	return nil, err
 	// }
 
-	// 	err = b.InitScheduler()
-	// 	if err != nil {
-	// 		log.Err(err).Msg("Error initializing scheduler")
-	// 		return nil, err
-	// 	}
+	err = o.InitScheduler()
+	if err != nil {
+		o.Logger.Err(err).Msg("Error initializing scheduler")
+		return nil, err
+	}
 
 	environment := o.Config.GetString(EnvKeys.Environment)
 	o.Logger.Info().
@@ -113,19 +116,35 @@ func NewOrchestrator() (*Orchestrator, error) {
 	return o, nil
 }
 
+func (o *Orchestrator) InitScheduler() error {
+	taskConfig := scheduler.SetupSchedulerTaskResource()
+	o.ResourceManager.AddResource(taskConfig)
+
+	jobConfig := scheduler.SetupSchedulerJobDefinitionResource()
+	o.ResourceManager.AddResource(jobConfig)
+
+	sch, err := scheduler.NewScheduler(o.DB, o.Users.Scheduler, o.Logger)
+	if err != nil {
+		return err
+	}
+
+	o.Scheduler = sch
+	return nil
+}
+
 func (o *Orchestrator) InitRequestLogger() {
-	dbLoggerResourceConfig := dbLogger.SetupDBLoggerResource(o.ResourceManager, o.DB)
-	o.ResourceManager.AddResource(dbLoggerResourceConfig)
+	resourceConfig := requestLogger.SetupRequestLoggerResource(o.ResourceManager, o.DB)
+	o.ResourceManager.AddResource(resourceConfig)
 }
 
 func (o *Orchestrator) InitDatabaseLogger() {
-	dbLoggerResourceConfig := dbLogger.SetupDBLoggerResource(o.ResourceManager, o.DB)
-	o.ResourceManager.AddResource(dbLoggerResourceConfig)
+	resourceConfig := dbLogger.SetupDBLoggerResource(o.ResourceManager, o.DB)
+	o.ResourceManager.AddResource(resourceConfig)
 }
 
 func (o *Orchestrator) InitAuth() {
-	authResourceConfig := auth.SetupUserResource(o.FirebaseClient, o.DB, o.Users.System)
-	o.ResourceManager.AddResource(authResourceConfig)
+	resourceConfig := auth.SetupUserResource(o.FirebaseClient, o.DB, o.Users.System)
+	o.ResourceManager.AddResource(resourceConfig)
 }
 
 func (o *Orchestrator) InitResourceManager() {

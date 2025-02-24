@@ -86,15 +86,14 @@ func (a *Resource) GetKeys() []string {
 	return keys
 }
 
-func (a *Resource) GetValidatorsForField(fieldName string) ValidatorsList {
-
+func (a *Resource) GetFieldValidators(fieldName string) (ValidatorsList, error) {
 	lowerFieldName := strings.ToLower(string(fieldName))
 	validators, ok := a.Validators[lowerFieldName]
 	if !ok {
-		return nil
+		return nil, fmt.Errorf("field %s not found in model", fieldName)
 	}
 
-	return validators
+	return validators, nil
 }
 
 func InterfaceToMap(instance interface{}) (map[string]interface{}, error) {
@@ -116,22 +115,25 @@ func (a *Resource) Validate(instance interface{}) ValidationResult {
 		Errors: make([]ValidationError, 0),
 	}
 
-	_, err := InterfaceToMap(instance)
+	dataMap, err := InterfaceToMap(instance)
 	if err != nil {
 		return errors
 	}
 
-	// for key := range dataMap {
-	// 	validators := a.GetValidatorsForField(FieldName(key))
+	for key := range dataMap {
+		validators, err := a.GetFieldValidators(key)
+		if err != nil {
+			return errors
+		}
 
-	// 	for _, validator := range validators {
-	// 		output := NewFieldValidationError(key)
-	// 		validationResult := validator(key, jsonData, &output)
-	// 		if validationResult.Error != "" {
-	// 			errors.Errors = append(errors.Errors, *validationResult)
-	// 		}
-	// 	}
-	// }
+		for _, validator := range validators {
+			output := NewFieldValidationError(key)
+			validationResult := validator(key, dataMap, &output)
+			if validationResult.Error != "" {
+				errors.Errors = append(errors.Errors, *validationResult)
+			}
+		}
+	}
 
 	if len(errors.Errors) == 0 {
 		return ValidationResult{}
