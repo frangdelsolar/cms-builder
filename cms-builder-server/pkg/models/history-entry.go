@@ -71,7 +71,7 @@ func NewLogHistoryEntry(action CRUDAction, user *User, object interface{}, diffe
 
 	historyEntry := &HistoryEntry{
 		Action:       action,
-		UserId:       user.GetIDString(),
+		UserId:       user.StringID(),
 		Username:     user.Email,
 		ResourceId:   resourceId,
 		ResourceName: name,

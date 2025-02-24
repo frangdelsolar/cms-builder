@@ -10,7 +10,7 @@ import (
 // TestGetIDString verifies that GetIDString returns the correct string representation of the user's ID.
 func TestGetIDString(t *testing.T) {
 	user := &User{ID: 123}
-	assert.Equal(t, "123", user.GetIDString())
+	assert.Equal(t, "123", user.StringID())
 }
 
 // TestGetRoles verifies that GetRoles correctly parses the comma-separated roles string.
@@ -131,6 +131,41 @@ func TestRemoveRole(t *testing.T) {
 			user := &User{Roles: tt.initialRoles}
 			user.RemoveRole(tt.roleToRemove)
 			assert.Equal(t, tt.expectedRoles, user.Roles)
+		})
+	}
+}
+
+func TestHasRole(t *testing.T) {
+	tests := []struct {
+		name     string
+		user     User
+		role     Role
+		expected bool
+	}{
+		{
+			name:     "User has role",
+			user:     User{Roles: "admin,visitor"},
+			role:     AdminRole,
+			expected: true,
+		},
+		{
+			name:     "User does not have role",
+			user:     User{Roles: "user,visitor"},
+			role:     AdminRole,
+			expected: false,
+		},
+		{
+			name:     "User has no roles",
+			user:     User{Roles: ""},
+			role:     AdminRole,
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := tt.user.HasRole(tt.role)
+			assert.Equal(t, tt.expected, actual, "Expected %v but got %v", tt.expected, actual)
 		})
 	}
 }

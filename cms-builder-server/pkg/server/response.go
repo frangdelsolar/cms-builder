@@ -4,23 +4,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/queries"
 )
 
 // Following these standards
 // https://github.com/omniti-labs/jsend
 // https://medium.com/@bojanmajed/standard-json-api-response-format-c6c1aabcaa6d
 
-type Pagination struct {
-	Total int64 `json:"total"`
-	Page  int   `json:"page"`
-	Limit int   `json:"limit"`
-}
-
 type Response struct {
-	Success    bool        `json:"success"`
-	Data       interface{} `json:"data"`
-	Message    string      `json:"message"`
-	Pagination *Pagination `json:"pagination"`
+	Success    bool                `json:"success"`
+	Data       interface{}         `json:"data"`
+	Message    string              `json:"message"`
+	Pagination *queries.Pagination `json:"pagination"`
 }
 
 // NewSuccessResponse returns a Response with Success set to true.
@@ -75,7 +71,7 @@ func SendJsonResponse(w http.ResponseWriter, status int, data interface{}, msg s
 // If the status code is not in the 200 range, the msg is included in the response body.
 //
 // The function also sets the Content-Type header to "application/json", and writes the response with the given status code.
-func SendJsonResponseWithPagination(w http.ResponseWriter, status int, data interface{}, msg string, pagination *Pagination) {
+func SendJsonResponseWithPagination(w http.ResponseWriter, status int, data interface{}, msg string, pagination *queries.Pagination) {
 	var response Response
 
 	if status >= 200 && status < 300 {

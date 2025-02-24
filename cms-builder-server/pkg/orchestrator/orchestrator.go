@@ -9,6 +9,7 @@ import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store"
 	"github.com/google/uuid"
 )
 
@@ -29,6 +30,7 @@ type Orchestrator struct {
 	Server         *server.Server
 	Users          OrchestratorUsers
 	FirebaseClient *clients.FirebaseManager
+	Store          Store
 }
 
 func NewOrchestrator() (*Orchestrator, error) {
@@ -60,7 +62,18 @@ func NewOrchestrator() (*Orchestrator, error) {
 		return nil, err
 	}
 
-	err = o.InitUsers() // config, db, firebase and logger
+	// // Admin
+	// b.InitAdmin()
+
+	// InitAuth(
+
+	// err = o.InitHistory()
+	// if err != nil {
+	// 	o.Logger.Error().Err(err).Msg("Error initializing history")
+	// 	return nil, err
+	// }
+
+	err = o.InitUsers() // config, db, firebase, history, amdin and logger
 	if err != nil {
 		o.Logger.Error().Err(err).Msg("Error initializing users")
 		return nil, err
@@ -72,6 +85,24 @@ func NewOrchestrator() (*Orchestrator, error) {
 		return nil, err
 	}
 
+	err = o.InitStore()
+	if err != nil {
+		o.Logger.Err(err).Msg("Error initializing store")
+		return nil, err
+	}
+
+	// err = b.InitUploader()
+	// if err != nil {
+	// 	log.Err(err).Msg("Error initializing uploader")
+	// 	return nil, err
+	// }
+
+	// 	err = b.InitScheduler()
+	// 	if err != nil {
+	// 		log.Err(err).Msg("Error initializing scheduler")
+	// 		return nil, err
+	// 	}
+
 	environment := o.Config.GetString(EnvKeys.Environment)
 	o.Logger.Info().
 		Str("version", orchestratorVersion).
@@ -79,6 +110,30 @@ func NewOrchestrator() (*Orchestrator, error) {
 		Msg("Orchestrator initialized")
 
 	return o, nil
+}
+
+func (o *Orchestrator) InitLogger() error {
+	var s store.Store
+
+	storeType := o.Config.GetString(EnvKeys.StoreType)
+	folder := o.Config.GetString(EnvKeys.UploaderFolder)
+
+	switch storeType {
+	case string(store.StoreS3):
+		s3Store, err := store.NewS3Store(folder)
+		if err != nil {
+			o.Logger.Error().Err(err).Msg("Error initializing S3 store")
+			return err
+		}
+		s = s3Store
+	case string(store.StoreLocal):
+		s = store.NewLocalStore(folder)
+	default:
+		return fmt.Errorf("unknown store type: %s", storeType)
+	}
+
+	o.Store = s
+	return nil
 }
 
 func (o *Orchestrator) InitUsers() error {
@@ -146,7 +201,7 @@ func (o *Orchestrator) InitServer() error {
 	config := &server.ServerConfig{
 		Host:           o.Config.GetString(EnvKeys.ServerHost),
 		Port:           o.Config.GetString(EnvKeys.ServerPort),
-		CSRFToken:      o.Config.GetString(EnvKeys.CsrfToken),
+		CsrfToken:      o.Config.GetString(EnvKeys.CsrfToken),
 		AllowedOrigins: o.Config.GetStringSlice(EnvKeys.CorsAllowedOrigins),
 		GodToken:       o.Config.GetString(EnvKeys.GodToken),
 		GodUser:        o.Users.God,

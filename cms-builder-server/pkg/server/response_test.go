@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/queries"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 )
 
@@ -67,7 +68,7 @@ func TestSendJsonResponseWithPagination_Success(t *testing.T) {
 	data := map[string]string{"key": "value"}
 	msg := "Success message"
 	status := http.StatusOK
-	pagination := &Pagination{
+	pagination := &queries.Pagination{
 		Total: 100,
 		Page:  1,
 		Limit: 10,
@@ -97,7 +98,7 @@ func TestSendJsonResponseWithPagination_Error(t *testing.T) {
 	data := map[string]string{"key": "value"}
 	msg := "Error message"
 	status := http.StatusBadRequest
-	pagination := &Pagination{
+	pagination := &queries.Pagination{
 		Total: 100,
 		Page:  1,
 		Limit: 10,

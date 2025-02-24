@@ -14,9 +14,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const RequestsPerMinute = 100
-const TimeoutSeconds = 15
-
 var (
 	ErrServerConfigNotProvided = errors.New("database config not provided")
 	ErrServerNotInitialized    = errors.New("server not initialized")
@@ -41,6 +38,7 @@ type Server struct {
 	DB             *database.Database                // DB is the database connection
 	AllowedOrigins []string
 	LoggerConfig   *logger.LoggerConfig
+	CsrfToken      string
 	GodToken       string
 	GodUser        *models.User
 	SystemUser     *models.User
@@ -51,7 +49,7 @@ type Server struct {
 type ServerConfig struct {
 	Host           string // Host is the hostname or IP address to listen on.
 	Port           string // Port is the port number to listen on.
-	CSRFToken      string // CSRFToken is the CSRF token to use for CSRF protection.
+	CsrfToken      string // CSRFToken is the CSRF token to use for CSRF protection.
 	AllowedOrigins []string
 	LoggerConfig   *logger.LoggerConfig
 	GodToken       string
@@ -89,6 +87,7 @@ func NewServer(svrConfig *ServerConfig, db *database.Database) (*Server, error) 
 		GodUser:      svrConfig.GodUser,
 		Firebase:     svrConfig.Firebase,
 		SystemUser:   svrConfig.SystemUser,
+		CsrfToken:    svrConfig.CsrfToken,
 	}
 
 	return svr, nil
@@ -104,24 +103,19 @@ func (s *Server) Run() error {
 	// Include schema endpoint
 	// s.Builder.Admin.AddApiRoute()
 
+	// CSRF
+	// csrfMiddleware := csrf.Protect([]byte(s.CsrfToken))
+
 	// Middlewares
 	publicRouter := s.Root
 	publicRouter.Use(RecoveryMiddleware)                // graceful shutdown
 	publicRouter.Use(RequestLoggerMiddleware(s.DB))     // will generate a request log
 	publicRouter.Use(LoggingMiddleware(s.LoggerConfig)) // will store a logger with requestId
-	// CSRF
-	// csrfKey := []byte(config.GetString(EnvKeys.CsrfToken))
-	// csrfMiddleware := csrf.Protect(csrfKey)
-
-	// Middlewares
-	publicRouter.Use(CorsMiddleware(s.AllowedOrigins)) // needs to be before user middleware
+	publicRouter.Use(CorsMiddleware(s.AllowedOrigins))  // needs to be before user middleware
 	publicRouter.Use(AuthMiddleware(s.GodToken, s.GodUser, s.Firebase, s.DB, s.SystemUser))
-	// publicRouter.Use(TimeoutMiddleware)
-
-	// rateLimiter := NewRateLimiter(RequestsPerMinute, 1*time.Minute)
-	// publicRouter.Use(RateLimitMiddleware(rateLimiter))
-
-	// // publicRouter.Use(csrfMiddleware)
+	publicRouter.Use(TimeoutMiddleware)
+	publicRouter.Use(RateLimitMiddleware())
+	// publicRouter.Use(csrfMiddleware)
 
 	// apply custom middlewares
 	for _, middleware := range s.Middlewares {
@@ -145,7 +139,7 @@ func (s *Server) Run() error {
 	log.Info().Msg("Authenticated routes")
 	// Create separate routers for authenticated and public routes
 	authRouter := publicRouter.PathPrefix("/private").Subrouter()
-	// authRouter.Use(ProtectedRouteMiddleware)
+	authRouter.Use(ProtectedRouteMiddleware)
 
 	for _, route := range s.Routes {
 		if route.RequiresAuth {

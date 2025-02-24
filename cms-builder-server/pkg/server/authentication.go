@@ -10,6 +10,7 @@ import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/clients"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/queries"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
@@ -54,7 +55,7 @@ func VerifyUser(userIdToken string, firebase *clients.FirebaseManager, db *datab
 		localUser.FirebaseId = accessToken.UID
 		localUser.Roles = string(models.VisitorRole)
 
-		res := db.Create(&localUser, systemUser, requestId)
+		res := queries.Create(db, &localUser, systemUser, requestId)
 		if res.Error != nil { // Check for errors during creation
 			err = fmt.Errorf("error creating user in database: %v", res.Error)
 			return nil, err // Return the error if user creation fails
@@ -85,19 +86,17 @@ func AuthMiddleware(envGodToken string, godUser *models.User, firebase *clients.
 			// Check if the request has a god token
 			headerGodToken := r.Header.Get(GodTokenHeader)
 
-			accessToken := GetAccessTokenFromRequest(r)
+			accessToken := GetRequestAccessToken(r)
 			requestId := GetRequestId(r)
-			log := GetLoggerFromRequest(r)
+			log := GetRequestLogger(r)
 
 			var localUser *models.User
+			if headerGodToken != "" && VerifyGodUser(envGodToken, headerGodToken) {
+				localUser = godUser
+			}
+
 			var err error
-			if headerGodToken != "" {
-				if VerifyGodUser(envGodToken, headerGodToken) {
-					localUser = godUser
-				} else {
-					log.Error().Err(err).Msg("Error verifying god. God may not be authenticated")
-				}
-			} else {
+			if localUser.ID == 0 && accessToken != "" {
 				localUser, err = VerifyUser(accessToken, firebase, db, systemUser, requestId)
 				if err != nil {
 					log.Error().Err(err).Msg("Error verifying user. models.User may not be authenticated")
@@ -105,9 +104,8 @@ func AuthMiddleware(envGodToken string, godUser *models.User, firebase *clients.
 			}
 
 			if localUser != nil {
-				r.Header.Set(requestedByParamKey.S(), localUser.GetIDString())
-				r.Header.Set(authParamKey.S(), "true")
-				r.Header.Set(rolesParamKey.S(), localUser.Roles)
+				r = r.WithContext(context.WithValue(r.Context(), CtxRequestIsAuth, true))
+				r = r.WithContext(context.WithValue(r.Context(), CtxRequestUser, localUser))
 			}
 
 			next.ServeHTTP(w, r)
@@ -115,6 +113,7 @@ func AuthMiddleware(envGodToken string, godUser *models.User, firebase *clients.
 	}
 }
 
+// TODO: this is disgusting -> REFACTOR
 // CreateUserWithRole creates a new user in Firebase with the given name, email, and password, and also
 // creates a new user in the local database with the given role. If the user already exists in Firebase,
 // it will add the user to the local database. If the user already exists in the local database, it will
@@ -195,7 +194,7 @@ func CreateUserWithRole(input models.RegisterUserInput, firebase *clients.Fireba
 		Roles:      roles,
 	}
 
-	err = db.Create(&user, systemUser, requestId).Error
+	err = queries.Create(db, &user, systemUser, requestId).Error
 	if err != nil {
 		return nil, fmt.Errorf("error creating user in database")
 	}

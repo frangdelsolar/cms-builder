@@ -57,7 +57,7 @@ type User struct {
 //
 // Returns:
 // - string: the ID of the SystemData.
-func (u *User) GetIDString() string {
+func (u *User) StringID() string {
 	return fmt.Sprint(u.ID)
 }
 
@@ -112,4 +112,14 @@ func (u *User) RemoveRole(role Role) {
 		}
 	}
 	u.Roles = strings.Join(roles, ",")
+}
+
+func (u *User) HasRole(role Role) bool {
+	roles := u.GetRoles()
+	for _, r := range roles {
+		if r == role {
+			return true
+		}
+	}
+	return false
 }
