@@ -14,12 +14,24 @@ func TestGetStructName(t *testing.T) {
 	type User struct{}
 
 	// Test with a struct
-	name := GetInterfaceName(User{})
+	name, err := GetInterfaceName(User{})
+	assert.NoError(t, err)
 	assert.Equal(t, "User", name)
 
 	// Test with a pointer to a struct
-	name = GetInterfaceName(&User{})
+	name, err = GetInterfaceName(&User{})
+	assert.NoError(t, err)
 	assert.Equal(t, "User", name)
+
+	// Test with a non-struct
+	name, err = GetInterfaceName(42)
+	assert.Error(t, err)
+	assert.Equal(t, "", name)
+
+	// Test with a nil interface
+	name, err = GetInterfaceName(nil)
+	assert.Error(t, err)
+	assert.Equal(t, "", name)
 }
 
 // TestPluralize tests the Pluralize function.

@@ -8,6 +8,7 @@ import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/config"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	dbLogger "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database-logger"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/file"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	requestLogger "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/request-logger"
@@ -71,11 +72,11 @@ func NewOrchestrator() (*Orchestrator, error) {
 
 	o.InitResourceManager()
 
+	// Init Models
 	o.InitAuth()
-
-	o.InitDatabaseLogger() // Needs ResourceManager
-
-	o.InitRequestLogger() // Needs ResourceManager
+	o.InitDatabaseLogger()
+	o.InitRequestLogger()
+	o.InitFiles()
 
 	err = o.InitUsers() // config, db, firebase, history, amdin and logger
 	if err != nil {
@@ -95,12 +96,6 @@ func NewOrchestrator() (*Orchestrator, error) {
 		return nil, err
 	}
 
-	// err = b.InitUploader()
-	// if err != nil {
-	// 	log.Err(err).Msg("Error initializing uploader")
-	// 	return nil, err
-	// }
-
 	err = o.InitScheduler()
 	if err != nil {
 		o.Logger.Err(err).Msg("Error initializing scheduler")
@@ -114,6 +109,11 @@ func NewOrchestrator() (*Orchestrator, error) {
 		Msg("Orchestrator initialized")
 
 	return o, nil
+}
+
+func (o *Orchestrator) InitFiles() {
+	fileConfig := file.SetupFileResource(o.ResourceManager, o.DB)
+	o.ResourceManager.AddResource(fileConfig)
 }
 
 func (o *Orchestrator) InitScheduler() error {
@@ -156,22 +156,32 @@ func (o *Orchestrator) InitStore() error {
 
 	storeType := o.Config.GetString(EnvKeys.StoreType)
 	folder := o.Config.GetString(EnvKeys.UploaderFolder)
+	baseUrl := o.Config.GetString(EnvKeys.BaseUrl)
 
 	switch storeType {
 	case string(store.StoreS3):
-		s3Store, err := store.NewS3Store(folder)
+
+		s3Config := &store.S3Config{
+			Bucket:    o.Config.GetString(EnvKeys.AwsBucket),
+			Region:    o.Config.GetString(EnvKeys.AwsRegion),
+			AccessKey: o.Config.GetString(EnvKeys.AwsAccessKeyId),
+			SecretKey: o.Config.GetString(EnvKeys.AwsSecretAccessKey),
+			Folder:    folder,
+		}
+
+		s3Store, err := store.NewS3Store(s3Config)
 		if err != nil {
 			o.Logger.Error().Err(err).Msg("Error initializing S3 store")
 			return err
 		}
 		s = s3Store
 	case string(store.StoreLocal):
-		s = store.NewLocalStore(folder)
+		s = store.NewLocalStore(folder, baseUrl)
 	default:
 		return fmt.Errorf("unknown store type: %s", storeType)
 	}
 
-	o.Store = s
+	o.Store = &s
 	return nil
 }
 

@@ -33,3 +33,42 @@ func RandomizeFileName(fileName string) string {
 
 	return name + extension
 }
+
+func getMimeTypeAndExtension(mime string) (string, string) {
+	parts := strings.Split(mime, "/")
+	if len(parts) == 0 {
+		return "", "" // Or handle this as an error if you prefer
+	}
+	mimeType := parts[0]
+	extension := ""
+	if len(parts) > 1 {
+		extension = parts[len(parts)-1] // Get the last part as the extension
+	}
+	return mimeType, extension
+}
+
+func ValidateContentType(contentType string, supportedMimeTypes []string) (bool, error) {
+	inMimeType, inExtension := getMimeTypeAndExtension(contentType)
+
+	for _, supportedItem := range supportedMimeTypes {
+		// "*"
+		if supportedItem == "*" {
+			return true, nil
+		}
+		supportedMimeType, supportedExtension := getMimeTypeAndExtension(supportedItem)
+		// "*/*"
+		if supportedMimeType == "*" {
+			return true, nil
+		}
+		// "audio/*"
+		if supportedExtension == "*" && inMimeType == supportedMimeType {
+			return true, nil
+		}
+		// "audio/wav"
+		if supportedExtension == inExtension && supportedMimeType == inMimeType {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
