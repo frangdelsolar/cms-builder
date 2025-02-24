@@ -11,10 +11,12 @@ import (
 )
 
 func TestFindMany(t *testing.T) {
+	// Define a test model
 	type TestModel struct {
 		gorm.Model
 		Name string
 	}
+
 	// Initialize in-memory database for testing
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	assert.NoError(t, err)
@@ -26,7 +28,7 @@ func TestFindMany(t *testing.T) {
 	// Wrap in our database struct
 	testDB := &database.Database{DB: db}
 
-	// Insert test data
+	// Insert test data in a predictable order
 	testData := []TestModel{
 		{Name: "Alice"},
 		{Name: "Bob"},
@@ -38,7 +40,7 @@ func TestFindMany(t *testing.T) {
 
 	t.Run("Find all without pagination", func(t *testing.T) {
 		var results []TestModel
-		result := FindMany(testDB, &results, "", nil, "")
+		result := FindMany(testDB, &results, nil, "", "")
 
 		assert.NoError(t, result.Error, "Expected no error in FindMany")
 		assert.Equal(t, len(testData), len(results), "Expected all records to be returned")
@@ -47,7 +49,7 @@ func TestFindMany(t *testing.T) {
 	t.Run("Find with pagination", func(t *testing.T) {
 		var results []TestModel
 		pagination := &Pagination{Page: 1, Limit: 2}
-		result := FindMany(testDB, &results, "", pagination, "")
+		result := FindMany(testDB, &results, pagination, "id desc", "")
 
 		assert.NoError(t, result.Error, "Expected no error in FindMany")
 		assert.Equal(t, 2, len(results), "Expected only 2 records due to pagination")
@@ -58,16 +60,17 @@ func TestFindMany(t *testing.T) {
 
 	t.Run("Find with ordering", func(t *testing.T) {
 		var results []TestModel
-		result := FindMany(testDB, &results, "", nil, "name asc")
+		result := FindMany(testDB, &results, nil, "name asc", "")
 
 		assert.NoError(t, result.Error, "Expected no error in FindMany")
 		assert.Equal(t, "Alice", results[0].Name, "First record should be Alice")
-		assert.Equal(t, "Charlie", results[len(results)-1].Name, "Last record should be Charlie")
+		assert.Equal(t, "Bob", results[1].Name, "Second record should be Bob")
+		assert.Equal(t, "Charlie", results[2].Name, "Third record should be Charlie")
 	})
 
 	t.Run("Find with query filter", func(t *testing.T) {
 		var results []TestModel
-		result := FindMany(testDB, &results, "name = 'Bob'", nil, "")
+		result := FindMany(testDB, &results, nil, "", "name = ?", "Bob")
 
 		assert.NoError(t, result.Error, "Expected no error in FindMany")
 		assert.Equal(t, 1, len(results), "Expected one result for name = 'Bob'")

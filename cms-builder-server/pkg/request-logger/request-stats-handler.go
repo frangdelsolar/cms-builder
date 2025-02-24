@@ -3,20 +3,39 @@ package requestlogger
 import (
 	"net/http"
 	"time"
+
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
+	manager "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
+	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 )
 
-func RequestStatsHandler() http.HandlerFunc {
+func RequestStatsHandler(mgr *manager.ResourceManager, db *database.Database) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
+		requestCtx := GetRequestContext(r)
+		log := requestCtx.Logger
+		user := requestCtx.User
+
+		// 1. Validate Request Method
 		err := ValidateRequestMethod(r, http.MethodGet)
 		if err != nil {
+			log.Error().Err(err).Msgf("Error validating request method")
 			SendJsonResponse(w, http.StatusMethodNotAllowed, nil, err.Error())
 			return
 		}
 
-		a, err := b.Admin.GetApp("requestlog")
+		// 2. Get Resource
+		a, err := mgr.GetResource(&models.RequestLog{})
 		if err != nil {
+			log.Error().Err(err).Msgf("Error getting resource")
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+			return
+		}
+
+		// 3. Check Permissions
+		if !UserIsAllowed(a.Permissions, user.GetRoles(), OperationRead) {
+			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to read this resource")
 			return
 		}
 
@@ -26,7 +45,7 @@ func RequestStatsHandler() http.HandlerFunc {
 		query := "timestamp > ? AND timestamp < ?"
 
 		var statusGroupedInstances []map[string]interface{}
-		statusGroupsRes := b.DB.DB.Model(a.Model).
+		statusGroupsRes := db.DB.Model(a.Model).
 			Select("status_code, COUNT(*) as count").
 			Where(query, oneDayAgo, now).
 			Group("status_code").
@@ -39,7 +58,7 @@ func RequestStatsHandler() http.HandlerFunc {
 		}
 
 		var methodGroupedInstances []map[string]interface{}
-		methodGroupedRes := b.DB.DB.Model(a.Model).
+		methodGroupedRes := db.DB.Model(a.Model).
 			Select("method, COUNT(*) as count").
 			Where(query, oneDayAgo, now).
 			Group("method").
@@ -52,7 +71,7 @@ func RequestStatsHandler() http.HandlerFunc {
 		}
 
 		var userGroupedInstances []map[string]interface{}
-		userGroupedRes := b.DB.DB.Model(a.Model).
+		userGroupedRes := db.DB.Model(a.Model).
 			Select("users.email, COUNT(*) as count").
 			Joins("JOIN users ON users.id = request_logs.user_id"). // Join with the users table
 			Where(query, oneDayAgo, now).
@@ -66,7 +85,7 @@ func RequestStatsHandler() http.HandlerFunc {
 		}
 
 		var endpointGroupedInstances []map[string]interface{}
-		endpointGroupedRes := b.DB.DB.Model(a.Model).
+		endpointGroupedRes := db.DB.Model(a.Model).
 			Select("path, COUNT(*) as count").
 			Where(query, oneDayAgo, now).
 			Group("path").
@@ -79,7 +98,7 @@ func RequestStatsHandler() http.HandlerFunc {
 		}
 
 		var instances []map[string]interface{}
-		requestLogRes := b.DB.DB.Model(a.Model).
+		requestLogRes := db.DB.Model(a.Model).
 			Select("request_identifier, timestamp, status_code, method, duration, path").
 			Where(query, oneDayAgo, now).
 			Order("timestamp desc").

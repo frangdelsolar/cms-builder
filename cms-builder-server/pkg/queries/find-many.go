@@ -5,23 +5,23 @@ import (
 	"gorm.io/gorm"
 )
 
-func FindMany(db *database.Database, entitySlice interface{}, query string, pagination *Pagination, order string) *gorm.DB {
+func FindMany(db *database.Database, entitySlice interface{}, pagination *Pagination, order string, query string, args ...interface{}) *gorm.DB {
 	if order == "" {
 		order = "id desc"
 	}
 
 	if pagination == nil {
-		return db.DB.Order(order).Where(query).Find(entitySlice)
+		return db.DB.Order(order).Where(query, args...).Find(entitySlice)
 	}
 
 	// Retrieve total number of records
-	res := db.DB.Model(entitySlice).Where(query).Count(&pagination.Total)
+	res := db.DB.Model(entitySlice).Where(query, args...).Count(&pagination.Total)
 	if res.Error != nil {
 		return res
 	}
 
 	// Apply pagination
-	filtered := db.DB.Where(query).Order(order)
+	filtered := db.DB.Where(query, args...).Order(order)
 	limit := pagination.Limit
 	offset := (pagination.Page - 1) * pagination.Limit
 

@@ -55,11 +55,11 @@ var DefaultListHandler ApiFunction = func(a *Resource, db *database.Database) ht
 		order := queryParams.Order
 
 		if !(a.SkipUserBinding || isAdmin) {
-			query = "created_by_id = '" + user.StringID() + "'"
+			query = "created_by_id = ?"
 		}
 
 		// 6. Execute Database Query
-		err = queries.FindMany(db, instances, query, pagination, order).Error
+		err = queries.FindMany(db, instances, pagination, order, query, user.StringID()).Error
 		if err != nil {
 			log.Error().Err(err).Msgf("Error finding instances")
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
