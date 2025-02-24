@@ -18,7 +18,7 @@ func TestDelete(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Auto migrate the User and LogHistoryEntry models
-	err = db.AutoMigrate(&User{}, &HistoryEntry{})
+	err = db.AutoMigrate(&User{}, &DatabaseLog{})
 	assert.NoError(t, err)
 
 	// Create a Database instance
@@ -44,7 +44,7 @@ func TestDelete(t *testing.T) {
 		assert.Equal(t, gorm.ErrRecordNotFound, err)
 
 		// Verify the history entry was created
-		var historyEntry HistoryEntry
+		var historyEntry DatabaseLog
 		err = db.Where("request_id = ?", "request-123").First(&historyEntry).Error
 		assert.NoError(t, err)
 		assert.Equal(t, models.DeleteCRUDAction, historyEntry.Action)

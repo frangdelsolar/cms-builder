@@ -9,17 +9,22 @@ import (
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 )
 
-// DefaultDeleteHandler handles the deletion of a resource.
-var DefaultDeleteHandler ApiFunction = func(a *Resource, db *database.Database) http.HandlerFunc {
+var DefaultDetailHandler ApiFunction = func(a *Resource, db *database.Database) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		requestCtx := GetRequestContext(r)
 		log := requestCtx.Logger
 		user := requestCtx.User
-		requestId := requestCtx.RequestId
 		isAdmin := user.HasRole(models.AdminRole)
 
+		appName, err := a.GetName()
+		if err != nil {
+			log.Error().Err(err).Msgf("Error getting app name")
+			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+			return
+		}
+
 		// 1. Validate Request Method
-		err := ValidateRequestMethod(r, http.MethodDelete)
+		err = ValidateRequestMethod(r, http.MethodGet)
 		if err != nil {
 			SendJsonResponse(w, http.StatusMethodNotAllowed, nil, err.Error())
 			return
@@ -31,22 +36,17 @@ var DefaultDeleteHandler ApiFunction = func(a *Resource, db *database.Database) 
 			return
 		}
 
-		if !UserIsAllowed(a.Permissions, user.GetRoles(), OperationDelete) {
-			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to delete this resource")
-			return
-		}
-
 		// 3. Construct Query (User Binding)
-		query := ""
+		query := "id = ?"
 		if !(a.SkipUserBinding || isAdmin) {
-			query = "created_by_id = ?"
+			query += " AND created_by_id = ?"
 		}
 
 		// 4. Retrieve Instance ID and Fetch Instance
 		instanceId := GetUrlParam("id", r)
 		instance := a.GetOne()
-		res := queries.FindOne(db, instance, instanceId, query, user.StringID())
 
+		res := queries.FindOne(db, instance, query, instanceId, user.StringID())
 		if res.Error != nil {
 			log.Error().Err(res.Error).Msgf("Error finding instance")
 			SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
@@ -59,23 +59,7 @@ var DefaultDeleteHandler ApiFunction = func(a *Resource, db *database.Database) 
 			return
 		}
 
-		// 5. Delete Instance
-		res = queries.Delete(db, instance, user, requestId)
-		if res.Error != nil {
-			SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
-			return
-		}
-
-		// 6. Generate Success Message
-		appName, err := a.GetName()
-		if err != nil {
-			log.Error().Err(err).Msgf("Error getting app name")
-			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
-			return
-		}
-		msg := appName + "-deleted"
-
-		// 7. Send Success Response
-		SendJsonResponse(w, http.StatusOK, nil, msg)
+		// 5. Send Success Response
+		SendJsonResponse(w, http.StatusOK, instance, appName+"-detail")
 	}
 }

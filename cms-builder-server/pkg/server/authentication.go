@@ -17,6 +17,8 @@ import (
 
 const GodTokenHeader = "X-God-Token"
 
+// TODO: THIS FILE NEEDS SERIOUS REFACTORING
+
 func VerifyUser(userIdToken string, firebase *clients.FirebaseManager, db *database.Database, systemUser *models.User, requestId string) (*models.User, error) {
 	accessToken, err := firebase.VerifyIDToken(context.Background(), userIdToken)
 	if err != nil {
@@ -79,9 +81,8 @@ func AuthMiddleware(envGodToken string, godUser *models.User, firebase *clients.
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 			// Clear the headers in case someone else set them
-			r.Header.Del(requestedByParamKey.S())
-			r.Header.Del(authParamKey.S())
-			r.Header.Del(rolesParamKey.S())
+			r.Header.Del(RequestedByParamKey.S())
+			r.Header.Del(RolesParamKey.S())
 
 			// Check if the request has a god token
 			headerGodToken := r.Header.Get(GodTokenHeader)

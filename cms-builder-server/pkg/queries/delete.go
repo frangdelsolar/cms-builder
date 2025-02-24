@@ -10,7 +10,7 @@ func Delete(db *database.Database, entity interface{}, user *models.User, reques
 
 	result := db.DB.Delete(entity)
 	if result.Error == nil {
-		historyEntry, err := models.NewLogHistoryEntry(models.DeleteCRUDAction, user, entity, "", requestId)
+		historyEntry, err := models.NewDatabaseLogEntry(models.DeleteCRUDAction, user, entity, "", requestId)
 		if err != nil {
 			return nil
 		}

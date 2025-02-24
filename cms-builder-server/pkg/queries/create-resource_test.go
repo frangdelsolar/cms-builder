@@ -25,7 +25,7 @@ func TestCreate(t *testing.T) {
 	err = db.AutoMigrate(&TestModel{})
 	assert.NoError(t, err)
 
-	err = db.AutoMigrate(&models.HistoryEntry{})
+	err = db.AutoMigrate(&models.DatabaseLog{})
 	assert.NoError(t, err)
 
 	// Wrap in our database struct
@@ -51,7 +51,7 @@ func TestCreate(t *testing.T) {
 	assert.Equal(t, "Test Record", retrieved.Name, "Expected the name to match")
 
 	// Check if history entry was created
-	var historyEntry models.HistoryEntry
+	var historyEntry models.DatabaseLog
 	err = db.First(&historyEntry).Error
 	assert.NoError(t, err, "Expected a log history entry to be created")
 }

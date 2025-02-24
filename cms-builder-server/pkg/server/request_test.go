@@ -1,6 +1,7 @@
 package server_test
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +11,7 @@ import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
+	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 )
@@ -424,6 +426,242 @@ func TestValidateOrderParam(t *testing.T) {
 				assert.Error(t, err, "Expected an error")
 				assert.Equal(t, tt.expectedError, err.Error(), "Unexpected error message")
 			}
+		})
+	}
+}
+
+// TestUserIsAllowed tests the UserIsAllowed function.
+func TestUserIsAllowed(t *testing.T) {
+
+	const EditorRole models.Role = "editor"
+	// Define test cases
+	tests := []struct {
+		name           string
+		appPermissions RolePermissionMap
+		userRoles      []models.Role
+		action         CrudOperation
+		expectedResult bool
+	}{
+		{
+			name: "user has permission for the action",
+			appPermissions: RolePermissionMap{
+				models.AdminRole: {OperationRead, OperationCreate},
+				EditorRole:       {OperationRead},
+			},
+			userRoles:      []models.Role{models.AdminRole},
+			action:         OperationRead,
+			expectedResult: true,
+		},
+		{
+			name: "user does not have permission for the action",
+			appPermissions: RolePermissionMap{
+				models.AdminRole: {OperationCreate},
+				EditorRole:       {OperationRead},
+			},
+			userRoles:      []models.Role{EditorRole},
+			action:         OperationCreate,
+			expectedResult: false,
+		},
+		{
+			name: "user has no roles",
+			appPermissions: RolePermissionMap{
+				models.AdminRole: {OperationRead, OperationCreate},
+				EditorRole:       {OperationRead},
+			},
+			userRoles:      []models.Role{},
+			action:         OperationRead,
+			expectedResult: false,
+		},
+		{
+			name: "role has no permissions",
+			appPermissions: RolePermissionMap{
+				models.AdminRole: {},
+				EditorRole:       {OperationRead},
+			},
+			userRoles:      []models.Role{models.AdminRole},
+			action:         OperationRead,
+			expectedResult: false,
+		},
+		{
+			name: "role does not exist in permissions",
+			appPermissions: RolePermissionMap{
+				EditorRole: {OperationRead},
+			},
+			userRoles:      []models.Role{models.AdminRole},
+			action:         OperationRead,
+			expectedResult: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Call the function
+			result := UserIsAllowed(tt.appPermissions, tt.userRoles, tt.action)
+
+			// Verify the result
+			assert.Equal(t, tt.expectedResult, result, "Unexpected result for test case: %s", tt.name)
+		})
+	}
+}
+
+// TestReadRequestBody tests the ReadRequestBody function.
+func TestReadRequestBody(t *testing.T) {
+	tests := []struct {
+		name           string
+		requestBody    string
+		expectedResult []byte
+		expectedError  bool
+	}{
+		{
+			name:           "empty request body",
+			requestBody:    "",
+			expectedResult: []byte{},
+			expectedError:  false,
+		},
+		{
+			name:           "valid request body",
+			requestBody:    `{"key": "value"}`,
+			expectedResult: []byte(`{"key": "value"}`),
+			expectedError:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create a test request with the request body
+			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewBufferString(tt.requestBody))
+
+			// Call the ReadRequestBody function
+			result, err := ReadRequestBody(req)
+
+			// Verify the result
+			if tt.expectedError {
+				assert.Error(t, err, "Expected an error for test case: %s", tt.name)
+			} else {
+				assert.NoError(t, err, "Expected no error for test case: %s", tt.name)
+				assert.Equal(t, tt.expectedResult, result, "Unexpected result for test case: %s", tt.name)
+			}
+		})
+	}
+}
+
+// TestFormatRequestBody tests the FormatRequestBody function.
+func TestFormatRequestBody(t *testing.T) {
+	tests := []struct {
+		name           string
+		requestBody    string
+		filterKeys     map[string]bool
+		expectedResult map[string]interface{}
+		expectedError  bool
+	}{
+		{
+			name:           "empty request body",
+			requestBody:    "",
+			filterKeys:     map[string]bool{},
+			expectedResult: map[string]interface{}{},
+			expectedError:  false,
+		},
+		{
+			name:        "valid request body with no filter",
+			requestBody: `{"key1": "value1", "key2": "value2"}`,
+			filterKeys:  map[string]bool{},
+			expectedResult: map[string]interface{}{
+				"key1": "value1",
+				"key2": "value2",
+			},
+			expectedError: false,
+		},
+		{
+			name:        "valid request body with filter",
+			requestBody: `{"key1": "value1", "key2": "value2"}`,
+			filterKeys:  map[string]bool{"key1": true},
+			expectedResult: map[string]interface{}{
+				"key2": "value2",
+			},
+			expectedError: false,
+		},
+		{
+			name:           "invalid JSON request body",
+			requestBody:    `invalid-json`,
+			filterKeys:     map[string]bool{},
+			expectedResult: map[string]interface{}{},
+			expectedError:  true,
+		},
+		{
+			name:        "filter keys are case insensitive",
+			requestBody: `{"Key1": "value1", "key2": "value2"}`,
+			filterKeys:  map[string]bool{"key1": true},
+			expectedResult: map[string]interface{}{
+				"key2": "value2",
+			},
+			expectedError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create a test request with the request body
+			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewBufferString(tt.requestBody))
+
+			// Call the FormatRequestBody function
+			result, err := FormatRequestBody(req, tt.filterKeys)
+
+			// Verify the result
+			if tt.expectedError {
+				assert.Error(t, err, "Expected an error for test case: %s", tt.name)
+			} else {
+				assert.NoError(t, err, "Expected no error for test case: %s", tt.name)
+				assert.Equal(t, tt.expectedResult, result, "Unexpected result for test case: %s", tt.name)
+			}
+		})
+	}
+}
+
+// TestGetUrlParam tests the GetUrlParam function.
+func TestGetUrlParam(t *testing.T) {
+	tests := []struct {
+		name           string
+		param          string
+		url            string
+		expectedResult string
+	}{
+		{
+			name:           "valid URL parameter",
+			param:          "id",
+			url:            "/users/123",
+			expectedResult: "123",
+		},
+		{
+			name:           "missing URL parameter",
+			param:          "id",
+			url:            "/users",
+			expectedResult: "",
+		},
+		{
+			name:           "empty URL parameter value",
+			param:          "id",
+			url:            "/users/",
+			expectedResult: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create a new request
+			req := httptest.NewRequest(http.MethodGet, tt.url, nil)
+
+			// Create a new router and set the URL parameters
+			router := mux.NewRouter()
+			router.HandleFunc("/users/{id}", func(w http.ResponseWriter, r *http.Request) {
+				// Call the GetUrlParam function
+				result := GetUrlParam(tt.param, r)
+
+				// Verify the result
+				assert.Equal(t, tt.expectedResult, result, "Unexpected result for test case: %s", tt.name)
+			})
+
+			// Match the request to the router
+			router.ServeHTTP(httptest.NewRecorder(), req)
 		})
 	}
 }

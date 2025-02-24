@@ -17,7 +17,7 @@ func TestSave(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Auto migrate the User and HistoryEntry models
-	err = db.AutoMigrate(&User{}, &HistoryEntry{})
+	err = db.AutoMigrate(&User{}, &DatabaseLog{})
 	assert.NoError(t, err)
 
 	// Create a Database instance
@@ -47,7 +47,7 @@ func TestSave(t *testing.T) {
 		assert.Equal(t, "john.doe.updated@example.com", updatedUser.Email)
 
 		// Verify the history entry was created
-		var historyEntry HistoryEntry
+		var historyEntry DatabaseLog
 		err = db.Where("request_id = ?", "request-123").First(&historyEntry).Error
 		assert.NoError(t, err)
 		assert.Equal(t, UpdateCRUDAction, historyEntry.Action)
@@ -78,7 +78,7 @@ func TestSave(t *testing.T) {
 		assert.Equal(t, "jane.doe@example.com", createdUser.Email)
 
 		// Verify the history entry was created
-		var historyEntry HistoryEntry
+		var historyEntry DatabaseLog
 		err = db.Where("request_id = ?", "request-456").First(&historyEntry).Error
 		assert.NoError(t, err)
 		assert.Equal(t, UpdateCRUDAction, historyEntry.Action)

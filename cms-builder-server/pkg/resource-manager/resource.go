@@ -1,12 +1,15 @@
 package resourcemanager
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"reflect"
+	"strings"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
 )
 
 type ApiFunction func(a *Resource, db *database.Database) http.HandlerFunc
@@ -25,6 +28,7 @@ type Resource struct {
 	Validators      ValidatorsMap            // A map of field names to validation functions
 	Permissions     server.RolePermissionMap // Key is Role name, value is permission
 	Api             *ApiHandlers             // The API struct
+	Routes          []server.Route           // Other routes that are not the default api routes
 }
 
 func (a *Resource) GetSlice() (interface{}, error) {
@@ -44,7 +48,7 @@ func (a *Resource) GetSlice() (interface{}, error) {
 	return entities, nil
 }
 
-func (a *Resource) GetInstance() interface{} {
+func (a *Resource) GetOne() interface{} {
 	instanceType := reflect.TypeOf(a.Model)
 	if instanceType.Kind() == reflect.Ptr {
 		instanceType = instanceType.Elem()
@@ -53,21 +57,85 @@ func (a *Resource) GetInstance() interface{} {
 }
 
 func (a *Resource) GetName() (string, error) {
-	modelType := reflect.TypeOf(a.Model)
+	return utils.GetInterfaceName(a.Model)
+}
 
-	if modelType == nil {
-		return "", fmt.Errorf("model cannot be nil")
+func (a *Resource) GetKeys() []string {
+
+	if a.Model == nil {
+		return nil
 	}
 
-	// If it's a pointer, get the element type
+	modelType := reflect.TypeOf(a.Model)
 	if modelType.Kind() == reflect.Ptr {
 		modelType = modelType.Elem()
 	}
 
-	// Ensure it's a struct before returning its name
 	if modelType.Kind() != reflect.Struct {
-		return "", fmt.Errorf("model must be a struct or a pointer to a struct")
+		return nil
 	}
 
-	return modelType.Name(), nil
+	keys := make([]string, 0)
+	for i := 0; i < modelType.NumField(); i++ {
+		field := modelType.Field(i)
+		if field.Tag.Get("json") != "" {
+			keys = append(keys, field.Tag.Get("json"))
+		}
+	}
+
+	return keys
+}
+
+func (a *Resource) GetValidatorsForField(fieldName string) ValidatorsList {
+
+	lowerFieldName := strings.ToLower(string(fieldName))
+	validators, ok := a.Validators[lowerFieldName]
+	if !ok {
+		return nil
+	}
+
+	return validators
+}
+
+func InterfaceToMap(instance interface{}) (map[string]interface{}, error) {
+	jsonData, err := json.Marshal(instance)
+	if err != nil {
+		return nil, err
+	}
+	var data map[string]interface{}
+	err = json.Unmarshal(jsonData, &data)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+func (a *Resource) Validate(instance interface{}) ValidationResult {
+
+	errors := ValidationResult{
+		Errors: make([]ValidationError, 0),
+	}
+
+	_, err := InterfaceToMap(instance)
+	if err != nil {
+		return errors
+	}
+
+	// for key := range dataMap {
+	// 	validators := a.GetValidatorsForField(FieldName(key))
+
+	// 	for _, validator := range validators {
+	// 		output := NewFieldValidationError(key)
+	// 		validationResult := validator(key, jsonData, &output)
+	// 		if validationResult.Error != "" {
+	// 			errors.Errors = append(errors.Errors, *validationResult)
+	// 		}
+	// 	}
+	// }
+
+	if len(errors.Errors) == 0 {
+		return ValidationResult{}
+	}
+
+	return errors
 }

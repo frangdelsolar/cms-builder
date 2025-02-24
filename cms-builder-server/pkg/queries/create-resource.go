@@ -9,7 +9,7 @@ import (
 func Create(db *database.Database, instance interface{}, user *User, requestId string) *gorm.DB {
 	result := db.DB.Create(instance)
 	if result.Error == nil {
-		historyEntry, err := NewLogHistoryEntry(CreateCRUDAction, user, instance, "", requestId)
+		historyEntry, err := NewDatabaseLogEntry(CreateCRUDAction, user, instance, "", requestId)
 		if err != nil {
 			return nil
 		}

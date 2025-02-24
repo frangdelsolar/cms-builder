@@ -84,8 +84,8 @@ func RequestLoggerMiddleware(db *database.Database) func(next http.Handler) http
 				logEntry := models.RequestLog{
 					Timestamp:         start,
 					Ip:                r.RemoteAddr,
-					UserId:            r.Header.Get(requestedByParamKey.S()),
-					Roles:             r.Header.Get(rolesParamKey.S()),
+					UserId:            r.Header.Get(RequestedByParamKey.S()),
+					Roles:             r.Header.Get(RolesParamKey.S()),
 					Method:            r.Method,
 					Path:              r.URL.Path,
 					Query:             query,

@@ -3,17 +3,20 @@ package orchestrator
 import (
 	"fmt"
 
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/clients"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/config"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	dbLogger "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database-logger"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
+	manager "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store"
 	"github.com/google/uuid"
 )
 
-const orchestratorVersion = "1.6.0"
+const orchestratorVersion = "2.0.0"
 
 type OrchestratorUsers struct {
 	God       *models.User
@@ -23,14 +26,15 @@ type OrchestratorUsers struct {
 }
 
 type Orchestrator struct {
-	Config         *config.ConfigReader
-	Logger         *logger.Logger
-	LoggerConfig   *logger.LoggerConfig
-	DB             *database.Database
-	Server         *server.Server
-	Users          OrchestratorUsers
-	FirebaseClient *clients.FirebaseManager
-	Store          Store
+	Config          *config.ConfigReader
+	Logger          *logger.Logger
+	LoggerConfig    *logger.LoggerConfig
+	DB              *database.Database
+	Server          *server.Server
+	Users           *OrchestratorUsers
+	FirebaseClient  *clients.FirebaseManager
+	Store           *store.Store
+	ResourceManager *manager.ResourceManager
 }
 
 func NewOrchestrator() (*Orchestrator, error) {
@@ -62,16 +66,13 @@ func NewOrchestrator() (*Orchestrator, error) {
 		return nil, err
 	}
 
-	// // Admin
-	// b.InitAdmin()
+	o.InitResourceManager()
 
-	// InitAuth(
+	o.InitAuth()
 
-	// err = o.InitHistory()
-	// if err != nil {
-	// 	o.Logger.Error().Err(err).Msg("Error initializing history")
-	// 	return nil, err
-	// }
+	o.InitDatabaseLogger() // Needs ResourceManager
+
+	o.InitRequestLogger() // Needs ResourceManager
 
 	err = o.InitUsers() // config, db, firebase, history, amdin and logger
 	if err != nil {
@@ -112,7 +113,26 @@ func NewOrchestrator() (*Orchestrator, error) {
 	return o, nil
 }
 
-func (o *Orchestrator) InitLogger() error {
+func (o *Orchestrator) InitRequestLogger() {
+	dbLoggerResourceConfig := dbLogger.SetupDBLoggerResource(o.ResourceManager, o.DB)
+	o.ResourceManager.AddResource(dbLoggerResourceConfig)
+}
+
+func (o *Orchestrator) InitDatabaseLogger() {
+	dbLoggerResourceConfig := dbLogger.SetupDBLoggerResource(o.ResourceManager, o.DB)
+	o.ResourceManager.AddResource(dbLoggerResourceConfig)
+}
+
+func (o *Orchestrator) InitAuth() {
+	authResourceConfig := auth.SetupUserResource(o.FirebaseClient, o.DB, o.Users.System)
+	o.ResourceManager.AddResource(authResourceConfig)
+}
+
+func (o *Orchestrator) InitResourceManager() {
+	o.ResourceManager = manager.NewResourceManager()
+}
+
+func (o *Orchestrator) InitStore() error {
 	var s store.Store
 
 	storeType := o.Config.GetString(EnvKeys.StoreType)

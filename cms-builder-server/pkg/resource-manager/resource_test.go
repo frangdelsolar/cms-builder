@@ -26,9 +26,9 @@ func TestGetSlice(t *testing.T) {
 	assert.Equal(t, expectedType, sliceType)
 }
 
-func TestGetInstance(t *testing.T) {
+func TestGetOne(t *testing.T) {
 	r := &Resource{Model: TestModel{}}
-	instance := r.GetInstance()
+	instance := r.GetOne()
 
 	instanceType := reflect.TypeOf(instance)
 	expectedType := reflect.PtrTo(reflect.TypeOf(TestModel{}))
@@ -82,6 +82,81 @@ func TestGetName(t *testing.T) {
 			} else {
 				assert.NoError(t, err, "Did not expect an error but got one")
 				assert.Equal(t, tt.expected, actual, "Expected and actual model names do not match")
+			}
+		})
+	}
+}
+
+// TestResource_GetKeys tests the GetKeys method.
+func TestResource_GetKeys(t *testing.T) {
+	// Define a test model with JSON tags
+	type TestModel struct {
+		ID    int    `json:"id"`
+		Name  string `json:"name"`
+		Email string `json:"email"`
+	}
+
+	// Define a test model without JSON tags
+	type TestModelNoTags struct {
+		ID    int
+		Name  string
+		Email string
+	}
+
+	// Define test cases
+	tests := []struct {
+		name          string
+		model         interface{}
+		expectedKeys  []string
+		expectedError bool
+	}{
+		{
+			name:          "struct with JSON tags",
+			model:         TestModel{},
+			expectedKeys:  []string{"id", "name", "email"},
+			expectedError: false,
+		},
+		{
+			name:          "pointer to struct with JSON tags",
+			model:         &TestModel{},
+			expectedKeys:  []string{"id", "name", "email"},
+			expectedError: false,
+		},
+		{
+			name:          "struct without JSON tags",
+			model:         TestModelNoTags{},
+			expectedKeys:  []string{},
+			expectedError: false,
+		},
+		{
+			name:          "non-struct type",
+			model:         "not-a-struct",
+			expectedKeys:  nil,
+			expectedError: true,
+		},
+		{
+			name:          "nil model",
+			model:         nil,
+			expectedKeys:  nil,
+			expectedError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create a Resource instance with the test model
+			resource := &Resource{
+				Model: tt.model,
+			}
+
+			// Call the GetKeys method
+			keys := resource.GetKeys()
+
+			// Verify the result
+			if tt.expectedError {
+				assert.Nil(t, keys, "Expected nil keys for test case: %s", tt.name)
+			} else {
+				assert.Equal(t, tt.expectedKeys, keys, "Unexpected keys for test case: %s", tt.name)
 			}
 		})
 	}

@@ -1,7 +1,9 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -10,6 +12,7 @@ import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
+	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
 )
 
@@ -24,11 +27,10 @@ const (
 )
 
 const (
-	requestedByParamKey RequestParamKey = "requestedBy"
-	rolesParamKey       RequestParamKey = "roles"
-	authParamKey        RequestParamKey = "auth"
-	limitParamKey       RequestParamKey = "limit"
-	pageParamKey        RequestParamKey = "page"
+	RequestedByParamKey RequestParamKey = "requestedBy"
+	RolesParamKey       RequestParamKey = "roles"
+	LimitParamKey       RequestParamKey = "limit"
+	PageParamKey        RequestParamKey = "page"
 )
 
 type RequestParamKey string
@@ -37,8 +39,6 @@ func (r RequestParamKey) S() string {
 	return string(r)
 }
 
-// ValidateRequestMethod returns an error if the request method does not match the given
-// method string. The error message will include the actual request method.
 func ValidateRequestMethod(r *http.Request, method string) error {
 	if r.Method != method {
 		return fmt.Errorf("invalid request method: %s", r.Method)
@@ -46,9 +46,6 @@ func ValidateRequestMethod(r *http.Request, method string) error {
 	return nil
 }
 
-// GetRequestAccessToken extracts the access token from the Authorization header of the given request.
-// The header should be in the format "Bearer <token>".
-// If the token is not found, it returns an empty string.
 func GetRequestAccessToken(r *http.Request) string {
 	header := r.Header.Get("Authorization")
 	if header != "" {
@@ -60,9 +57,6 @@ func GetRequestAccessToken(r *http.Request) string {
 	return ""
 }
 
-// GetRequestId retrieves the request ID from the context of the given request.
-// The request ID is set by the RequestLogMiddleware.
-// If the request ID is not found, it returns an empty string.
 func GetRequestId(r *http.Request) string {
 	ctx := r.Context()
 	if requestId, ok := ctx.Value(CtxRequestIdentifier).(string); ok {
@@ -153,7 +147,6 @@ func GetRequestQueryParams(r *http.Request) (*QueryParams, error) {
 		q = r.URL.Query()
 	}
 
-	// Parse limit (with default value and error handling)
 	limit, err := GetIntQueryParam("limit", q)
 	if err != nil {
 		log.Error().Err(err).Msgf("Error validating limit")
@@ -161,7 +154,6 @@ func GetRequestQueryParams(r *http.Request) (*QueryParams, error) {
 	}
 	params.Limit = limit
 
-	// Parse page (with default value and error handling)
 	page, err := GetIntQueryParam("page", q)
 	if err != nil {
 		log.Error().Err(err).Msgf("Error validating page")
@@ -179,7 +171,6 @@ func GetRequestQueryParams(r *http.Request) (*QueryParams, error) {
 
 	params.Order = order
 
-	// Parse query parameters into the map
 	for key, values := range q {
 		if key != "limit" && key != "page" && key != "order" { // Exclude standard params
 			params.Query[key] = strings.Join(values, ",") // Assuming only one value per query parameter for now. Can be modified to handle multiple values per key if needed.
@@ -216,4 +207,68 @@ func ValidateOrderParam(orderParam string) (string, error) {
 	order = strings.TrimSuffix(order, ",")
 
 	return order, nil
+}
+
+func UserIsAllowed(appPermissions RolePermissionMap, userRoles []models.Role, action CrudOperation) bool {
+
+	// Loop over the user's roles and their associated permissions
+	for _, role := range userRoles {
+		if _, ok := appPermissions[role]; ok {
+			for _, allowedAction := range appPermissions[role] {
+				if allowedAction == action {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
+}
+
+func ReadRequestBody(r *http.Request) ([]byte, error) {
+	if r.Body == nil {
+		return []byte{}, nil
+	}
+
+	defer r.Body.Close()
+	return io.ReadAll(r.Body)
+}
+
+func FormatRequestBody(r *http.Request, filterKeys map[string]bool) (map[string]interface{}, error) {
+	body, err := ReadRequestBody(r)
+	if err != nil {
+		return map[string]interface{}{}, err
+	}
+
+	// If the body is empty, return an empty map
+	if len(body) == 0 {
+		return map[string]interface{}{}, nil
+	}
+
+	var unFilteredResult map[string]interface{}
+	err = json.Unmarshal(body, &unFilteredResult)
+	if err != nil {
+		return map[string]interface{}{}, err
+	}
+
+	// Make a copy of the filter with all lowercase
+	filterLowerCase := map[string]bool{}
+	for key := range filterKeys {
+		filterLowerCase[strings.ToLower(key)] = true
+	}
+
+	// Apply the filter to the unfiltered result
+	result := make(map[string]interface{})
+	for key, value := range unFilteredResult {
+		lowerCaseKey := strings.ToLower(key)
+		if !filterLowerCase[lowerCaseKey] {
+			result[key] = value
+		}
+	}
+
+	return result, nil
+}
+
+func GetUrlParam(param string, r *http.Request) string {
+	return mux.Vars(r)[param]
 }
