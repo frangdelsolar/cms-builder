@@ -9,62 +9,76 @@ import (
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/clients"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/queries"
-	"github.com/rs/zerolog/log"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
+
+	firebaseAuth "firebase.google.com/go/auth"
+
 	"gorm.io/gorm"
 )
 
 const GodTokenHeader = "X-God-Token"
 
-// TODO: THIS FILE NEEDS SERIOUS REFACTORING
+func VerifyUser(userIdToken string, firebase *clients.FirebaseManager, db *database.Database, systemUser *models.User, requestId string, log *logger.Logger) (*models.User, error) {
 
-func VerifyUser(userIdToken string, firebase *clients.FirebaseManager, db *database.Database, systemUser *models.User, requestId string) (*models.User, error) {
 	accessToken, err := firebase.VerifyIDToken(context.Background(), userIdToken)
 	if err != nil {
 		log.Error().Err(err).Msg("Error verifying token")
 		return nil, err
 	}
 
-	var localUser models.User = models.User{}
+	localUser := models.User{}
 
-	if err != nil {
-		log.Error().Err(err).Msg("Error finding user in database")
-	}
-
-	if localUser.ID == 0 {
-		claims := accessToken.Claims
-
-		// Safer way to get the name, handling missing claims and type issues
-		name, ok := claims["name"].(string)
-		if !ok {
-			name, ok = claims["displayName"].(string) // Try displayName as fallback
-			if !ok {
-				log.Warn().Msg("Name claim not found in token")
-				name = "" // Or a suitable default like "Unknown models.User"
-			}
-		}
-
-		// Safer way to get the email, handling missing claims and type issues
-		email, ok := claims["email"].(string)
-		if !ok {
-			log.Warn().Msg("Email claim not found in token")
-			email = "" //  Consider a default like "no-email@example.com" or handle differently
-		}
-
-		localUser.Name = name
-		localUser.Email = strings.ToLower(email)
-		localUser.FirebaseId = accessToken.UID
-		localUser.Roles = string(models.VisitorRole)
-
-		res := queries.Create(db, &localUser, systemUser, requestId)
-		if res.Error != nil { // Check for errors during creation
-			err = fmt.Errorf("error creating user in database: %v", res.Error)
-			return nil, err // Return the error if user creation fails
+	q := queries.FindOne(db, &localUser, "firebase_id = ?", accessToken.UID)
+	if q.Error != nil {
+		if !errors.Is(q.Error, gorm.ErrRecordNotFound) {
+			// Need
+			log.Warn().Msg("User is firebase user but not in database")
+			return RegisterFirebaseUserInDatabase(accessToken, firebase, db, systemUser, requestId, log)
+		} else {
+			log.Error().Err(q.Error).Msg("Error finding user in database")
+			return nil, q.Error
 		}
 	}
 
 	return &localUser, nil
+}
+
+func RegisterFirebaseUserInDatabase(accessToken *firebaseAuth.Token, firebase *clients.FirebaseManager, db *database.Database, systemUser *models.User, requestId string, log *logger.Logger) (*models.User, error) {
+	// Extract name and email from the access token's claims
+	name, _ := accessToken.Claims["name"].(string)    // Name might not always be present
+	email, ok := accessToken.Claims["email"].(string) // Email is usually required
+
+	// Check if email is present and valid
+	if !ok || email == "" {
+		return nil, fmt.Errorf("email claim is missing or invalid in the access token")
+	}
+
+	// Set default name if not provided
+	if name == "" {
+		name = "No Name" // Or any other default value
+	}
+
+	roles := string(models.VisitorRole)
+
+	// Create a local user object
+	localUser := &models.User{
+		Name:  name,
+		Email: email,
+		Roles: roles, // Assign roles if applicable
+	}
+
+	// Save the user to the database
+	res := queries.Create(db, localUser, systemUser, requestId)
+	if res.Error != nil {
+		err := fmt.Errorf("error creating user in database: %v", res.Error)
+		log.Error().Err(err).Msg("Failed to create user")
+		return nil, err
+	}
+
+	return localUser, nil
 }
 
 func VerifyGodUser(envToken string, requestToken string) bool {
@@ -91,16 +105,16 @@ func AuthMiddleware(envGodToken string, godUser *models.User, firebase *clients.
 			requestId := GetRequestId(r)
 			log := GetRequestLogger(r)
 
-			var localUser *models.User
+			localUser := &models.User{}
 			if headerGodToken != "" && VerifyGodUser(envGodToken, headerGodToken) {
 				localUser = godUser
 			}
 
 			var err error
 			if localUser.ID == 0 && accessToken != "" {
-				localUser, err = VerifyUser(accessToken, firebase, db, systemUser, requestId)
+				localUser, err = VerifyUser(accessToken, firebase, db, systemUser, requestId, log)
 				if err != nil {
-					log.Error().Err(err).Msg("Error verifying user. models.User may not be authenticated")
+					log.Error().Err(err).Msg("Error verifying user. User may not be authenticated")
 				}
 			}
 
@@ -109,100 +123,127 @@ func AuthMiddleware(envGodToken string, godUser *models.User, firebase *clients.
 				r = r.WithContext(context.WithValue(r.Context(), CtxRequestUser, localUser))
 			}
 
+			log.Info().Interface("user", localUser).Msg("Authenticated as")
+
 			next.ServeHTTP(w, r)
 		})
 	}
 }
 
-// TODO: this is disgusting -> REFACTOR
-// CreateUserWithRole creates a new user in Firebase with the given name, email, and password, and also
-// creates a new user in the local database with the given role. If the user already exists in Firebase,
-// it will add the user to the local database. If the user already exists in the local database, it will
-// return an error.
-func CreateUserWithRole(input models.RegisterUserInput, firebase *clients.FirebaseManager, db *database.Database, systemUser *models.User, requestId string) (*models.User, error) {
+func FormatRoles(roles []models.Role) string {
+	rolesStr := ""
+	for _, role := range roles {
+		rolesStr += string(role) + ","
+	}
+	rolesStr = rolesStr[:len(roles)-1]
+	return rolesStr
+}
+
+func CreateUserWithRole(input models.RegisterUserInput, firebase *clients.FirebaseManager, db *database.Database, systemUser *models.User, requestId string, log *logger.Logger) (*models.User, error) {
 	ctx := context.Background()
 
-	registerFirebase := input.RegisterFirebase
+	// Normalize email to lowercase
+	input.Email = strings.ToLower(input.Email)
+
+	// Convert roles slice to a comma-separated string
+	roles := FormatRoles(input.Roles)
+
+	// Register user in Firebase if required
+	fbUserId, err := registerOrGetFirebaseUser(ctx, firebase, input, log)
+	if err != nil {
+		return nil, fmt.Errorf("failed to register or get Firebase user: %w", err)
+	}
+
+	// Check if a user with the same email already exists in the database
+	existingUser, err := findUserByEmail(db, input.Email, log)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check existing user by email: %w", err)
+	}
+
+	// If the user exists, update Firebase ID if necessary and return
+	if existingUser != nil {
+		return handleExistingUser(existingUser, fbUserId, db, systemUser, requestId, log)
+	}
+
+	// Create the user in the database
+	newUser := models.User{
+		Name:       input.Name,
+		Email:      input.Email,
+		FirebaseId: fbUserId,
+		Roles:      roles,
+	}
+
+	if err := queries.Create(db, &newUser, systemUser, requestId).Error; err != nil {
+		log.Error().Err(err).Msg("Failed to create user in database")
+		return nil, fmt.Errorf("failed to create user in database: %w", err)
+	}
+
+	log.Info().Interface("user", newUser).Msg("User created successfully")
+	return &newUser, nil
+}
+
+// Helper function to register or get an existing Firebase user
+func registerOrGetFirebaseUser(ctx context.Context, firebase *clients.FirebaseManager, input models.RegisterUserInput, log *logger.Logger) (string, error) {
+	if !input.RegisterFirebase {
+		return "", nil
+	}
+
+	log.Info().Str("email", input.Email).Msg("Registering user in Firebase")
+
 	firebaseInput := clients.FirebaseUserInput{
 		Email:    input.Email,
 		Name:     input.Name,
 		Password: input.Password,
 	}
 
-	roles := ""
-	for _, role := range input.Roles {
-		roles += string(role) + ","
-	}
-	roles = roles[:len(roles)-1]
-
-	var fbUserId string
-	if registerFirebase {
-		fbUser, err := firebase.RegisterUser(ctx, firebaseInput)
-		if err != nil {
-			msg := fmt.Sprintf("Error registering user: %s", err.Error())
-
-			if strings.Contains(err.Error(), "EMAIL_EXISTS") {
-				existingFbUser, err := firebase.Client.GetUserByEmail(ctx, input.Email)
-				if err != nil {
-					msg := fmt.Sprintf("Error getting user by email: %s", err.Error())
-					return nil, fmt.Errorf("%s", msg)
-				}
-				// log.Warn().Msg("models.User already exists in Firebase. Will add it to database")
-				fbUserId = existingFbUser.UID
-			} else {
-				return nil, fmt.Errorf("%s", msg)
-			}
-		} else {
-			fbUserId = fbUser.UID
-		}
-
-		// Check if there is a user with the same fbUserId in the database
-		var existingUser models.User
-		q := "firebase_id = '" + fbUserId + "'"
-		err = db.DB.Where(q).First(&existingUser).Error
-		if err != nil {
-			if !errors.Is(err, gorm.ErrRecordNotFound) {
-				return nil, fmt.Errorf("error getting user from database")
-			}
-		}
-
-		if existingUser != (models.User{}) {
-			// log.Warn().Msg("models.User already exists in database.")
-			return &existingUser, nil
-		}
-	}
-
-	// Check if there is a user with the same email in the database
-	var existingUser models.User
-	q := "email = '" + strings.ToLower(input.Email) + "'"
-	err := db.DB.Where(q).First(&existingUser).Error
+	fbUser, err := firebase.GetOrCreateUser(ctx, firebaseInput)
 	if err != nil {
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("error getting user from database")
+		log.Error().Err(err).Msg("Failed to register or get Firebase user")
+		return "", fmt.Errorf("failed to register or get Firebase user: %w", err)
+	}
+
+	log.Info().Interface("user", fbUser).Msg("User registered in Firebase")
+	return fbUser.UID, nil
+}
+
+// Helper function to find a user by email
+func findUserByEmail(db *database.Database, email string, log *logger.Logger) (*models.User, error) {
+	log.Debug().Str("email", email).Msg("Checking if user exists in database")
+
+	var user models.User
+	if err := db.DB.Where("email = ?", email).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil // User not found
 		}
+		log.Error().Err(err).Msg("Failed to query user from database")
+		return nil, fmt.Errorf("failed to query user from database: %w", err)
 	}
 
-	if existingUser != (models.User{}) {
-		// log.Warn().Msg("models.User already exists in database.")
-		return &existingUser, nil
-	}
-
-	// Create user in database
-	user := models.User{
-		Name:       input.Name,
-		Email:      strings.ToLower(input.Email),
-		FirebaseId: fbUserId,
-		Roles:      roles,
-	}
-
-	err = queries.Create(db, &user, systemUser, requestId).Error
-	if err != nil {
-		return nil, fmt.Errorf("error creating user in database")
-	}
-
-	if user.ID == 0 {
-		return nil, fmt.Errorf("error creating user in database")
-	}
-
+	log.Info().Interface("user", user).Msg("User found in database")
 	return &user, nil
+}
+
+// Helper function to handle existing user (update Firebase ID if necessary)
+func handleExistingUser(existingUser *models.User, fbUserId string, db *database.Database, systemUser *models.User, requestId string, log *logger.Logger) (*models.User, error) {
+	if existingUser.FirebaseId == fbUserId {
+		if fbUserId != "" {
+			log.Info().Msg("User already exists in database with matching Firebase ID")
+		}
+		return existingUser, nil
+	}
+
+	log.Warn().Msg("User already exists in database. Updating Firebase ID")
+
+	previousState := *existingUser
+	differences := utils.CompareInterfaces(previousState, existingUser)
+
+	existingUser.FirebaseId = fbUserId
+
+	if err := queries.Update(db, existingUser, systemUser, differences, requestId).Error; err != nil {
+		log.Error().Err(err).Msg("Failed to update user in database")
+		return nil, fmt.Errorf("failed to update user in database: %w", err)
+	}
+
+	log.Info().Interface("user", existingUser).Msg("User updated successfully")
+	return existingUser, nil
 }

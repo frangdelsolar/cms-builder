@@ -54,7 +54,7 @@ func (o *Orchestrator) SetupOrchestratorUsers() error {
 	}
 
 	for _, userData := range usersData {
-		user, err := server.CreateUserWithRole(userData, o.FirebaseClient, o.DB, o.Users.System, requestId)
+		user, err := server.CreateUserWithRole(userData, o.FirebaseClient, o.DB, o.Users.System, requestId, o.Logger)
 		if err != nil {
 			o.Logger.Error().Err(err).Interface("user", userData).Msg("Error creating user")
 			return err

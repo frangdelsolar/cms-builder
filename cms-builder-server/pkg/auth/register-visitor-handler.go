@@ -56,7 +56,7 @@ func RegisterVisitorController(firebase *clients.FirebaseManager, db *database.D
 		}
 
 		// 5. Create User
-		user, err := CreateUserWithRole(input, firebase, db, systemUser, requestId)
+		user, err := CreateUserWithRole(input, firebase, db, systemUser, requestId, log)
 		if err != nil {
 			msg := fmt.Sprintf("Error creating user: %s", err.Error())
 			SendJsonResponse(w, http.StatusInternalServerError, nil, msg)

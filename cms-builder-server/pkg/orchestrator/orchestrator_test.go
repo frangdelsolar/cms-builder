@@ -71,15 +71,15 @@ func TestNewOrchestrator(t *testing.T) {
 	assert.NotNil(t, users.Admin)
 
 	// Server
-	// server := o.Server
-	// assert.NotNil(t, server)
+	server := o.Server
+	assert.NotNil(t, server)
 
 	// Store
-	// store := o.Store
-	// assert.NotNil(t, store)
+	store := o.Store
+	assert.NotNil(t, store)
 
 	// Scheduler
-	// scheduler := o.Scheduler
-	// assert.NotNil(t, scheduler)
+	scheduler := o.Scheduler
+	assert.NotNil(t, scheduler)
 
 }

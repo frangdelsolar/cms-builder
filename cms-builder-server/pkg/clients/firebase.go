@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"fmt"
+	"strings"
 
 	firebase "firebase.google.com/go"
 	"firebase.google.com/go/auth"
@@ -40,22 +42,30 @@ type FirebaseUserInput struct {
 	Password string `json:"password"`
 }
 
-// RegisterUser registers a new user in Firebase with the given name, email, and password.
-//
-// Parameters:
-// - ctx: The context to use for the operation.
-// - input: The input data for the user to create, containing the display name, email and password.
-//
-// Returns:
-// - *auth.UserRecord: The user record of the newly created user.
-// - error: An error if the user creation fails.
-func (fa *FirebaseManager) RegisterUser(ctx context.Context, input FirebaseUserInput) (*auth.UserRecord, error) {
+func (fa *FirebaseManager) GetUser(ctx context.Context, input FirebaseUserInput) (*auth.UserRecord, error) {
+	existingUser, err := fa.GetUserByEmail(ctx, input.Email)
+	if err != nil {
+		return nil, err
+	}
+	return existingUser, nil
+}
+
+func (fa *FirebaseManager) GetOrCreateUser(ctx context.Context, input FirebaseUserInput) (*auth.UserRecord, error) {
 	userToCreate := &auth.UserToCreate{}
 	userToCreate.DisplayName(input.Name)
 	userToCreate.Email(input.Email)
 	userToCreate.Password(input.Password)
 
-	return fa.CreateUser(ctx, userToCreate)
+	userRecord, err := fa.CreateUser(ctx, userToCreate)
+	if err != nil {
+		if strings.Contains(err.Error(), "EMAIL_EXISTS") {
+			return fa.GetUserByEmail(ctx, input.Email)
+		}
+
+		return nil, fmt.Errorf("failed to create user in Firebase: %s", err.Error())
+	}
+
+	return userRecord, nil
 }
 
 // RollbackUserRegistration rolls back a user registration by deleting the user with the given UID in Firebase.

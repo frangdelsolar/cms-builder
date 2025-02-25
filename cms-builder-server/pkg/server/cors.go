@@ -3,9 +3,6 @@ package server
 import (
 	"fmt"
 	"net/http"
-
-	logPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
-	"github.com/rs/zerolog"
 )
 
 // CorsMiddleware adds Cross-Origin Resource Sharing headers to the response.
@@ -27,22 +24,19 @@ func CorsMiddleware(allowedOrigins []string) func(next http.Handler) http.Handle
 
 			origin := r.Header.Get("Origin")
 
-			// Get the logger from the context
-			logger := r.Context().Value("logger").(*zerolog.Logger)
-			if logger == nil {
-				logger = logPkg.Default.Logger // Fallback to a no-op logger if not found
-			}
+			// Get the log from the context
+			log := GetRequestLogger(r)
 
 			// If the Origin header is missing, block the request
 			if origin == "" {
 				err := fmt.Errorf("missing Origin header")
-				logger.Warn().Interface("headers", r.Header).Interface("allowedOrigins", allowedOrigins).Msg("CORS: Missing Origin header")
+				log.Warn().Interface("headers", r.Header).Interface("allowedOrigins", allowedOrigins).Msg("CORS: Missing Origin header")
 				SendJsonResponse(w, http.StatusForbidden, nil, err.Error())
 				return
 			}
 
 			// Check if the origin is allowed
-			if allowedOrigins[0] == "*" || contains(allowedOrigins, origin) {
+			if len(allowedOrigins) > 0 && allowedOrigins[0] == "*" || contains(allowedOrigins, origin) {
 				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 
@@ -53,7 +47,7 @@ func CorsMiddleware(allowedOrigins []string) func(next http.Handler) http.Handle
 				}
 			} else {
 				err := fmt.Errorf("origin '%s' is not allowed", origin)
-				logger.Warn().Interface("headers", r.Header).Interface("allowedOrigins", allowedOrigins).Interface("origin", origin).Msg("CORS")
+				log.Warn().Interface("headers", r.Header).Interface("allowedOrigins", allowedOrigins).Interface("origin", origin).Msg("CORS")
 				SendJsonResponse(w, http.StatusForbidden, nil, err.Error())
 				return
 			}

@@ -35,15 +35,15 @@ func SetupUserResource(firebase *clients.FirebaseManager, db *database.Database,
 		Delete: nil, // Use default
 	}
 
-	routes := []server.Route{
-		// {
-		// 	Path:         "/auth/register",
-		// 	Handler:      RegisterVisitorController(firebase, db, systemUser),
-		// 	Name:         "register",
-		// 	RequiresAuth: false,
-		// 	Method:       http.MethodPost,
-		// },
-	}
+	// TODO: See how to overcome circular dependency.... This one needs system User, but system user needs this resource to be created
+	routes := []server.Route{}
+	// {
+	// 	Path: "/auth/register",
+	// 	// Handler:      RegisterVisitorController(firebase, db, systemUser),
+	// 	Name:         "register",
+	// 	RequiresAuth: false,
+	// 	Method:       http.MethodPost,
+	// },
 
 	config := &manager.ResourceConfig{
 		Model:           models.User{},

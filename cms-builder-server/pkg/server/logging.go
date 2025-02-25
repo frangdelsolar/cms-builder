@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
@@ -18,23 +19,25 @@ func LoggingMiddleware(loggerConfig *logger.LoggerConfig) func(next http.Handler
 
 			log, err := logger.NewLogger(loggerConfig)
 			if err != nil {
-				logger.Default.Error().Err(err).Msg("Error creating request logger")
+				fmt.Println("Error creating request logger")
 				// Fall back to the default logger
 				log = logger.Default
 			}
 
 			// Add the request ID to the logger context
-			requestLog := log.Logger.With().Str("requestId", requestId).Logger()
 
-			// Add the logger to the request context
-			ctx := context.WithValue(r.Context(), CtxRequestLogger, &requestLog)
-			r = r.WithContext(ctx)
+			zero := log.Logger.With().Str("requestId", requestId).Logger()
+
+			requestLog := &logger.Logger{Logger: &zero}
 
 			// Log the request
 			requestLog.Info().Msgf("[%s] %s", r.Method, r.RequestURI)
 
+			// Add the logger to the request context
+			ctx := context.WithValue(r.Context(), CtxRequestLogger, &requestLog)
+
 			// Call the next handler
-			next.ServeHTTP(w, r)
+			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }

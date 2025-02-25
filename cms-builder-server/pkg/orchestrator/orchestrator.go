@@ -89,23 +89,23 @@ func NewOrchestrator() (*Orchestrator, error) {
 		return nil, err
 	}
 
-	// err = o.InitServer()
-	// if err != nil {
-	// 	o.Logger.Error().Err(err).Msg("Error initializing server")
-	// 	return nil, err
-	// }
+	err = o.InitServer()
+	if err != nil {
+		o.Logger.Error().Err(err).Msg("Error initializing server")
+		return nil, err
+	}
 
-	// err = o.InitStore()
-	// if err != nil {
-	// 	o.Logger.Err(err).Msg("Error initializing store")
-	// 	return nil, err
-	// }
+	err = o.InitStore()
+	if err != nil {
+		o.Logger.Err(err).Msg("Error initializing store")
+		return nil, err
+	}
 
-	// err = o.InitScheduler()
-	// if err != nil {
-	// 	o.Logger.Err(err).Msg("Error initializing scheduler")
-	// 	return nil, err
-	// }
+	err = o.InitScheduler()
+	if err != nil {
+		o.Logger.Err(err).Msg("Error initializing scheduler")
+		return nil, err
+	}
 
 	return o, nil
 }
@@ -201,7 +201,15 @@ func (o *Orchestrator) InitStore() error {
 }
 
 func (o *Orchestrator) InitUsers() error {
-	return o.SetupOrchestratorUsers()
+	err := o.SetupOrchestratorUsers()
+	if err != nil {
+		o.Logger.Error().Err(err).Msg("Error setting up orchestrator users")
+		return err
+	}
+
+	o.Logger.Info().Interface("users", o.Users).Msg("Users initialized")
+
+	return nil
 }
 
 func (o *Orchestrator) InitFirebase() error {
@@ -229,6 +237,7 @@ func (o *Orchestrator) InitServer() error {
 		GodUser:        o.Users.God,
 		SystemUser:     o.Users.System,
 		Firebase:       o.FirebaseClient,
+		LoggerConfig:   o.LoggerConfig,
 	}
 
 	server, err := server.NewServer(config, o.DB, o.Logger)
@@ -297,4 +306,11 @@ func (o *Orchestrator) InitLogger() error {
 	o.Logger = logger
 	o.LoggerConfig = config
 	return nil
+}
+
+func (o *Orchestrator) Run() error {
+	o.Logger.Info().Msg("Starting Server")
+
+	routes := o.ResourceManager.GetRoutes()
+	return o.Server.Run(routes)
 }

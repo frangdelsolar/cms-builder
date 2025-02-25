@@ -43,6 +43,7 @@ type Server struct {
 	GodUser        *models.User
 	SystemUser     *models.User
 	Firebase       *clients.FirebaseManager
+	Logger         *logger.Logger
 }
 
 // ServerConfig defines the configuration options for creating a new Server.
@@ -56,6 +57,7 @@ type ServerConfig struct {
 	GodUser        *models.User
 	SystemUser     *models.User
 	Firebase       *clients.FirebaseManager
+	Logger         *logger.Logger
 }
 
 // NewServer creates a new Server instance with the provided configuration.
@@ -80,16 +82,17 @@ func NewServer(svrConfig *ServerConfig, db *database.Database, log *logger.Logge
 			WriteTimeout: TimeoutSeconds * time.Second,
 			ReadTimeout:  TimeoutSeconds * time.Second,
 		},
-		Middlewares:  []func(http.Handler) http.Handler{},
-		Routes:       []RouteHandler{},
-		Root:         r,
-		DB:           db,
-		LoggerConfig: svrConfig.LoggerConfig,
-		GodToken:     svrConfig.GodToken,
-		GodUser:      svrConfig.GodUser,
-		Firebase:     svrConfig.Firebase,
-		SystemUser:   svrConfig.SystemUser,
-		CsrfToken:    svrConfig.CsrfToken,
+		Middlewares:    []func(http.Handler) http.Handler{},
+		Root:           r,
+		DB:             db,
+		LoggerConfig:   svrConfig.LoggerConfig,
+		GodToken:       svrConfig.GodToken,
+		GodUser:        svrConfig.GodUser,
+		Firebase:       svrConfig.Firebase,
+		SystemUser:     svrConfig.SystemUser,
+		CsrfToken:      svrConfig.CsrfToken,
+		Logger:         log,
+		AllowedOrigins: svrConfig.AllowedOrigins,
 	}
 
 	return svr, nil
@@ -130,27 +133,27 @@ func (s *Server) Run() error {
 		HealthCheck,
 	).Name("healthcheck")
 
-	log.Info().Msg("Public routes")
-	for _, route := range s.Routes {
+	s.Logger.Info().Msg("Public routes")
+	for _, route := range routes {
 		if !route.RequiresAuth {
 			log.Info().Msgf("Route: %s", route.Route)
 			publicRouter.HandleFunc(route.Route, route.Handler).Name(route.Name)
 		}
 	}
 
-	log.Info().Msg("Authenticated routes")
+	s.Logger.Info().Msg("Authenticated routes")
 	// Create separate routers for authenticated and public routes
 	authRouter := publicRouter.PathPrefix("/private").Subrouter()
 	authRouter.Use(ProtectedRouteMiddleware)
 
-	for _, route := range s.Routes {
+	for _, route := range routes {
 		if route.RequiresAuth {
-			log.Info().Msgf("Route: /private%s", route.Route)
-			authRouter.HandleFunc(route.Route, route.Handler).Name(route.Name)
+			s.Logger.Info().Msgf("Route: /private%s", route.Path)
+			authRouter.HandleFunc(route.Path, route.Handler).Name(route.Name)
 		}
 	}
 
-	log.Info().Msgf("Running server on port %s", s.Addr)
+	s.Logger.Info().Msgf("Running server on port %s", s.Addr)
 	return s.ListenAndServe()
 }
 

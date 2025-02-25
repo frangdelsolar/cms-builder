@@ -14,7 +14,15 @@ type Logger struct {
 	*zerolog.Logger
 }
 
-var Default *Logger = &Logger{&zerolog.Logger{}}
+var Default *Logger
+
+func init() {
+	log, _ := NewLogger(&LoggerConfig{
+		LogLevel: "debug",
+	})
+
+	Default = log
+}
 
 // LoggerConfig defines the configuration options for the logger
 type LoggerConfig struct {

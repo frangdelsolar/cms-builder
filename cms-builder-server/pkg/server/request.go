@@ -13,7 +13,6 @@ import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
 	"github.com/gorilla/mux"
-	"github.com/rs/zerolog"
 )
 
 type ContextParamKey string
@@ -66,11 +65,12 @@ func GetRequestId(r *http.Request) string {
 	return ""
 }
 
-func GetRequestLogger(r *http.Request) *zerolog.Logger {
+func GetRequestLogger(r *http.Request) *logger.Logger {
 	loggerFromContext := r.Context().Value(CtxRequestLogger)
-	log, ok := loggerFromContext.(*zerolog.Logger)
+	log, ok := loggerFromContext.(*logger.Logger)
 	if !ok {
-		return logger.Default.Logger
+		fmt.Println("Logger not found in context. Returning default logger")
+		return logger.Default
 	}
 	return log
 }
@@ -96,7 +96,7 @@ func GetRequestIsAuth(r *http.Request) bool {
 type RequestContext struct {
 	IsAuthenticated bool
 	User            *models.User
-	Logger          *zerolog.Logger
+	Logger          *logger.Logger
 	RequestId       string
 }
 
