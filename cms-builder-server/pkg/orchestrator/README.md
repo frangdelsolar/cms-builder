@@ -31,8 +31,6 @@ func main() {
 		panic(err)
 	}
 
-	e.Logger.Debug().Msg("Initializing server")
-
 	startServer(e)
 
 }

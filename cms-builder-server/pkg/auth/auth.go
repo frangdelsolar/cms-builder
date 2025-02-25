@@ -21,9 +21,9 @@ func SetupUserResource(firebase *clients.FirebaseManager, db *database.Database,
 	}
 
 	validators := manager.ValidatorsMap{
-		"email": manager.ValidatorsList{manager.RequiredValidator, manager.EmailValidator},
-		"name":  manager.ValidatorsList{manager.RequiredValidator},
-		"roles": manager.ValidatorsList{manager.RequiredValidator},
+		"Email": manager.ValidatorsList{manager.RequiredValidator, manager.EmailValidator},
+		"Name":  manager.ValidatorsList{manager.RequiredValidator},
+		"Roles": manager.ValidatorsList{manager.RequiredValidator},
 	}
 
 	// TODO: Should have its own handlers
@@ -53,6 +53,8 @@ func SetupUserResource(firebase *clients.FirebaseManager, db *database.Database,
 		Handlers:        handlers,
 		Routes:          routes,
 	}
+
+	log.Debug().Interface("config", config).Msg("User resource initialized")
 
 	return config
 }

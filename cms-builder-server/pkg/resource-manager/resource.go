@@ -5,72 +5,90 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
-	"strings"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
 )
 
-type ApiFunction func(a *Resource, db *database.Database) http.HandlerFunc
+// ApiFunction defines the signature for API handler functions.
+type ApiFunction func(resource *Resource, db *database.Database) http.HandlerFunc
 
+// ApiHandlers holds the handlers for various API operations.
 type ApiHandlers struct {
-	List   ApiFunction // List is a function that takes an ApiInput, a *Database and an *App and returns a *gorm.DB will be called on GET endpoints (e.g. /api/users)
-	Detail ApiFunction // Detail is a function that takes an ApiInput, a *Database and an *App and returns a *gorm.DB will be called on GET endpoints (e.g. /api/users/{id})
-	Create ApiFunction // Create is a function that takes an ApiInput, a *Database and an *App and returns a *gorm.DB will be called on POST endpoints (e.g. /api/users/new)
-	Update ApiFunction // Update is a function that takes an ApiInput, a *Database and an *App and returns a *gorm.DB will be called on PUT endpoints (e.g. /api/users/{id}/update)
-	Delete ApiFunction // Delete is a function that takes an ApiInput, a *Database and an *App and returns a *gorm.DB will be called on DELETE endpoints (e.g. /api/users/{id}/delete)
+	List   ApiFunction
+	Detail ApiFunction
+	Create ApiFunction
+	Update ApiFunction
+	Delete ApiFunction
 }
 
+// Resource represents a resource in the system, including its model, validators, and routes.
 type Resource struct {
 	Model           interface{}              // The model struct
-	SkipUserBinding bool                     // Means that theres a CreatedBy field in the model that will be used for filtering the database query to only include records created by the user
-	Validators      ValidatorsMap            // A map of field names to validation functions
-	Permissions     server.RolePermissionMap // Key is Role name, value is permission
-	Api             *ApiHandlers             // The API struct
-	Routes          []server.Route           // Other routes that are not the default api routes
+	SkipUserBinding bool                     // Whether to skip user binding for this resource
+	Validators      ValidatorsMap            // Map of field validators
+	Permissions     server.RolePermissionMap // Role-based permissions
+	Api             *ApiHandlers             // API handlers
+	Routes          []server.Route           // Custom routes for this resource
 }
 
-func (a *Resource) GetSlice() (interface{}, error) {
-	modelType := reflect.TypeOf(a.Model)
-
+// GetSlice returns a new slice of the resource's model type.
+func (r *Resource) GetSlice() (interface{}, error) {
+	modelType := reflect.TypeOf(r.Model)
 	if modelType.Kind() == reflect.Ptr {
 		modelType = modelType.Elem()
 	}
-
 	if modelType.Kind() != reflect.Struct {
 		return nil, fmt.Errorf("model must be a struct or a pointer to a struct")
 	}
-
 	sliceType := reflect.SliceOf(modelType)
-	entities := reflect.New(sliceType).Interface()
-
-	return entities, nil
+	return reflect.New(sliceType).Interface(), nil
 }
 
-func (a *Resource) GetOne() interface{} {
-	instanceType := reflect.TypeOf(a.Model)
+// GetOne returns a new instance of the resource's model.
+func (r *Resource) GetOne() interface{} {
+	instanceType := reflect.TypeOf(r.Model)
 	if instanceType.Kind() == reflect.Ptr {
 		instanceType = instanceType.Elem()
 	}
 	return reflect.New(instanceType).Interface()
 }
 
-func (a *Resource) GetName() (string, error) {
-	return utils.GetInterfaceName(a.Model)
+// GetName returns the name of the resource's model.
+func (r *Resource) GetName() (string, error) {
+	return utils.GetInterfaceName(r.Model)
 }
 
-func (a *Resource) GetKeys() []string {
+// GetPluralName returns the pluralized name of the resource's model.
+func (r *Resource) GetPluralName() (string, error) {
+	name, err := r.GetName()
+	if err != nil {
+		return "", err
+	}
+	return utils.Pluralize(name), nil
+}
 
-	if a.Model == nil {
+// GetKebabCaseName returns the kebab-case version of the resource's plural name.
+func (r *Resource) GetKebabCaseName() (string, error) {
+	name, err := r.GetPluralName()
+	if err != nil {
+		return "", err
+	}
+	return utils.KebabCase(name), nil
+}
+
+// GetKeys returns a list of field names in the resource's model.
+func (r *Resource) GetKeys() []string {
+	if r.Model == nil {
 		return nil
 	}
 
-	modelType := reflect.TypeOf(a.Model)
+	modelType := reflect.TypeOf(r.Model)
 	if modelType.Kind() == reflect.Ptr {
 		modelType = modelType.Elem()
 	}
-
 	if modelType.Kind() != reflect.Struct {
 		return nil
 	}
@@ -78,24 +96,73 @@ func (a *Resource) GetKeys() []string {
 	keys := make([]string, 0)
 	for i := 0; i < modelType.NumField(); i++ {
 		field := modelType.Field(i)
-		if field.Tag.Get("json") != "" {
-			keys = append(keys, field.Tag.Get("json"))
-		}
+		keys = append(keys, field.Name) // Use the exact field name
 	}
-
 	return keys
 }
 
-func (a *Resource) GetFieldValidators(fieldName string) (ValidatorsList, error) {
-	lowerFieldName := strings.ToLower(string(fieldName))
-	validators, ok := a.Validators[lowerFieldName]
+// HasField checks if the resource's model contains a field with the given name.
+func (r *Resource) HasField(fieldName string) bool {
+	modelType := reflect.TypeOf(r.Model)
+	if modelType.Kind() == reflect.Ptr {
+		modelType = modelType.Elem()
+	}
+	if modelType.Kind() != reflect.Struct {
+		return false
+	}
+	_, ok := modelType.FieldByName(fieldName)
+	return ok
+}
+
+// AddValidator adds a validator for a specific field in the resource's model.
+func (r *Resource) AddValidator(fieldName string, validator Validator) error {
+	name, _ := r.GetName()
+	fmt.Printf("Adding validator for field %s. Resource: %s\n", fieldName, name)
+
+	if r.Validators == nil {
+		r.Validators = make(ValidatorsMap)
+	}
+
+	if !r.HasField(fieldName) {
+		return fmt.Errorf("field %s not found in model", fieldName)
+	}
+
+	if r.Validators[fieldName] == nil {
+		r.Validators[fieldName] = make(ValidatorsList, 0)
+	}
+
+	r.Validators[fieldName] = append(r.Validators[fieldName], validator)
+	return nil
+}
+
+// GetFieldValidators retrieves the validators for a specific field.
+func (r *Resource) GetFieldValidators(fieldName string) (ValidatorsList, error) {
+	validators, ok := r.Validators[fieldName]
 	if !ok {
 		return nil, fmt.Errorf("field %s not found in model", fieldName)
 	}
-
 	return validators, nil
 }
 
+// getFieldNameFromJSONTag resolves the struct field name from the JSON tag.
+func (r *Resource) getFieldNameFromJSONTag(jsonTag string) (string, error) {
+	modelType := reflect.TypeOf(r.Model)
+	if modelType.Kind() == reflect.Ptr {
+		modelType = modelType.Elem()
+	}
+
+	for i := 0; i < modelType.NumField(); i++ {
+		field := modelType.Field(i)
+		tag := field.Tag.Get("json")
+		if tag == jsonTag {
+			return field.Name, nil
+		}
+	}
+
+	return "", fmt.Errorf("field with JSON tag %s not found in model", jsonTag)
+}
+
+// InterfaceToMap converts an interface to a map using JSON marshaling.
 func InterfaceToMap(instance interface{}) (map[string]interface{}, error) {
 	jsonData, err := json.Marshal(instance)
 	if err != nil {
@@ -109,26 +176,32 @@ func InterfaceToMap(instance interface{}) (map[string]interface{}, error) {
 	return data, nil
 }
 
-func (a *Resource) Validate(instance interface{}) ValidationResult {
-
+// Validate validates the given instance against the resource's validators.
+func (r *Resource) Validate(instance interface{}, log *logger.Logger) ValidationResult {
 	errors := ValidationResult{
 		Errors: make([]ValidationError, 0),
 	}
 
-	dataMap, err := InterfaceToMap(instance)
+	jsonData, err := InterfaceToMap(instance)
 	if err != nil {
+		log.Error().Err(err).Msg("Error converting instance to JSON")
 		return errors
 	}
 
-	for key := range dataMap {
-		validators, err := a.GetFieldValidators(key)
+	for jsonTag := range jsonData {
+		fieldName, err := r.getFieldNameFromJSONTag(jsonTag)
 		if err != nil {
-			return errors
+			continue
+		}
+
+		validators, ok := r.Validators[fieldName]
+		if !ok {
+			continue // No validators for this field
 		}
 
 		for _, validator := range validators {
-			output := NewFieldValidationError(key)
-			validationResult := validator(key, dataMap, &output)
+			output := NewFieldValidationError(jsonTag)
+			validationResult := validator(jsonTag, jsonData, &output)
 			if validationResult.Error != "" {
 				errors.Errors = append(errors.Errors, *validationResult)
 			}
@@ -138,10 +211,10 @@ func (a *Resource) Validate(instance interface{}) ValidationResult {
 	if len(errors.Errors) == 0 {
 		return ValidationResult{}
 	}
-
 	return errors
 }
 
-func (a *Resource) AddRoute(route server.Route) {
-	a.Routes = append(a.Routes, route)
+// AddRoute adds a custom route to the resource.
+func (r *Resource) AddRoute(route server.Route) {
+	r.Routes = append(r.Routes, route)
 }

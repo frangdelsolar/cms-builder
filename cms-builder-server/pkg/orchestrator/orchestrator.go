@@ -148,30 +148,26 @@ func (o *Orchestrator) InitResourceManager() error {
 
 func (o *Orchestrator) InitAuth() error {
 	resourceConfig := auth.SetupUserResource(o.FirebaseClient, o.DB, o.Logger)
-	o.ResourceManager.AddResource(resourceConfig)
-
-	return nil
+	_, err := o.ResourceManager.AddResource(resourceConfig)
+	return err
 }
 
 func (o *Orchestrator) InitDatabaseLogger() error {
 	resourceConfig := dbLogger.SetupDBLoggerResource(o.ResourceManager, o.DB, o.Logger)
-	o.ResourceManager.AddResource(resourceConfig)
-
-	return nil
+	_, err := o.ResourceManager.AddResource(resourceConfig)
+	return err
 }
 
 func (o *Orchestrator) InitRequestLogger() error {
 	resourceConfig := requestLogger.SetupRequestLoggerResource(o.ResourceManager, o.DB, o.Logger)
-	o.ResourceManager.AddResource(resourceConfig)
-
-	return nil
+	_, err := o.ResourceManager.AddResource(resourceConfig)
+	return err
 }
 
 func (o *Orchestrator) InitFiles() error {
 	fileConfig := file.SetupFileResource(o.ResourceManager, o.DB, o.Store, o.Logger)
-	o.ResourceManager.AddResource(fileConfig)
-
-	return nil
+	_, err := o.ResourceManager.AddResource(fileConfig)
+	return err
 }
 
 func (o *Orchestrator) InitUsers() error {
@@ -263,5 +259,10 @@ func (o *Orchestrator) InitScheduler() error {
 func (o *Orchestrator) Run() error {
 	o.Logger.Info().Msg("Starting Server")
 	routes := o.ResourceManager.GetRoutes()
-	return o.Server.Run(routes)
+
+	for _, route := range routes {
+		o.Server.AddRoute(route)
+	}
+
+	return o.Server.Run()
 }

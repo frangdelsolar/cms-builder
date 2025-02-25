@@ -23,9 +23,9 @@ func SetupFileResource(resourceManager *manager.ResourceManager, db *database.Da
 	}
 
 	validators := manager.ValidatorsMap{
-		"name": manager.ValidatorsList{manager.RequiredValidator},
-		"path": manager.ValidatorsList{manager.RequiredValidator},
-		"url":  manager.ValidatorsList{manager.RequiredValidator},
+		"Name": manager.ValidatorsList{manager.RequiredValidator},
+		"Path": manager.ValidatorsList{manager.RequiredValidator},
+		"Url":  manager.ValidatorsList{manager.RequiredValidator},
 	}
 
 	handlers := &manager.ApiHandlers{
@@ -45,7 +45,7 @@ func SetupFileResource(resourceManager *manager.ResourceManager, db *database.Da
 	}
 
 	config := &manager.ResourceConfig{
-		Model:           models.DatabaseLog{},
+		Model:           models.File{},
 		SkipUserBinding: skipUserBinding,
 		Validators:      validators,
 		Permissions:     permissions,

@@ -96,7 +96,7 @@ var DefaultUpdateHandler ApiFunction = func(a *Resource, db *database.Database) 
 		}
 
 		// 9. Run Validations
-		validationErrors := a.Validate(instance)
+		validationErrors := a.Validate(instance, log)
 		if len(validationErrors.Errors) > 0 {
 			SendJsonResponse(w, http.StatusBadRequest, validationErrors, "Validation failed")
 			return

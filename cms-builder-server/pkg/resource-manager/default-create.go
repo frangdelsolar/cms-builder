@@ -40,6 +40,8 @@ var DefaultCreateHandler ApiFunction = func(a *Resource, db *database.Database) 
 		user := requestCtx.User
 		requestId := requestCtx.RequestId
 
+		log.Debug().Msg("DefaultCreateHandler")
+
 		// 1. Validate Request Method
 		err := ValidateRequestMethod(r, http.MethodPost)
 		if err != nil {
@@ -81,7 +83,7 @@ var DefaultCreateHandler ApiFunction = func(a *Resource, db *database.Database) 
 		}
 
 		// 7. Run Validations
-		validationErrors := a.Validate(instance)
+		validationErrors := a.Validate(instance, log)
 		if len(validationErrors.Errors) > 0 {
 			SendJsonResponse(w, http.StatusBadRequest, validationErrors, "Validation failed")
 			return

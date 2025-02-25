@@ -65,7 +65,7 @@ func CreateStoredFilesHandler(db *database.Database, st store.Store) manager.Api
 			}
 
 			// Run validations
-			validationErrors := a.Validate(fileData)
+			validationErrors := a.Validate(fileData, log)
 			if len(validationErrors.Errors) > 0 {
 				SendJsonResponse(w, http.StatusBadRequest, validationErrors, "Validation failed")
 				return
