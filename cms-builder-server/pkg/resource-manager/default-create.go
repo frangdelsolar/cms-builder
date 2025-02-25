@@ -40,8 +40,6 @@ var DefaultCreateHandler ApiFunction = func(a *Resource, db *database.Database) 
 		user := requestCtx.User
 		requestId := requestCtx.RequestId
 
-		log.Debug().Msg("DefaultCreateHandler")
-
 		// 1. Validate Request Method
 		err := ValidateRequestMethod(r, http.MethodPost)
 		if err != nil {

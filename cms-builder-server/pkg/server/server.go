@@ -32,12 +32,10 @@ type ServerConfig struct {
 type Server struct {
 	*http.Server
 	ServerConfig
-	Middlewares   []func(http.Handler) http.Handler
-	Root          *mux.Router
-	DB            *database.Database
-	Logger        *logger.Logger
-	PublicRoutes  map[string]Route
-	PrivateRoutes map[string]Route
+	Middlewares []func(http.Handler) http.Handler
+	Root        *mux.Router
+	DB          *database.Database
+	Logger      *logger.Logger
 }
 
 func NewServer(config *ServerConfig, db *database.Database, log *logger.Logger) (*Server, error) {
@@ -61,20 +59,29 @@ func NewServer(config *ServerConfig, db *database.Database, log *logger.Logger) 
 		Root:         r,
 		DB:           db,
 		Logger:       log,
-		PublicRoutes: map[string]Route{
-			"/health": {
-				Path:    "/health",
-				Name:    "healthcheck",
-				Handler: HealthCheck,
-			},
-		},
-		PrivateRoutes: map[string]Route{},
 	}
 
 	return svr, nil
 }
 
-func (s *Server) Run() error {
+type GetRoutesFunc func(apiBaseUrl string) []Route
+
+func (s *Server) Run(getRoutes GetRoutesFunc, apiBaseUrl string) error {
+
+	routes := getRoutes(apiBaseUrl)
+
+	routes = append(routes,
+		Route{
+			Path:         "/health",
+			Handler:      HealthCheck,
+			Name:         "health",
+			RequiresAuth: false,
+			Method:       http.MethodGet,
+		},
+	)
+
+	s.Logger.Info().Msgf("Initializing %d routes", len(routes))
+
 	publicRouter := s.Root
 	publicRouter.Use(
 		RecoveryMiddleware,
@@ -86,44 +93,28 @@ func (s *Server) Run() error {
 		RateLimitMiddleware(),
 	)
 
-	for path, route := range s.PublicRoutes {
-		s.Logger.Warn().Str("path", path).Msg("Public")
+	for _, route := range routes {
+		if route.RequiresAuth {
+			continue
+		}
+		s.Logger.Warn().Str("path", route.Path).Msg("Public")
 		publicRouter.HandleFunc(route.Path, route.Handler).Name(route.Name).Methods(route.Method)
 	}
 
 	authRouter := publicRouter.PathPrefix("/private").Subrouter()
 	authRouter.Use(ProtectedRouteMiddleware)
 
-	for path, route := range s.PrivateRoutes {
-		if route.RequiresAuth {
-			s.Logger.Info().Str("path", "/private"+path).Msg("Private")
-			authRouter.HandleFunc(route.Path, route.Handler).Name(route.Name).Methods(route.Method)
+	for _, route := range routes {
+		if !route.RequiresAuth {
+			continue
 		}
+
+		s.Logger.Info().Str("path", "/private"+route.Path).Msg("Private")
+		authRouter.HandleFunc(route.Path, route.Handler).Name(route.Name).Methods(route.Method)
 	}
 
 	s.Logger.Info().Msgf("Running server on port %s", s.Addr)
 	return s.ListenAndServe()
-}
-
-func (s *Server) AddRoute(route Route) {
-
-	_, ok := s.PublicRoutes[route.Path]
-	if ok {
-		s.Logger.Warn().Msgf("Route %s already exists", route.Path)
-		return
-	}
-
-	_, ok = s.PrivateRoutes[route.Path]
-	if ok {
-		s.Logger.Warn().Msgf("Route %s already exists", route.Path)
-		return
-	}
-
-	if route.RequiresAuth {
-		s.PrivateRoutes[route.Path] = route
-	} else {
-		s.PublicRoutes[route.Path] = route
-	}
 }
 
 func (s *Server) AddMiddleware(middleware func(http.Handler) http.Handler) {

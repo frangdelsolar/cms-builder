@@ -22,6 +22,7 @@ type ApiHandlers struct {
 	Create ApiFunction
 	Update ApiFunction
 	Delete ApiFunction
+	Schema func(resource *Resource) http.HandlerFunc
 }
 
 // Resource represents a resource in the system, including its model, validators, and routes.
@@ -31,7 +32,7 @@ type Resource struct {
 	Validators      ValidatorsMap            // Map of field validators
 	Permissions     server.RolePermissionMap // Role-based permissions
 	Api             *ApiHandlers             // API handlers
-	Routes          []server.Route           // Custom routes for this resource
+	Routes          map[string]server.Route  // Custom routes for this resource
 }
 
 // GetSlice returns a new slice of the resource's model type.
@@ -70,13 +71,40 @@ func (r *Resource) GetPluralName() (string, error) {
 	return utils.Pluralize(name), nil
 }
 
-// GetKebabCaseName returns the kebab-case version of the resource's plural name.
+// GetKebabCasePluralName returns the kebab-case version of the resource's plural name.
 func (r *Resource) GetKebabCaseName() (string, error) {
+	name, err := r.GetName()
+	if err != nil {
+		return "", err
+	}
+	return utils.KebabCase(name), nil
+}
+
+// GetKebabCaseName returns the kebab-case version of the resource's plural name.
+func (r *Resource) GetKebabCasePluralName() (string, error) {
 	name, err := r.GetPluralName()
 	if err != nil {
 		return "", err
 	}
 	return utils.KebabCase(name), nil
+}
+
+// GetKebabCasePluralName returns the kebab-case version of the resource's plural name.
+func (r *Resource) GetSnakeCaseName() (string, error) {
+	name, err := r.GetName()
+	if err != nil {
+		return "", err
+	}
+	return utils.SnakeCase(name), nil
+}
+
+// GetKebabCasePluralName returns the kebab-case version of the resource's plural name.
+func (r *Resource) GetSnakeCasePluralName() (string, error) {
+	name, err := r.GetPluralName()
+	if err != nil {
+		return "", err
+	}
+	return utils.SnakeCase(name), nil
 }
 
 // GetKeys returns a list of field names in the resource's model.
@@ -116,9 +144,6 @@ func (r *Resource) HasField(fieldName string) bool {
 
 // AddValidator adds a validator for a specific field in the resource's model.
 func (r *Resource) AddValidator(fieldName string, validator Validator) error {
-	name, _ := r.GetName()
-	fmt.Printf("Adding validator for field %s. Resource: %s\n", fieldName, name)
-
 	if r.Validators == nil {
 		r.Validators = make(ValidatorsMap)
 	}
@@ -215,6 +240,20 @@ func (r *Resource) Validate(instance interface{}, log *logger.Logger) Validation
 }
 
 // AddRoute adds a custom route to the resource.
-func (r *Resource) AddRoute(route server.Route) {
-	r.Routes = append(r.Routes, route)
+func (r *Resource) AddRoute(route server.Route) error {
+	logger.Default.Debug().
+		Str("name", route.Name).
+		Str("path", route.Path).
+		Msg("Adding route to Resource")
+
+	if r.Routes == nil {
+		r.Routes = make(map[string]server.Route)
+	}
+
+	if _, exists := r.Routes[route.Name]; exists {
+		return fmt.Errorf("route with name %s already exists", route.Name)
+	}
+
+	r.Routes[route.Name] = route
+	return nil
 }

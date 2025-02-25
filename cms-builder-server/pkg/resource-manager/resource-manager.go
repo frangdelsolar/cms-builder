@@ -55,27 +55,158 @@ func (r *ResourceManager) GetResource(input interface{}) (*Resource, error) {
 	return nil, fmt.Errorf("resource with name %s not found", name)
 }
 
-func (r *ResourceManager) Register(resource *Resource) error {
+func (r *ResourceManager) AddResource(input *ResourceConfig) (*Resource, error) {
 
+	resource := &Resource{
+		Model:           input.Model,
+		Api:             InitializeHandlers(input.Handlers),
+		SkipUserBinding: input.SkipUserBinding,
+		Permissions:     make(server.RolePermissionMap),
+		Validators:      make(ValidatorsMap),
+		Routes:          map[string]server.Route{},
+	}
+
+	// Validate Name
 	name, err := resource.GetName()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if _, ok := r.Resources[name]; ok {
-		return fmt.Errorf("resource with name %s already exists", name)
+		return nil, fmt.Errorf("resource with name %s already exists", name)
 	}
 
-	// Auto-migrate the resource model
-	if err := r.DB.DB.AutoMigrate(resource.Model); err != nil {
-		return fmt.Errorf("failed to auto-migrate resource model: %w", err)
+	// Validate Permissions
+	if input.Permissions != nil {
+		resource.Permissions = input.Permissions
+	}
+
+	// Validate Validators
+	err = InitializeValidators(resource, &input.Validators)
+	if err != nil {
+		return nil, err
+	}
+
+	// Validate Routes
+	err = InitializeRoutes(resource, input.Routes, r.DB)
+	if err != nil {
+		return nil, err
 	}
 
 	r.Resources[name] = resource
 
+	r.Logger.Debug().Str("name", name).Int("routes", len(resource.Routes)).Msg("Resource added to resource manager with")
+
+	return resource, nil
+}
+
+func (r *ResourceManager) GetRoutes(apiBaseUrl string) []server.Route {
+
+	routes := []server.Route{
+		{
+			Path:         "/api",
+			Handler:      ApiHandler(r, apiBaseUrl),
+			Name:         "api",
+			RequiresAuth: false,
+			Method:       http.MethodGet,
+		},
+	}
+
+	for _, resource := range r.Resources {
+
+		for _, route := range resource.Routes {
+			routes = append(routes, route)
+		}
+	}
+
+	return routes
+}
+
+func InitializeRoutes(r *Resource, input []server.Route, db *database.Database) error {
+	name, _ := r.GetKebabCasePluralName()
+	baseRoute := "/api/" + name
+
+	routes := []server.Route{
+		{
+			Path:         baseRoute,
+			Handler:      r.Api.List(r, db),
+			Name:         fmt.Sprintf("%s:list", name),
+			RequiresAuth: true,
+			Method:       http.MethodGet,
+		},
+		{
+			Path:         baseRoute + "/schema",
+			Handler:      r.Api.Schema(r),
+			Name:         fmt.Sprintf("%s:schema", name),
+			RequiresAuth: false,
+			Method:       http.MethodGet,
+		},
+		{
+			Path:         baseRoute + "/new",
+			Handler:      r.Api.Create(r, db),
+			Name:         fmt.Sprintf("%s:create", name),
+			RequiresAuth: true,
+			Method:       http.MethodPost,
+		},
+		{
+			Path:         baseRoute + "/{id}/delete",
+			Handler:      r.Api.Delete(r, db),
+			Name:         fmt.Sprintf("%s:delete", name),
+			RequiresAuth: true,
+			Method:       http.MethodDelete,
+		},
+		{
+			Path:         baseRoute + "/{id}/update",
+			Handler:      r.Api.Update(r, db),
+			Name:         fmt.Sprintf("%s:update", name),
+			RequiresAuth: true,
+			Method:       http.MethodPut,
+		},
+		{
+			Path:         baseRoute + "/{id}",
+			Handler:      r.Api.Detail(r, db),
+			Name:         fmt.Sprintf("%s:detail", name),
+			RequiresAuth: true,
+			Method:       http.MethodGet,
+		},
+	}
+
+	for _, route := range routes {
+		err := r.AddRoute(route)
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, route := range input {
+		err := r.AddRoute(route)
+		if err != nil {
+			return err
+		}
+	}
+
+	fmt.Printf("Routes initialized %d routes for resource: %s\n", len(routes), name)
+
 	return nil
 }
 
+// InitializeValidators adds validators to the given resource.
+// It loops through the given map of validators and adds each one to the resource's Validators map.
+func InitializeValidators(r *Resource, input *ValidatorsMap) error {
+	for fieldName, validators := range *input {
+		for _, validator := range validators {
+			err := r.AddValidator(fieldName, validator)
+			if err != nil {
+				log.Error().Err(err).Str("field", fieldName).Msg("Failed to add validator")
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// InitializeHandlers returns a new ApiHandlers struct with default handlers.
+// If the given input is not nil, it overwrites the default handlers with the given functions.
 func InitializeHandlers(input *ApiHandlers) *ApiHandlers {
 	handlers := &ApiHandlers{
 		List:   DefaultListHandler,
@@ -83,6 +214,7 @@ func InitializeHandlers(input *ApiHandlers) *ApiHandlers {
 		Create: DefaultCreateHandler,
 		Update: DefaultUpdateHandler,
 		Delete: DefaultDeleteHandler,
+		Schema: DefaultSchemaHandler,
 	}
 
 	if input != nil {
@@ -105,107 +237,11 @@ func InitializeHandlers(input *ApiHandlers) *ApiHandlers {
 		if input.Delete != nil {
 			handlers.Delete = input.Delete
 		}
-	}
 
-	return handlers
-}
-
-func InitializeValidators(r *Resource, input *ValidatorsMap) error {
-	for fieldName, validators := range *input {
-		for _, validator := range validators {
-			err := r.AddValidator(fieldName, validator)
-			if err != nil {
-				log.Error().Err(err).Str("field", fieldName).Msg("Failed to add validator")
-				return err
-			}
+		if input.Schema != nil {
+			handlers.Schema = input.Schema
 		}
 	}
 
-	log.Debug().Interface("validators", r.Validators).Msg("Initialized validators")
-
-	return nil
-}
-
-// TODO: Is this really necessary?
-func (r *ResourceManager) AddResource(input *ResourceConfig) (*Resource, error) {
-
-	permissions := input.Permissions
-	if permissions == nil {
-		permissions = make(server.RolePermissionMap)
-	}
-
-	resource := &Resource{
-		Model:           input.Model,
-		Api:             InitializeHandlers(input.Handlers),
-		SkipUserBinding: input.SkipUserBinding,
-		Permissions:     permissions,
-		Validators:      make(ValidatorsMap),
-		Routes:          make([]server.Route, 0),
-	}
-
-	err := InitializeValidators(resource, &input.Validators)
-	if err != nil {
-
-		return nil, err
-	}
-
-	err = r.Register(resource)
-	if err != nil {
-		return nil, err
-	}
-
-	name, _ := resource.GetKebabCaseName()
-	baseRoute := "/api/" + name
-
-	routes := []server.Route{
-		{
-			Path:         baseRoute,
-			Handler:      resource.Api.List(resource, r.DB),
-			Name:         fmt.Sprintf("%s-list", input.Model),
-			RequiresAuth: true,
-			Method:       http.MethodGet,
-		},
-		{
-			Path:         baseRoute + "/new",
-			Handler:      resource.Api.Create(resource, r.DB),
-			Name:         fmt.Sprintf("%s-create", input.Model),
-			RequiresAuth: true,
-			Method:       http.MethodPost,
-		},
-		{
-			Path:         baseRoute + "/{id}/delete",
-			Handler:      resource.Api.Delete(resource, r.DB),
-			Name:         fmt.Sprintf("%s-delete", input.Model),
-			RequiresAuth: true,
-			Method:       http.MethodDelete,
-		},
-		{
-			Path:         baseRoute + "/{id}/update",
-			Handler:      resource.Api.Update(resource, r.DB),
-			Name:         fmt.Sprintf("%s-update", input.Model),
-			RequiresAuth: true,
-			Method:       http.MethodPut,
-		},
-		{
-			Path:         baseRoute + "/{id}",
-			Handler:      resource.Api.Detail(resource, r.DB),
-			Name:         fmt.Sprintf("%s-detail", input.Model),
-			RequiresAuth: true,
-			Method:       http.MethodGet,
-		},
-	}
-
-	resource.Routes = append(resource.Routes, routes...)
-
-	return resource, nil
-}
-
-func (r *ResourceManager) GetRoutes() []server.Route {
-	routes := make([]server.Route, 0)
-
-	for _, resource := range r.Resources {
-		routes = append(routes, resource.Routes...)
-	}
-
-	return routes
+	return handlers
 }

@@ -258,11 +258,6 @@ func (o *Orchestrator) InitScheduler() error {
 
 func (o *Orchestrator) Run() error {
 	o.Logger.Info().Msg("Starting Server")
-	routes := o.ResourceManager.GetRoutes()
 
-	for _, route := range routes {
-		o.Server.AddRoute(route)
-	}
-
-	return o.Server.Run()
+	return o.Server.Run(o.ResourceManager.GetRoutes, o.Config.GetString(EnvKeys.BaseUrl))
 }
