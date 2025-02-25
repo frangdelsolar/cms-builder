@@ -72,13 +72,12 @@ var DefaultListHandler ApiFunction = func(a *Resource, db *database.Database) ht
 		}
 
 		// 7. Generate Success Message
-		appName, err := a.GetName()
+		kebabName, err := a.GetKebabCasePluralName()
 		if err != nil {
-			log.Error().Err(err).Msgf("Error getting app name")
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
 		}
-		msg := appName + "-list"
+		msg := kebabName + " list"
 
 		// 8. Send Paginated Response
 		SendJsonResponseWithPagination(w, http.StatusOK, instances, msg, pagination)

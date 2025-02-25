@@ -26,8 +26,6 @@ func ApiHandler(mgr *ResourceManager, apiBaseUrl string) http.HandlerFunc {
 		requestCtx := GetRequestContext(r)
 		log := requestCtx.Logger
 
-		log.Debug().Msg("Handling api request")
-
 		err := ValidateRequestMethod(r, http.MethodGet)
 		if err != nil {
 			SendJsonResponse(w, http.StatusMethodNotAllowed, nil, err.Error())
@@ -43,7 +41,6 @@ func ApiHandler(mgr *ResourceManager, apiBaseUrl string) http.HandlerFunc {
 				log.Error().Err(err).Msg("Error getting name")
 				SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			}
-			log.Debug().Str("name", name).Msg("Adding resource to response")
 
 			plural, _ := rsc.GetPluralName()
 			snake, _ := rsc.GetSnakeCaseName()

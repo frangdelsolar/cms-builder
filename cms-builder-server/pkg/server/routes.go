@@ -7,5 +7,5 @@ type Route struct {
 	Handler      http.HandlerFunc // handler is the handler for the route
 	Name         string           // name is the name of the route
 	RequiresAuth bool             // requiresAuth is a flag indicating if the route requires authentication
-	Method       string           // method is the HTTP method for the route
+	Methods      []string         // method is the HTTP method for the route
 }

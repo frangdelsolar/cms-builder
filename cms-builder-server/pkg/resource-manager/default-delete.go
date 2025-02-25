@@ -67,13 +67,12 @@ var DefaultDeleteHandler ApiFunction = func(a *Resource, db *database.Database) 
 		}
 
 		// 6. Generate Success Message
-		appName, err := a.GetName()
+		appName, err := a.GetKebabCaseName()
 		if err != nil {
-			log.Error().Err(err).Msgf("Error getting app name")
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
 		}
-		msg := appName + "-deleted"
+		msg := appName + " deleted"
 
 		// 7. Send Success Response
 		SendJsonResponse(w, http.StatusOK, nil, msg)

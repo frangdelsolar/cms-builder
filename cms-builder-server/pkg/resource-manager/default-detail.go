@@ -16,15 +16,8 @@ var DefaultDetailHandler ApiFunction = func(a *Resource, db *database.Database) 
 		user := requestCtx.User
 		isAdmin := user.HasRole(models.AdminRole)
 
-		appName, err := a.GetName()
-		if err != nil {
-			log.Error().Err(err).Msgf("Error getting app name")
-			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
-			return
-		}
-
 		// 1. Validate Request Method
-		err = ValidateRequestMethod(r, http.MethodGet)
+		err := ValidateRequestMethod(r, http.MethodGet)
 		if err != nil {
 			SendJsonResponse(w, http.StatusMethodNotAllowed, nil, err.Error())
 			return
@@ -59,7 +52,14 @@ var DefaultDetailHandler ApiFunction = func(a *Resource, db *database.Database) 
 			return
 		}
 
+		kebabName, err := a.GetKebabCaseName()
+		if err != nil {
+			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+			return
+		}
+		msg := kebabName + " detail"
+
 		// 5. Send Success Response
-		SendJsonResponse(w, http.StatusOK, instance, appName+"-detail")
+		SendJsonResponse(w, http.StatusOK, instance, msg)
 	}
 }

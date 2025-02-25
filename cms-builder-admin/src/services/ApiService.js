@@ -1,7 +1,7 @@
 import axios from "axios";
 
 // Helper function to create the base API service
-const createApiService = ({ token, apiBaseUrl }) => {
+const createApiService = ({ token, apiBaseUrl, origin }) => {
   // Helper function to add authorization headers
   const withAuth = (config) => {
     if (token) {
@@ -22,10 +22,18 @@ const createApiService = ({ token, apiBaseUrl }) => {
   }) => {
     const url = `${apiBaseUrl}/${relativePath}`;
 
+    const headers = {
+      "Content-Type": contentType,
+    };
+
+    if (origin) {
+      headers.Origin = origin;
+    }
+
     const config = withAuth({
       method,
       url,
-      headers: { "Content-Type": contentType },
+      headers: headers,
       data: body,
     });
 
@@ -81,14 +89,14 @@ const createRequestService = ({ executeApiCall }) => {
   const getRequestLogEntries = (requestId) => {
     return executeApiCall({
       method: "GET",
-      relativePath: `private/api/requests/logs/${requestId}`,
+      relativePath: `private/api/request-logs/${requestId}`,
     });
   };
 
   const getRequestStats = () => {
     return executeApiCall({
       method: "GET",
-      relativePath: `private/api/requests/stats`,
+      relativePath: `private/api/request-logs-stats`,
     });
   };
 
@@ -156,7 +164,7 @@ const createResourceService = ({ executeApiCall }) => {
     });
     return executeApiCall({
       method: "GET",
-      relativePath: `private/api/timeline?${params.toString()}`,
+      relativePath: `private/api/database-logs/timeline?${params.toString()}`,
     });
   };
 
@@ -191,9 +199,16 @@ const createCrudService = ({ executeApiCall }) => {
   return { post, put, destroy };
 };
 
+const healthCheck = async () => {
+  return executeApiCall({
+    method: "GET",
+    relativePath: "health",
+  });
+};
+
 // Main API Service
 const apiService = ({ token, apiBaseUrl }) => {
-  const { executeApiCall } = createApiService({ token, apiBaseUrl });
+  const { executeApiCall } = createApiService({ token, apiBaseUrl, origin });
 
   return {
     ...createEntityService({ executeApiCall }),
@@ -201,6 +216,7 @@ const apiService = ({ token, apiBaseUrl }) => {
     ...createFileService({ executeApiCall }),
     ...createResourceService({ executeApiCall }),
     ...createCrudService({ executeApiCall }),
+    healthCheck,
     apiUrl: () => apiBaseUrl,
   };
 };

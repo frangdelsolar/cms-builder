@@ -15,6 +15,12 @@ func DownloadStoredFileHandler(mgr *manager.ResourceManager, db *database.Databa
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
+		if r.Method == http.MethodHead {
+			w.Header().Set("Content-Type", "bytes")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
 		requestCtx := GetRequestContext(r)
 		log := requestCtx.Logger
 		user := requestCtx.User
@@ -66,6 +72,7 @@ func DownloadStoredFileHandler(mgr *manager.ResourceManager, db *database.Databa
 			return
 		}
 
+		w.Header().Set("Content-Type", "bytes")
 		w.Write(bytes)
 	}
 }

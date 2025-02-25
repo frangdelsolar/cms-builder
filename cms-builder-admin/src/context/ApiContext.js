@@ -11,6 +11,7 @@ const ApiProvider = ({ children }) => {
     return apiService({
       token,
       apiBaseUrl: process.env.REACT_APP_API_BASE_URL,
+      origin: window.location.origin,
     });
   }, [token]);
 

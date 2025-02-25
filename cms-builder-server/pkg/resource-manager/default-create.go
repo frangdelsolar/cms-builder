@@ -95,12 +95,12 @@ var DefaultCreateHandler ApiFunction = func(a *Resource, db *database.Database) 
 		}
 
 		// 9. Generate Success Message
-		appName, err := a.GetName()
+		appName, err := a.GetKebabCaseName()
 		if err != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
 		}
-		msg := appName + " created"
+		msg := appName + "created"
 
 		// 10. Send Success Response
 		SendJsonResponse(w, http.StatusCreated, &instance, msg)

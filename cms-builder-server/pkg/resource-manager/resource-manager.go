@@ -108,7 +108,7 @@ func (r *ResourceManager) GetRoutes(apiBaseUrl string) []server.Route {
 			Handler:      ApiHandler(r, apiBaseUrl),
 			Name:         "api",
 			RequiresAuth: false,
-			Method:       http.MethodGet,
+			Methods:      []string{http.MethodGet},
 		},
 	}
 
@@ -132,42 +132,42 @@ func InitializeRoutes(r *Resource, input []server.Route, db *database.Database) 
 			Handler:      r.Api.List(r, db),
 			Name:         fmt.Sprintf("%s:list", name),
 			RequiresAuth: true,
-			Method:       http.MethodGet,
+			Methods:      []string{http.MethodGet},
 		},
 		{
 			Path:         baseRoute + "/schema",
 			Handler:      r.Api.Schema(r),
 			Name:         fmt.Sprintf("%s:schema", name),
 			RequiresAuth: false,
-			Method:       http.MethodGet,
+			Methods:      []string{http.MethodGet},
 		},
 		{
 			Path:         baseRoute + "/new",
 			Handler:      r.Api.Create(r, db),
 			Name:         fmt.Sprintf("%s:create", name),
 			RequiresAuth: true,
-			Method:       http.MethodPost,
+			Methods:      []string{http.MethodPost},
 		},
 		{
 			Path:         baseRoute + "/{id}/delete",
 			Handler:      r.Api.Delete(r, db),
 			Name:         fmt.Sprintf("%s:delete", name),
 			RequiresAuth: true,
-			Method:       http.MethodDelete,
+			Methods:      []string{http.MethodDelete},
 		},
 		{
 			Path:         baseRoute + "/{id}/update",
 			Handler:      r.Api.Update(r, db),
 			Name:         fmt.Sprintf("%s:update", name),
 			RequiresAuth: true,
-			Method:       http.MethodPut,
+			Methods:      []string{http.MethodPut},
 		},
 		{
 			Path:         baseRoute + "/{id}",
 			Handler:      r.Api.Detail(r, db),
 			Name:         fmt.Sprintf("%s:detail", name),
 			RequiresAuth: true,
-			Method:       http.MethodGet,
+			Methods:      []string{http.MethodGet},
 		},
 	}
 

@@ -116,7 +116,14 @@ var DefaultUpdateHandler ApiFunction = func(a *Resource, db *database.Database) 
 			return
 		}
 
+		kebabName, err := a.GetKebabCasePluralName()
+		if err != nil {
+			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+			return
+		}
+		msg := kebabName + " updated"
+
 		// 12. Send Success Response
-		SendJsonResponse(w, http.StatusOK, instance, appName+"-updated")
+		SendJsonResponse(w, http.StatusOK, instance, msg)
 	}
 }

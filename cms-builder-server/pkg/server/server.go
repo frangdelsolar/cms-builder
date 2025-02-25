@@ -72,11 +72,11 @@ func (s *Server) Run(getRoutes GetRoutesFunc, apiBaseUrl string) error {
 
 	routes = append(routes,
 		Route{
-			Path:         "/health",
+			Path:         "/",
 			Handler:      HealthCheck,
 			Name:         "health",
 			RequiresAuth: false,
-			Method:       http.MethodGet,
+			Methods:      []string{http.MethodGet},
 		},
 	)
 
@@ -98,7 +98,11 @@ func (s *Server) Run(getRoutes GetRoutesFunc, apiBaseUrl string) error {
 			continue
 		}
 		s.Logger.Warn().Str("path", route.Path).Msg("Public")
-		publicRouter.HandleFunc(route.Path, route.Handler).Name(route.Name).Methods(route.Method)
+
+		methods := route.Methods
+		methods = append(methods, http.MethodOptions)
+
+		publicRouter.HandleFunc(route.Path, route.Handler).Name(route.Name).Methods(methods...)
 	}
 
 	authRouter := publicRouter.PathPrefix("/private").Subrouter()
@@ -109,8 +113,11 @@ func (s *Server) Run(getRoutes GetRoutesFunc, apiBaseUrl string) error {
 			continue
 		}
 
+		methods := route.Methods
+		methods = append(methods, http.MethodOptions)
 		s.Logger.Info().Str("path", "/private"+route.Path).Msg("Private")
-		authRouter.HandleFunc(route.Path, route.Handler).Name(route.Name).Methods(route.Method)
+
+		authRouter.HandleFunc(route.Path, route.Handler).Name(route.Name).Methods(methods...)
 	}
 
 	s.Logger.Info().Msgf("Running server on port %s", s.Addr)

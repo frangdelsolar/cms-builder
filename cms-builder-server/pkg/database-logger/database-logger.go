@@ -28,7 +28,7 @@ func SetupDBLoggerResource(resourceManager *manager.ResourceManager, db *databas
 			Handler:      TimelineHandler(resourceManager, db),
 			Name:         "database-logs:timeline",
 			RequiresAuth: true,
-			Method:       http.MethodGet,
+			Methods:      []string{http.MethodGet},
 		},
 	}
 

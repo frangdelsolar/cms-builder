@@ -40,7 +40,7 @@ func SetupFileResource(resourceManager *manager.ResourceManager, db *database.Da
 			Handler:      DownloadStoredFileHandler(resourceManager, db, st),
 			Name:         "files-download",
 			RequiresAuth: true,
-			Method:       http.MethodGet,
+			Methods:      []string{http.MethodGet, http.MethodHead},
 		},
 	}
 
