@@ -41,174 +41,88 @@ type Orchestrator struct {
 }
 
 func NewOrchestrator() (*Orchestrator, error) {
-	var err error
 	o := &Orchestrator{}
 
-	// Respect the order of initialization
-	err = o.InitConfigReader()
-	if err != nil {
-		fmt.Println("Error initializing config reader:", err)
-		return nil, err
-	}
-
-	err = o.InitLogger() // config
-	if err != nil {
-		fmt.Println("Error initializing logger:", err)
-		return nil, err
-	}
-
-	environment := o.Config.GetString(EnvKeys.Environment)
-	o.Logger.Info().
-		Str("version", orchestratorVersion).
-		Str("env", environment).
-		Msg("Orchestrator running")
-
-	err = o.InitDatabase() // config and logger
-	if err != nil {
-		o.Logger.Error().Err(err).Msg("Error initializing database")
-		return nil, err
-	}
-
-	err = o.InitFirebase() // config, db and logger
-	if err != nil {
-		o.Logger.Error().Err(err).Msg("Error initializing firebase")
-		return nil, err
-	}
-
-	o.InitResourceManager()
-
-	// // Init Models
-	o.InitAuth()
-	o.InitDatabaseLogger()
-	o.InitRequestLogger()
-	o.InitFiles()
-
-	err = o.InitUsers() // config, db, firebase, history, amdin and logger
-	if err != nil {
-		o.Logger.Error().Err(err).Msg("Error initializing users")
-		return nil, err
-	}
-
-	err = o.InitServer()
-	if err != nil {
-		o.Logger.Error().Err(err).Msg("Error initializing server")
-		return nil, err
-	}
-
-	err = o.InitStore()
-	if err != nil {
-		o.Logger.Err(err).Msg("Error initializing store")
-		return nil, err
-	}
-
-	err = o.InitScheduler()
-	if err != nil {
-		o.Logger.Err(err).Msg("Error initializing scheduler")
+	if err := o.init(); err != nil {
 		return nil, err
 	}
 
 	return o, nil
 }
 
-func (o *Orchestrator) InitFiles() {
-	fileConfig := file.SetupFileResource(o.ResourceManager, o.DB, o.Store, o.Logger)
-	o.ResourceManager.AddResource(fileConfig)
-}
-
-func (o *Orchestrator) InitScheduler() error {
-	taskConfig := scheduler.SetupSchedulerTaskResource()
-	o.ResourceManager.AddResource(taskConfig)
-
-	jobConfig := scheduler.SetupSchedulerJobDefinitionResource()
-	o.ResourceManager.AddResource(jobConfig)
-
-	sch, err := scheduler.NewScheduler(o.DB, o.Users.Scheduler, o.Logger)
-	if err != nil {
-		return err
+func (o *Orchestrator) init() error {
+	initializers := []func() error{
+		o.InitConfigReader,
+		o.InitLogger,
+		o.InitDatabase,
+		o.InitFirebase,
+		o.InitResourceManager,
+		o.InitAuth,
+		o.InitDatabaseLogger,
+		o.InitRequestLogger,
+		o.InitFiles,
+		o.InitUsers,
+		o.InitServer,
+		o.InitStore,
+		o.InitScheduler,
 	}
 
-	o.Scheduler = sch
+	for _, init := range initializers {
+		if err := init(); err != nil {
+			return err
+		}
+	}
+
+	o.Logger.Info().
+		Str("version", orchestratorVersion).
+		Str("env", o.Config.GetString(EnvKeys.Environment)).
+		Msg("Orchestrator initialized successfully")
+
 	return nil
 }
 
-func (o *Orchestrator) InitRequestLogger() {
-	resourceConfig := requestLogger.SetupRequestLoggerResource(o.ResourceManager, o.DB, o.Logger)
-	o.ResourceManager.AddResource(resourceConfig)
-}
-
-func (o *Orchestrator) InitDatabaseLogger() {
-	resourceConfig := dbLogger.SetupDBLoggerResource(o.ResourceManager, o.DB, o.Logger)
-	o.ResourceManager.AddResource(resourceConfig)
-}
-
-func (o *Orchestrator) InitAuth() {
-	o.Logger.Info().Msg("Initializing user resource")
-
-	resourceConfig := auth.SetupUserResource(o.FirebaseClient, o.DB, o.Logger)
-	o.ResourceManager.AddResource(resourceConfig)
-}
-
-func (o *Orchestrator) InitResourceManager() {
-	o.Logger.Info().Msg("Initializing resource manager")
-	o.ResourceManager = manager.NewResourceManager(o.DB, o.Logger)
-}
-
-func (o *Orchestrator) InitStore() error {
-	var s store.Store
-
-	storeType := o.Config.GetString(EnvKeys.StoreType)
-	folder := o.Config.GetString(EnvKeys.UploaderFolder)
-	baseUrl := o.Config.GetString(EnvKeys.BaseUrl)
-
-	storeConfig := &store.StoreConfig{
-		MaxSize:            o.Config.GetInt64(EnvKeys.UploaderMaxSize),
-		SupportedMimeTypes: o.Config.GetStringSlice(EnvKeys.UploaderSupportedMime),
-		Folder:             o.Config.GetString(EnvKeys.UploaderFolder),
+func (o *Orchestrator) InitConfigReader() error {
+	config, err := config.NewConfigReader(&config.ReaderConfig{
+		ReadEnv:  true,
+		ReadFile: false,
+	})
+	if err != nil {
+		return fmt.Errorf("error initializing config reader: %w", err)
 	}
-
-	o.Logger.Info().Interface("storeConfig", storeConfig).Msg("Initializing store")
-
-	switch storeType {
-	case string(store.StoreS3):
-
-		s3Config := &store.S3Config{
-			Bucket:    o.Config.GetString(EnvKeys.AwsBucket),
-			Region:    o.Config.GetString(EnvKeys.AwsRegion),
-			AccessKey: o.Config.GetString(EnvKeys.AwsAccessKeyId),
-			SecretKey: o.Config.GetString(EnvKeys.AwsSecretAccessKey),
-			Folder:    folder,
-		}
-
-		s3Store, err := store.NewS3Store(storeConfig, s3Config)
-		if err != nil {
-			o.Logger.Error().Err(err).Msg("Error initializing S3 store")
-			return err
-		}
-		s = s3Store
-	case string(store.StoreLocal):
-		localStore, err := store.NewLocalStore(storeConfig, folder, baseUrl)
-		if err != nil {
-			o.Logger.Error().Err(err).Msg("Error initializing local store")
-			return err
-		}
-		s = localStore
-	default:
-		return fmt.Errorf("unknown store type: %s", storeType)
-	}
-
-	o.Store = s
+	o.Config = config
 	return nil
 }
 
-func (o *Orchestrator) InitUsers() error {
-	err := o.SetupOrchestratorUsers()
-	if err != nil {
-		o.Logger.Error().Err(err).Msg("Error setting up orchestrator users")
-		return err
+func (o *Orchestrator) InitLogger() error {
+	config := &logger.LoggerConfig{
+		LogLevel:    o.Config.GetString(EnvKeys.LogLevel),
+		LogFilePath: o.Config.GetString(EnvKeys.LogFilePath),
+		WriteToFile: o.Config.GetBool(EnvKeys.LogWriteToFile),
 	}
 
-	o.Logger.Info().Interface("users", o.Users).Msg("Users initialized")
+	logger, err := logger.NewLogger(config)
+	if err != nil {
+		return fmt.Errorf("error initializing logger: %w", err)
+	}
+	o.Logger = logger
+	o.LoggerConfig = config
+	return nil
+}
 
+func (o *Orchestrator) InitDatabase() error {
+	config := &database.DBConfig{
+		URL:    o.Config.GetString(EnvKeys.DbUrl),
+		Path:   o.Config.GetString(EnvKeys.DbFile),
+		Driver: o.Config.GetString(EnvKeys.DbDriver),
+	}
+
+	db, err := database.LoadDB(config, o.Logger)
+	if err != nil {
+		return fmt.Errorf("error initializing database: %w", err)
+	}
+	o.DB = db
+
+	o.Logger.Info().Interface("config", config).Msg("Database initialized")
 	return nil
 }
 
@@ -218,7 +132,7 @@ func (o *Orchestrator) InitFirebase() error {
 	}
 	fb, err := clients.NewFirebaseAdmin(cfg)
 	if err != nil {
-		return err
+		return fmt.Errorf("error initializing firebase: %w", err)
 	}
 	o.FirebaseClient = fb
 
@@ -226,8 +140,49 @@ func (o *Orchestrator) InitFirebase() error {
 	return nil
 }
 
-func (o *Orchestrator) InitServer() error {
+func (o *Orchestrator) InitResourceManager() error {
+	o.Logger.Info().Msg("Initializing resource manager")
+	o.ResourceManager = manager.NewResourceManager(o.DB, o.Logger)
+	return nil
+}
 
+func (o *Orchestrator) InitAuth() error {
+	resourceConfig := auth.SetupUserResource(o.FirebaseClient, o.DB, o.Logger)
+	o.ResourceManager.AddResource(resourceConfig)
+
+	return nil
+}
+
+func (o *Orchestrator) InitDatabaseLogger() error {
+	resourceConfig := dbLogger.SetupDBLoggerResource(o.ResourceManager, o.DB, o.Logger)
+	o.ResourceManager.AddResource(resourceConfig)
+
+	return nil
+}
+
+func (o *Orchestrator) InitRequestLogger() error {
+	resourceConfig := requestLogger.SetupRequestLoggerResource(o.ResourceManager, o.DB, o.Logger)
+	o.ResourceManager.AddResource(resourceConfig)
+
+	return nil
+}
+
+func (o *Orchestrator) InitFiles() error {
+	fileConfig := file.SetupFileResource(o.ResourceManager, o.DB, o.Store, o.Logger)
+	o.ResourceManager.AddResource(fileConfig)
+
+	return nil
+}
+
+func (o *Orchestrator) InitUsers() error {
+	if err := o.SetupOrchestratorUsers(); err != nil {
+		return fmt.Errorf("error setting up orchestrator users: %w", err)
+	}
+	o.Logger.Info().Msg("Users initialized successfully")
+	return nil
+}
+
+func (o *Orchestrator) InitServer() error {
 	config := &server.ServerConfig{
 		Host:           o.Config.GetString(EnvKeys.ServerHost),
 		Port:           o.Config.GetString(EnvKeys.ServerPort),
@@ -242,75 +197,71 @@ func (o *Orchestrator) InitServer() error {
 
 	server, err := server.NewServer(config, o.DB, o.Logger)
 	if err != nil {
-		o.Logger.Error().Err(err).Msg("Error initializing server")
-		return err
+		return fmt.Errorf("error initializing server: %w", err)
 	}
-
 	o.Server = server
 
 	return nil
 }
 
-func (o *Orchestrator) InitDatabase() error {
+func (o *Orchestrator) InitStore() error {
+	storeType := o.Config.GetString(EnvKeys.StoreType)
+	folder := o.Config.GetString(EnvKeys.UploaderFolder)
+	baseUrl := o.Config.GetString(EnvKeys.BaseUrl)
 
-	config := &database.DBConfig{}
-
-	config.URL = o.Config.GetString(EnvKeys.DbUrl)
-	config.Path = o.Config.GetString(EnvKeys.DbFile)
-	config.Driver = o.Config.GetString(EnvKeys.DbDriver)
-
-	db, err := database.LoadDB(config, o.Logger)
-	if err != nil {
-		o.Logger.Error().Err(err).Msg("Error initializing database")
-		return err
+	storeConfig := &store.StoreConfig{
+		MaxSize:            o.Config.GetInt64(EnvKeys.UploaderMaxSize),
+		SupportedMimeTypes: o.Config.GetStringSlice(EnvKeys.UploaderSupportedMime),
+		Folder:             folder,
 	}
 
-	o.DB = db
+	o.Logger.Info().Interface("storeConfig", storeConfig).Msg("Initializing store")
 
-	o.Logger.Info().Interface("config", config).Msg("Database initialized")
+	var s store.Store
+	var err error
+
+	switch storeType {
+	case string(store.StoreS3):
+		s3Config := &store.S3Config{
+			Bucket:    o.Config.GetString(EnvKeys.AwsBucket),
+			Region:    o.Config.GetString(EnvKeys.AwsRegion),
+			AccessKey: o.Config.GetString(EnvKeys.AwsAccessKeyId),
+			SecretKey: o.Config.GetString(EnvKeys.AwsSecretAccessKey),
+			Folder:    folder,
+		}
+		s, err = store.NewS3Store(storeConfig, s3Config)
+	case string(store.StoreLocal):
+		s, err = store.NewLocalStore(storeConfig, folder, baseUrl)
+	default:
+		return fmt.Errorf("unknown store type: %s", storeType)
+	}
+
+	if err != nil {
+		return fmt.Errorf("error initializing store: %w", err)
+	}
+	o.Store = s
 
 	return nil
 }
 
-func (o *Orchestrator) InitConfigReader() error {
-	fmt.Println("Initializing config reader")
+func (o *Orchestrator) InitScheduler() error {
+	taskConfig := scheduler.SetupSchedulerTaskResource()
+	o.ResourceManager.AddResource(taskConfig)
 
-	config, err := config.NewConfigReader(
-		&config.ReaderConfig{
-			ReadEnv:  true,
-			ReadFile: false,
-		},
-	)
+	jobConfig := scheduler.SetupSchedulerJobDefinitionResource()
+	o.ResourceManager.AddResource(jobConfig)
+
+	sch, err := scheduler.NewScheduler(o.DB, o.Users.Scheduler, o.Logger)
 	if err != nil {
-		fmt.Println("Error initializing config reader:", err)
-		return err
+		return fmt.Errorf("error initializing scheduler: %w", err)
 	}
-	o.Config = config
-	return nil
-}
+	o.Scheduler = sch
 
-func (o *Orchestrator) InitLogger() error {
-	fmt.Println("Initializing logger")
-
-	config := &logger.LoggerConfig{
-		LogLevel:    o.Config.GetString(EnvKeys.LogLevel),
-		LogFilePath: o.Config.GetString(EnvKeys.LogFilePath),
-		WriteToFile: o.Config.GetBool(EnvKeys.LogWriteToFile),
-	}
-
-	logger, err := logger.NewLogger(config)
-	if err != nil {
-		fmt.Println("Error initializing logger:", err)
-		return err
-	}
-	o.Logger = logger
-	o.LoggerConfig = config
 	return nil
 }
 
 func (o *Orchestrator) Run() error {
 	o.Logger.Info().Msg("Starting Server")
-
 	routes := o.ResourceManager.GetRoutes()
 	return o.Server.Run(routes)
 }

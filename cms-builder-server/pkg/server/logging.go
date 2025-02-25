@@ -20,21 +20,18 @@ func LoggingMiddleware(loggerConfig *logger.LoggerConfig) func(next http.Handler
 			log, err := logger.NewLogger(loggerConfig)
 			if err != nil {
 				fmt.Println("Error creating request logger")
-				// Fall back to the default logger
 				log = logger.Default
 			}
 
 			// Add the request ID to the logger context
-
 			zero := log.Logger.With().Str("requestId", requestId).Logger()
-
 			requestLog := &logger.Logger{Logger: &zero}
+
+			// Add the logger to the request context
+			ctx := context.WithValue(r.Context(), CtxRequestLogger, requestLog)
 
 			// Log the request
 			requestLog.Info().Msgf("[%s] %s", r.Method, r.RequestURI)
-
-			// Add the logger to the request context
-			ctx := context.WithValue(r.Context(), CtxRequestLogger, &requestLog)
 
 			// Call the next handler
 			next.ServeHTTP(w, r.WithContext(ctx))

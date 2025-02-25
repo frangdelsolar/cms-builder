@@ -54,16 +54,21 @@ var DefaultListHandler ApiFunction = func(a *Resource, db *database.Database) ht
 		query := ""
 		order := queryParams.Order
 
-		if !(a.SkipUserBinding || isAdmin) {
+		if a.SkipUserBinding || isAdmin {
+			err = queries.FindMany(db, instances, pagination, order, query).Error
+			if err != nil {
+				log.Error().Err(err).Msgf("Error finding instances")
+				SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+				return
+			}
+		} else {
 			query = "created_by_id = ?"
-		}
-
-		// 6. Execute Database Query
-		err = queries.FindMany(db, instances, pagination, order, query, user.StringID()).Error
-		if err != nil {
-			log.Error().Err(err).Msgf("Error finding instances")
-			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
-			return
+			err = queries.FindMany(db, instances, pagination, order, query, user.StringID()).Error
+			if err != nil {
+				log.Error().Err(err).Msgf("Error finding instances")
+				SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+				return
+			}
 		}
 
 		// 7. Generate Success Message

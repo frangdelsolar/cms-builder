@@ -141,3 +141,7 @@ func (a *Resource) Validate(instance interface{}) ValidationResult {
 
 	return errors
 }
+
+func (a *Resource) AddRoute(route server.Route) {
+	a.Routes = append(a.Routes, route)
+}

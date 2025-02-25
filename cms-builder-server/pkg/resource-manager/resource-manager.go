@@ -2,6 +2,7 @@ package resourcemanager
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
@@ -84,6 +85,10 @@ func (r *ResourceManager) AddResource(input *ResourceConfig) (*Resource, error) 
 		Delete: DefaultDeleteHandler,
 	}
 
+	if input.Handlers == nil {
+		input.Handlers = &ApiHandlers{}
+	}
+
 	// check if custom handlers are provided
 	if input.Handlers.List != nil {
 		handlers.List = input.Handlers.List
@@ -115,18 +120,13 @@ func (r *ResourceManager) AddResource(input *ResourceConfig) (*Resource, error) 
 		permissions = make(server.RolePermissionMap)
 	}
 
-	routes := input.Routes
-	if routes == nil {
-		routes = make([]server.Route, 0)
-	}
-
 	resource := &Resource{
 		Model:           input.Model,
 		Api:             handlers,
 		SkipUserBinding: input.SkipUserBinding,
 		Validators:      validators,
 		Permissions:     permissions,
-		Routes:          routes,
+		Routes:          make([]server.Route, 0),
 	}
 
 	err := r.Register(resource)
@@ -134,5 +134,59 @@ func (r *ResourceManager) AddResource(input *ResourceConfig) (*Resource, error) 
 		return nil, err
 	}
 
+	name, _ := resource.GetName()
+	baseRoute := "/api/" + name + "/"
+
+	routes := []server.Route{
+		{
+			Path:         baseRoute,
+			Handler:      resource.Api.List(resource, r.DB),
+			Name:         fmt.Sprintf("%s-list", input.Model),
+			RequiresAuth: true,
+			Method:       http.MethodGet,
+		},
+		{
+			Path:         baseRoute + "{id}",
+			Handler:      resource.Api.Detail(resource, r.DB),
+			Name:         fmt.Sprintf("%s-detail", input.Model),
+			RequiresAuth: true,
+			Method:       http.MethodGet,
+		},
+		{
+			Path:         baseRoute + "/create",
+			Handler:      resource.Api.Create(resource, r.DB),
+			Name:         fmt.Sprintf("%s-create", input.Model),
+			RequiresAuth: true,
+			Method:       http.MethodPost,
+		},
+		{
+			Path:         baseRoute + "/{id}/update",
+			Handler:      resource.Api.Update(resource, r.DB),
+			Name:         fmt.Sprintf("%s-update", input.Model),
+			RequiresAuth: true,
+			Method:       http.MethodPut,
+		},
+		{
+			Path:         baseRoute + "/{id}/delete",
+			Handler:      resource.Api.Delete(resource, r.DB),
+			Name:         fmt.Sprintf("%s-delete", input.Model),
+			RequiresAuth: true,
+			Method:       http.MethodDelete,
+		},
+	}
+
+	resource.Routes = append(resource.Routes, routes...)
+
 	return resource, nil
+}
+
+func (r *ResourceManager) GetRoutes() []server.Route {
+	routes := make([]server.Route, 0)
+
+	for _, v := range r.Resources {
+		resource := v.(*Resource)
+		routes = append(routes, resource.Routes...)
+	}
+
+	return routes
 }

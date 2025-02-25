@@ -119,11 +119,17 @@ func AuthMiddleware(envGodToken string, godUser *models.User, firebase *clients.
 			}
 
 			if localUser != nil {
-				r = r.WithContext(context.WithValue(r.Context(), CtxRequestIsAuth, true))
-				r = r.WithContext(context.WithValue(r.Context(), CtxRequestUser, localUser))
-			}
 
-			log.Info().Interface("user", localUser).Msg("Authenticated as")
+				log.Info().Str("user", localUser.Email).Msg("Authenticated as")
+
+				// Create a new context with both values
+				ctx := r.Context()
+				ctx = context.WithValue(ctx, CtxRequestIsAuth, true)
+				ctx = context.WithValue(ctx, CtxRequestUser, localUser)
+
+				// Update the request with the new context
+				r = r.WithContext(ctx)
+			}
 
 			next.ServeHTTP(w, r)
 		})
@@ -133,13 +139,20 @@ func AuthMiddleware(envGodToken string, godUser *models.User, firebase *clients.
 func FormatRoles(roles []models.Role) string {
 	rolesStr := ""
 	for _, role := range roles {
-		rolesStr += string(role) + ","
+		rolesStr += role.S() + ","
 	}
-	rolesStr = rolesStr[:len(roles)-1]
+
+	if len(rolesStr) > 0 {
+		rolesStr = rolesStr[:len(rolesStr)-1]
+	}
+
 	return rolesStr
 }
 
 func CreateUserWithRole(input models.RegisterUserInput, firebase *clients.FirebaseManager, db *database.Database, systemUser *models.User, requestId string, log *logger.Logger) (*models.User, error) {
+
+	log.Debug().Interface("input", input).Msg("Creating user with role")
+
 	ctx := context.Background()
 
 	// Normalize email to lowercase
@@ -172,6 +185,8 @@ func CreateUserWithRole(input models.RegisterUserInput, firebase *clients.Fireba
 		FirebaseId: fbUserId,
 		Roles:      roles,
 	}
+
+	log.Info().Interface("user", newUser).Msg("Creating user in database")
 
 	if err := queries.Create(db, &newUser, systemUser, requestId).Error; err != nil {
 		log.Error().Err(err).Msg("Failed to create user in database")

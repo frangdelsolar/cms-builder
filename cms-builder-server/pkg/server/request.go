@@ -66,13 +66,12 @@ func GetRequestId(r *http.Request) string {
 }
 
 func GetRequestLogger(r *http.Request) *logger.Logger {
-	loggerFromContext := r.Context().Value(CtxRequestLogger)
-	log, ok := loggerFromContext.(*logger.Logger)
-	if !ok {
-		fmt.Println("Logger not found in context. Returning default logger")
-		return logger.Default
+	if log, ok := r.Context().Value(CtxRequestLogger).(*logger.Logger); ok {
+		return log
 	}
-	return log
+
+	fmt.Print("Error getting logger from context. Using default\n")
+	return logger.Default
 }
 
 func GetRequestUser(r *http.Request) *models.User {
@@ -149,24 +148,25 @@ func GetRequestQueryParams(r *http.Request) (*QueryParams, error) {
 
 	limit, err := GetIntQueryParam("limit", q)
 	if err != nil {
-		log.Error().Err(err).Msgf("Error validating limit")
-		return nil, err
+		limit = 10
+		log.Warn().Err(err).Msgf("Error validating limit. Using default limit %d", limit)
 	}
 	params.Limit = limit
 
 	page, err := GetIntQueryParam("page", q)
 	if err != nil {
-		log.Error().Err(err).Msgf("Error validating page")
-		return nil, err
+		page = 1
+		log.Warn().Err(err).Msgf("Error validating page. Using default page %d", page)
 	}
 	params.Page = page
 
 	// Parse order
 	orderParam := q.Get("order")
-	order, err := ValidateOrderParam(orderParam)
-	if err != nil {
-		log.Error().Err(err).Msgf("Error validating order")
-		log.Warn().Msg("Using default order")
+	order := ""
+	order, err = ValidateOrderParam(orderParam)
+	if err != nil || order == "" {
+		order = "id desc"
+		log.Warn().Err(err).Msgf("Error validating order. Using default order %s", order)
 	}
 
 	params.Order = order
