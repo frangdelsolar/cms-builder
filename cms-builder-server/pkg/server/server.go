@@ -63,7 +63,9 @@ type ServerConfig struct {
 // It checks for missing configuration (Host and Port) and returns an error if necessary.
 // Otherwise, it creates a new Gorilla Mux router, sets up the server address and handler,
 // and adds a basic logging middleware by default.
-func NewServer(svrConfig *ServerConfig, db *database.Database) (*Server, error) {
+func NewServer(svrConfig *ServerConfig, db *database.Database, log *logger.Logger) (*Server, error) {
+
+	log.Info().Interface("config", svrConfig).Msg("Initializing server")
 
 	if svrConfig == nil {
 		return nil, ErrServerConfigNotProvided

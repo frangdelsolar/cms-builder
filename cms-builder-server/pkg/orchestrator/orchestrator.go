@@ -16,7 +16,6 @@ import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/scheduler"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store"
-	"github.com/google/uuid"
 )
 
 const orchestratorVersion = "2.0.0"
@@ -58,6 +57,12 @@ func NewOrchestrator() (*Orchestrator, error) {
 		return nil, err
 	}
 
+	environment := o.Config.GetString(EnvKeys.Environment)
+	o.Logger.Info().
+		Str("version", orchestratorVersion).
+		Str("env", environment).
+		Msg("Orchestrator running")
+
 	err = o.InitDatabase() // config and logger
 	if err != nil {
 		o.Logger.Error().Err(err).Msg("Error initializing database")
@@ -72,7 +77,7 @@ func NewOrchestrator() (*Orchestrator, error) {
 
 	o.InitResourceManager()
 
-	// Init Models
+	// // Init Models
 	o.InitAuth()
 	o.InitDatabaseLogger()
 	o.InitRequestLogger()
@@ -84,35 +89,29 @@ func NewOrchestrator() (*Orchestrator, error) {
 		return nil, err
 	}
 
-	err = o.InitServer()
-	if err != nil {
-		o.Logger.Error().Err(err).Msg("Error initializing server")
-		return nil, err
-	}
+	// err = o.InitServer()
+	// if err != nil {
+	// 	o.Logger.Error().Err(err).Msg("Error initializing server")
+	// 	return nil, err
+	// }
 
-	err = o.InitStore()
-	if err != nil {
-		o.Logger.Err(err).Msg("Error initializing store")
-		return nil, err
-	}
+	// err = o.InitStore()
+	// if err != nil {
+	// 	o.Logger.Err(err).Msg("Error initializing store")
+	// 	return nil, err
+	// }
 
-	err = o.InitScheduler()
-	if err != nil {
-		o.Logger.Err(err).Msg("Error initializing scheduler")
-		return nil, err
-	}
-
-	environment := o.Config.GetString(EnvKeys.Environment)
-	o.Logger.Info().
-		Str("version", orchestratorVersion).
-		Str("env", environment).
-		Msg("Orchestrator initialized")
+	// err = o.InitScheduler()
+	// if err != nil {
+	// 	o.Logger.Err(err).Msg("Error initializing scheduler")
+	// 	return nil, err
+	// }
 
 	return o, nil
 }
 
 func (o *Orchestrator) InitFiles() {
-	fileConfig := file.SetupFileResource(o.ResourceManager, o.DB, o.Store)
+	fileConfig := file.SetupFileResource(o.ResourceManager, o.DB, o.Store, o.Logger)
 	o.ResourceManager.AddResource(fileConfig)
 }
 
@@ -133,22 +132,25 @@ func (o *Orchestrator) InitScheduler() error {
 }
 
 func (o *Orchestrator) InitRequestLogger() {
-	resourceConfig := requestLogger.SetupRequestLoggerResource(o.ResourceManager, o.DB)
+	resourceConfig := requestLogger.SetupRequestLoggerResource(o.ResourceManager, o.DB, o.Logger)
 	o.ResourceManager.AddResource(resourceConfig)
 }
 
 func (o *Orchestrator) InitDatabaseLogger() {
-	resourceConfig := dbLogger.SetupDBLoggerResource(o.ResourceManager, o.DB)
+	resourceConfig := dbLogger.SetupDBLoggerResource(o.ResourceManager, o.DB, o.Logger)
 	o.ResourceManager.AddResource(resourceConfig)
 }
 
 func (o *Orchestrator) InitAuth() {
-	resourceConfig := auth.SetupUserResource(o.FirebaseClient, o.DB, o.Users.System)
+	o.Logger.Info().Msg("Initializing user resource")
+
+	resourceConfig := auth.SetupUserResource(o.FirebaseClient, o.DB, o.Logger)
 	o.ResourceManager.AddResource(resourceConfig)
 }
 
 func (o *Orchestrator) InitResourceManager() {
-	o.ResourceManager = manager.NewResourceManager()
+	o.Logger.Info().Msg("Initializing resource manager")
+	o.ResourceManager = manager.NewResourceManager(o.DB, o.Logger)
 }
 
 func (o *Orchestrator) InitStore() error {
@@ -163,6 +165,8 @@ func (o *Orchestrator) InitStore() error {
 		SupportedMimeTypes: o.Config.GetStringSlice(EnvKeys.UploaderSupportedMime),
 		Folder:             o.Config.GetString(EnvKeys.UploaderFolder),
 	}
+
+	o.Logger.Info().Interface("storeConfig", storeConfig).Msg("Initializing store")
 
 	switch storeType {
 	case string(store.StoreS3):
@@ -197,50 +201,7 @@ func (o *Orchestrator) InitStore() error {
 }
 
 func (o *Orchestrator) InitUsers() error {
-
-	usersData := []models.RegisterUserInput{
-		{
-			Name:             "God",
-			Email:            "god@" + o.Config.GetString(EnvKeys.Domain),
-			Password:         uuid.New().String(),
-			Roles:            []models.Role{models.AdminRole},
-			RegisterFirebase: false,
-		},
-		{
-			Name:             o.Config.GetString(EnvKeys.AdminName),
-			Email:            o.Config.GetString(EnvKeys.AdminEmail),
-			Password:         o.Config.GetString(EnvKeys.AdminPassword),
-			Roles:            []models.Role{models.AdminRole},
-			RegisterFirebase: true,
-		},
-		{
-			Name:             "Scheduler",
-			Email:            "scheduler@" + o.Config.GetString(EnvKeys.Domain),
-			Password:         uuid.New().String(),
-			Roles:            []models.Role{models.SchedulerRole},
-			RegisterFirebase: false,
-		},
-		{
-			Name:             "System",
-			Email:            "system@" + o.Config.GetString(EnvKeys.Domain),
-			Password:         uuid.New().String(),
-			Roles:            []models.Role{models.SchedulerRole},
-			RegisterFirebase: false,
-		},
-	}
-
-	requestId := uuid.New().String()
-	requestId = "automated::" + requestId
-
-	for _, userData := range usersData {
-		_, err := server.CreateUserWithRole(userData, o.FirebaseClient, o.DB, o.Users.System, requestId)
-		if err != nil {
-			o.Logger.Error().Err(err).Interface("user", userData).Msg("Error creating user")
-			return err
-		}
-	}
-
-	return nil
+	return o.SetupOrchestratorUsers()
 }
 
 func (o *Orchestrator) InitFirebase() error {
@@ -253,6 +214,7 @@ func (o *Orchestrator) InitFirebase() error {
 	}
 	o.FirebaseClient = fb
 
+	o.Logger.Info().Msg("Firebase initialized")
 	return nil
 }
 
@@ -269,7 +231,7 @@ func (o *Orchestrator) InitServer() error {
 		Firebase:       o.FirebaseClient,
 	}
 
-	server, err := server.NewServer(config, o.DB)
+	server, err := server.NewServer(config, o.DB, o.Logger)
 	if err != nil {
 		o.Logger.Error().Err(err).Msg("Error initializing server")
 		return err
@@ -295,10 +257,15 @@ func (o *Orchestrator) InitDatabase() error {
 	}
 
 	o.DB = db
+
+	o.Logger.Info().Interface("config", config).Msg("Database initialized")
+
 	return nil
 }
 
 func (o *Orchestrator) InitConfigReader() error {
+	fmt.Println("Initializing config reader")
+
 	config, err := config.NewConfigReader(
 		&config.ReaderConfig{
 			ReadEnv:  true,
@@ -314,6 +281,8 @@ func (o *Orchestrator) InitConfigReader() error {
 }
 
 func (o *Orchestrator) InitLogger() error {
+	fmt.Println("Initializing logger")
+
 	config := &logger.LoggerConfig{
 		LogLevel:    o.Config.GetString(EnvKeys.LogLevel),
 		LogFilePath: o.Config.GetString(EnvKeys.LogFilePath),

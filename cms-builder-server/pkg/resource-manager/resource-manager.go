@@ -3,17 +3,23 @@ package resourcemanager
 import (
 	"fmt"
 
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
 )
 
 type ResourceManager struct {
 	Resources map[string]interface{}
+	DB        *database.Database
+	Logger    *logger.Logger
 }
 
-func NewResourceManager() *ResourceManager {
+func NewResourceManager(db *database.Database, log *logger.Logger) *ResourceManager {
 	return &ResourceManager{
 		Resources: make(map[string]interface{}),
+		DB:        db,
+		Logger:    log,
 	}
 }
 
@@ -58,7 +64,11 @@ func (r *ResourceManager) Register(resource *Resource) error {
 		return fmt.Errorf("resource with name %s already exists", name)
 	}
 
+	// TODO: Move this to a better place
+	r.DB.DB.AutoMigrate(resource.Model)
+
 	r.Resources[name] = resource
+
 	return nil
 }
 

@@ -4,12 +4,15 @@ import (
 	"net/http"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	manager "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 )
 
-func SetupRequestLoggerResource(resourceManager *manager.ResourceManager, db *database.Database) *manager.ResourceConfig {
+func SetupRequestLoggerResource(resourceManager *manager.ResourceManager, db *database.Database, log *logger.Logger) *manager.ResourceConfig {
+
+	log.Info().Msg("Initializing Request Logger resource")
 
 	skipUserBinding := true // Request Logs don't have a created_by field
 

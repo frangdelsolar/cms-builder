@@ -7,6 +7,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	orc "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/orchestrator"
 )
 
@@ -20,32 +21,65 @@ func TestMain(m *testing.M) {
 	os.Exit(exitCode)
 }
 
-func TestInitServer(t *testing.T) {
-	o, err := orc.NewOrchestrator()
-	assert.NoError(t, err)
-	assert.NotNil(t, o.Server)
-}
-
-func TestInitDatabase(t *testing.T) {
-	o, err := orc.NewOrchestrator()
-	assert.NoError(t, err)
-	assert.NotNil(t, o.DB)
-}
-
-func TestInitConfigReader(t *testing.T) {
+func TestNewOrchestrator(t *testing.T) {
 	o, err := orc.NewOrchestrator()
 	assert.NoError(t, err)
 	assert.NotNil(t, o.Config)
 
-	t.Log("Config reader actually reads env variables")
+	// Config Reader
 	config := o.Config
 	appName := config.GetString(orc.EnvKeys.AppName)
 	assert.Equal(t, "test", appName)
-}
 
-func TestOrchestratorCreatesLogger(t *testing.T) {
-	o, err := orc.NewOrchestrator()
+	// Logger
+	log := o.Logger
+	assert.NotNil(t, log)
+	log.Info().Msg("test log")
+
+	// Database
+	db := o.DB
+	assert.NotNil(t, db)
+
+	// Firebase
+	firebase := o.FirebaseClient
+	assert.NotNil(t, firebase)
+
+	// ResourceManager
+	resourceManager := o.ResourceManager
+	assert.NotNil(t, resourceManager)
+
+	// Auth
+	userResource, err := resourceManager.GetResource(models.User{})
 	assert.NoError(t, err)
-	assert.NotNil(t, o.Logger)
-	assert.NotNil(t, o.LoggerConfig)
+	assert.NotNil(t, userResource)
+
+	// Database Logger
+	dbResource, err := resourceManager.GetResource(models.DatabaseLog{})
+	assert.NoError(t, err)
+	assert.NotNil(t, dbResource)
+
+	// Request Logger
+	reqResource, err := resourceManager.GetResource(models.RequestLog{})
+	assert.NoError(t, err)
+	assert.NotNil(t, reqResource)
+
+	// Users
+	users := o.Users
+	assert.NotNil(t, users.God)
+	assert.NotNil(t, users.Scheduler)
+	assert.NotNil(t, users.System)
+	assert.NotNil(t, users.Admin)
+
+	// Server
+	// server := o.Server
+	// assert.NotNil(t, server)
+
+	// Store
+	// store := o.Store
+	// assert.NotNil(t, store)
+
+	// Scheduler
+	// scheduler := o.Scheduler
+	// assert.NotNil(t, scheduler)
+
 }

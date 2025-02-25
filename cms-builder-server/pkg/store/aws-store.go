@@ -162,7 +162,7 @@ func NewS3Store(config *StoreConfig, awsConfig *S3Config) (*S3Store, error) {
 		return nil, fmt.Errorf("uploader folder is empty")
 	}
 
-	if config.MaxSize >= 0 {
+	if config.MaxSize <= 0 {
 		return nil, fmt.Errorf("invalid max size: %d", config.MaxSize)
 	}
 

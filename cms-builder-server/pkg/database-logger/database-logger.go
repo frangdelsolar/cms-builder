@@ -4,12 +4,15 @@ import (
 	"net/http"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	manager "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 )
 
-func SetupDBLoggerResource(resourceManager *manager.ResourceManager, db *database.Database) *manager.ResourceConfig {
+func SetupDBLoggerResource(resourceManager *manager.ResourceManager, db *database.Database, log *logger.Logger) *manager.ResourceConfig {
+
+	log.Info().Msg("Initializing Database Logger resource")
 
 	skipUserBinding := true // DB Logs don't have a created_by field
 

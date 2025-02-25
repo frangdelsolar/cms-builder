@@ -1,16 +1,17 @@
 package auth
 
 import (
-	"net/http"
-
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/clients"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	manager "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 )
 
-func SetupUserResource(firebase *clients.FirebaseManager, db *database.Database, systemUser *models.User) *manager.ResourceConfig {
+func SetupUserResource(firebase *clients.FirebaseManager, db *database.Database, log *logger.Logger) *manager.ResourceConfig {
+
+	log.Info().Msg("Initializing User resource")
 
 	skipUserBinding := true // Users don't have a created_by field
 
@@ -35,13 +36,13 @@ func SetupUserResource(firebase *clients.FirebaseManager, db *database.Database,
 	}
 
 	routes := []server.Route{
-		{
-			Path:         "/auth/register",
-			Handler:      RegisterVisitorController(firebase, db, systemUser),
-			Name:         "register",
-			RequiresAuth: false,
-			Method:       http.MethodPost,
-		},
+		// {
+		// 	Path:         "/auth/register",
+		// 	Handler:      RegisterVisitorController(firebase, db, systemUser),
+		// 	Name:         "register",
+		// 	RequiresAuth: false,
+		// 	Method:       http.MethodPost,
+		// },
 	}
 
 	config := &manager.ResourceConfig{

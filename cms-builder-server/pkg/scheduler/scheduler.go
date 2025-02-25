@@ -32,6 +32,9 @@ type Scheduler struct {
 }
 
 func NewScheduler(db *database.Database, schedulerUser *models.User, log *logger.Logger) (*Scheduler, error) {
+
+	log.Info().Msg("Initializing scheduler")
+
 	s, err := gocron.NewScheduler()
 	if err != nil {
 		return nil, err
