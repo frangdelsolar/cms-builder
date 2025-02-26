@@ -59,7 +59,7 @@ func DeleteStoredFilesHandler(db *database.Database, st store.Store) manager.Api
 				return
 			}
 
-			err = st.DeleteFile(&instance)
+			err = st.DeleteFile(&instance, log)
 			if err != nil {
 				SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 				return

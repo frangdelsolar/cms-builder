@@ -65,7 +65,7 @@ func DownloadStoredFileHandler(mgr *manager.ResourceManager, db *database.Databa
 			return
 		}
 
-		bytes, err := st.ReadFile(&instance)
+		bytes, err := st.ReadFile(&instance, log)
 		if err != nil {
 			log.Error().Err(err).Msg("Error reading file")
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())

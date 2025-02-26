@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/rs/zerolog/log"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 )
 
@@ -52,6 +52,8 @@ func RequestLoggerMiddleware(db *database.Database) func(next http.Handler) http
 			requestIdentifier := uuid.New().String()
 			ctx = context.WithValue(ctx, CtxRequestIdentifier, requestIdentifier)
 			r = r.WithContext(ctx)
+
+			log := logger.Default
 
 			wrappedWriter := &WriterWrapper{
 				ResponseWriter: w,
@@ -118,8 +120,6 @@ func RequestLoggerMiddleware(db *database.Database) func(next http.Handler) http
 				} else {
 					log.Error().Msg("Database or DB instance is nil, cannot create request log")
 				}
-
-				log.Debug().Interface("user", user).Msg("Request User")
 			}()
 
 			// Read request body

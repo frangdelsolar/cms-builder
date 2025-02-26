@@ -43,8 +43,6 @@ func VerifyUser(userIdToken string, firebase *clients.FirebaseManager, db *datab
 		}
 	}
 
-	log.Debug().Interface("user", localUser).Msg("verifying")
-
 	return &localUser, nil
 }
 
@@ -121,10 +119,6 @@ func AuthMiddleware(envGodToken string, godUser *models.User, firebase *clients.
 			}
 
 			if localUser != nil {
-
-				roles := localUser.GetRoles()
-
-				log.Debug().Interface("roles", roles).Str("user", localUser.Email).Msg("Authenticated as")
 
 				// Create a new context with both values
 				ctx := r.Context()

@@ -70,7 +70,6 @@ func GetRequestLogger(r *http.Request) *logger.Logger {
 		return log
 	}
 
-	fmt.Print("Error getting logger from context. Using default\n")
 	return logger.Default
 }
 

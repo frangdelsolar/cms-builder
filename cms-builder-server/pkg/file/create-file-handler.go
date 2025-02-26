@@ -22,8 +22,6 @@ func CreateStoredFilesHandler(db *database.Database, st store.Store) manager.Api
 			user := requestCtx.User
 			requestId := requestCtx.RequestId
 
-			log.Debug().Interface("storeconfig", st.GetConfig()).Msg("CreateStoredFilesHandler")
-
 			// 1. Validate Request Method
 			err := ValidateRequestMethod(r, http.MethodPost)
 			if err != nil {
@@ -55,7 +53,7 @@ func CreateStoredFilesHandler(db *database.Database, st store.Store) manager.Api
 			defer file.Close()
 
 			fileName := header.Filename
-			fileData, err := st.StoreFile(fileName, file, header)
+			fileData, err := st.StoreFile(fileName, file, header, log)
 			if err != nil {
 				handleUploadError(st, fileData, w, err, log)
 				return
@@ -88,7 +86,7 @@ func handleUploadError(store store.Store, fileData *models.File, w http.Response
 	log.Error().Err(err).Msgf("Error uploading file: %s. Rolling back...", fileData.Name)
 
 	// Attempt to delete the file from disk
-	store.DeleteFile(fileData)
+	store.DeleteFile(fileData, log)
 
 	// Write a JSON response with the error message to the writer
 	// at the internal server error (500) status code.

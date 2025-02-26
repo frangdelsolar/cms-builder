@@ -7,8 +7,8 @@ import (
 	"mime/multipart"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/clients"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
-	"github.com/rs/zerolog/log"
 )
 
 type S3Store struct {
@@ -29,9 +29,11 @@ func (s *S3Store) GetPath() string {
 // It reads the file bytes and calls the UploadFile method of the AwsManager client.
 // If successful, it returns a FileData object containing the file's name, path, and URL.
 // If there is an error at any step, it logs the error and returns the error.
-func (s *S3Store) StoreFile(fileName string, file multipart.File, header *multipart.FileHeader) (fileData *models.File, err error) {
+func (s *S3Store) StoreFile(fileName string, file multipart.File, header *multipart.FileHeader, log *logger.Logger) (fileData *models.File, err error) {
 
 	contentType := header.Header.Get("Content-Type")
+
+	log.Debug().Str("content-type", contentType).Msg("File Content Type")
 
 	validContentType, err := ValidateContentType(contentType, s.Config.SupportedMimeTypes)
 	if err != nil {
@@ -52,7 +54,7 @@ func (s *S3Store) StoreFile(fileName string, file multipart.File, header *multip
 
 	// Create the uploads directory if it doesn't exist
 	uploadsDir := s.GetPath()
-	location, err := s.Client.UploadFile(uploadsDir, fileName, fileBytes)
+	location, err := s.Client.UploadFile(uploadsDir, fileName, fileBytes, log)
 	if err != nil {
 		log.Error().Err(err).Msg("Error uploading file to S3")
 		return fileData, err
@@ -66,7 +68,7 @@ func (s *S3Store) StoreFile(fileName string, file multipart.File, header *multip
 		Url:  url,
 	}
 
-	fileInfo, err := s.GetFileInfo(fileData)
+	fileInfo, err := s.GetFileInfo(fileData, log)
 	if err != nil {
 		return fileData, err
 	}
@@ -74,15 +76,23 @@ func (s *S3Store) StoreFile(fileName string, file multipart.File, header *multip
 	fileData.Size = fileInfo.Size
 	fileData.MimeType = fileInfo.ContentType
 
+	log.Info().
+		Str("name", fileData.Name).
+		Str("path", fileData.Path).
+		Str("url", fileData.Url).
+		Int64("size", fileData.Size).
+		Str("mime-type", fileData.MimeType).
+		Msg("File stored successfully")
+
 	return fileData, nil
 }
 
 // DeleteFile deletes a file from the S3 bucket using the provided file path.
 // It calls the DeleteFile method of the AwsManager client.
 // If an error occurs during the deletion, it logs the error and returns it.
-func (s *S3Store) DeleteFile(file *models.File) error {
+func (s *S3Store) DeleteFile(file *models.File, log *logger.Logger) error {
 	log.Warn().Interface("file", file).Msg("Deleting file from S3")
-	err := s.Client.DeleteFile(file.Path)
+	err := s.Client.DeleteFile(file.Path, log)
 	if err != nil {
 		log.Error().Err(err).Msg("Error deleting file from S3")
 		return err
@@ -91,16 +101,16 @@ func (s *S3Store) DeleteFile(file *models.File) error {
 	return nil
 }
 
-func (s *S3Store) ListFiles() ([]string, error) {
-	return s.Client.ListFiles()
+func (s *S3Store) ListFiles(log *logger.Logger) ([]string, error) {
+	return s.Client.ListFiles(log)
 }
 
-func (s *S3Store) ReadFile(file *models.File) ([]byte, error) {
-	return s.Client.DownloadFile(file.Path)
+func (s *S3Store) ReadFile(file *models.File, log *logger.Logger) ([]byte, error) {
+	return s.Client.DownloadFile(file.Path, log)
 }
 
-func (s *S3Store) GetFileInfo(file *models.File) (*models.FileInfo, error) {
-	return s.Client.GetFileInfo(file.Path)
+func (s *S3Store) GetFileInfo(file *models.File, log *logger.Logger) (*models.FileInfo, error) {
+	return s.Client.GetFileInfo(file.Path, log)
 }
 
 // getFileBytes reads the contents of a multipart.models.File into a byte array.

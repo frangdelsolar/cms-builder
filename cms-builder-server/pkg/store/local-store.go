@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 )
 
@@ -53,7 +54,7 @@ func (s *LocalStore) GetPath() string {
 // FileData for the stored file, including the path to the file and the URL
 // at which the file can be accessed. If the file cannot be stored, an error
 // is returned.
-func (s *LocalStore) StoreFile(fileName string, file multipart.File, header *multipart.FileHeader) (fileData *models.File, err error) {
+func (s *LocalStore) StoreFile(fileName string, file multipart.File, header *multipart.FileHeader, log *logger.Logger) (fileData *models.File, err error) {
 
 	fileData = &models.File{}
 
@@ -66,6 +67,8 @@ func (s *LocalStore) StoreFile(fileName string, file multipart.File, header *mul
 	}
 
 	contentType := header.Header.Get("Content-Type")
+
+	log.Debug().Str("content-type", contentType).Msg("File Content Type")
 
 	validContentType, err := ValidateContentType(contentType, s.Config.SupportedMimeTypes)
 	if err != nil {
@@ -94,7 +97,7 @@ func (s *LocalStore) StoreFile(fileName string, file multipart.File, header *mul
 
 	fileData.Url = s.BaseUrl + "/static/" + fileData.Name
 
-	fileInfo, err := s.GetFileInfo(fileData)
+	fileInfo, err := s.GetFileInfo(fileData, log)
 	if err != nil {
 		return fileData, err
 	}
@@ -102,12 +105,20 @@ func (s *LocalStore) StoreFile(fileName string, file multipart.File, header *mul
 	fileData.Size = fileInfo.Size
 	fileData.MimeType = fileInfo.ContentType
 
+	log.Info().
+		Str("name", fileData.Name).
+		Str("path", fileData.Path).
+		Str("url", fileData.Url).
+		Int64("size", fileData.Size).
+		Str("mime-type", fileData.MimeType).
+		Msg("File stored successfully")
+
 	return fileData, nil
 }
 
 // DeleteFile takes a file path and deletes the file from disk.
 // It returns an error if the file cannot be deleted.
-func (s *LocalStore) DeleteFile(file *models.File) error {
+func (s *LocalStore) DeleteFile(file *models.File, log *logger.Logger) error {
 
 	// Attempt to delete the file
 	if err := os.Remove(file.Path); err != nil {
@@ -118,7 +129,7 @@ func (s *LocalStore) DeleteFile(file *models.File) error {
 	return nil
 }
 
-func (s *LocalStore) ListFiles() ([]string, error) {
+func (s *LocalStore) ListFiles(log *logger.Logger) ([]string, error) {
 	output := []string{}
 
 	err := filepath.Walk(s.Path, func(path string, info os.FileInfo, err error) error {
@@ -149,11 +160,11 @@ func (s *LocalStore) ListFiles() ([]string, error) {
 	return output, nil
 }
 
-func (s *LocalStore) ReadFile(file *models.File) ([]byte, error) {
+func (s *LocalStore) ReadFile(file *models.File, log *logger.Logger) ([]byte, error) {
 	return os.ReadFile(file.Path)
 }
 
-func (s *LocalStore) GetFileInfo(file *models.File) (*models.FileInfo, error) {
+func (s *LocalStore) GetFileInfo(file *models.File, log *logger.Logger) (*models.FileInfo, error) {
 
 	stats, err := os.Stat(file.Path)
 	if err != nil {

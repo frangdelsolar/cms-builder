@@ -11,8 +11,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
-	"github.com/rs/zerolog/log"
 
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 )
@@ -61,7 +61,7 @@ func (a *AwsManager) GetClient() (*s3.Client, error) {
 // UploadFile uploads the given file to the given bucket with the given key.
 // It uploads the file with public-read permissions. If there is an error
 // uploading the file, it logs an error and returns the error.
-func (a *AwsManager) UploadFile(directory string, fileName string, file []byte) (string, error) {
+func (a *AwsManager) UploadFile(directory string, fileName string, file []byte, log *logger.Logger) (string, error) {
 	log.Info().Str("fileName", fileName).Msg("Uploading file to S3.")
 
 	if fileName == "" {
@@ -97,7 +97,7 @@ func (a *AwsManager) UploadFile(directory string, fileName string, file []byte) 
 
 // DeleteFile deletes the given file from the given bucket. It logs an error
 // and returns the error if there is an error deleting the file.
-func (a *AwsManager) DeleteFile(fileName string) error {
+func (a *AwsManager) DeleteFile(fileName string, log *logger.Logger) error {
 	log.Info().Str("fileName", fileName).Msg("Deleting file from S3.")
 
 	if fileName == "" {
@@ -130,7 +130,7 @@ func (a *AwsManager) DeleteFile(fileName string) error {
 	return nil
 }
 
-func (a *AwsManager) DownloadFile(fileName string) ([]byte, error) {
+func (a *AwsManager) DownloadFile(fileName string, log *logger.Logger) ([]byte, error) {
 
 	if fileName == "" {
 		return nil, fmt.Errorf("file name is required")
@@ -165,7 +165,7 @@ func (a *AwsManager) DownloadFile(fileName string) ([]byte, error) {
 	return data, nil
 }
 
-func (a *AwsManager) ListFiles() ([]string, error) {
+func (a *AwsManager) ListFiles(log *logger.Logger) ([]string, error) {
 	output := []string{}
 	client, err := a.GetClient()
 	if err != nil {
@@ -198,7 +198,7 @@ func (a *AwsManager) ListFiles() ([]string, error) {
 // It returns a FileInfo object containing the file's name, size, last modified
 // time, and content type. If there is an error, it logs the error and returns
 // it.
-func (a *AwsManager) GetFileInfo(fileName string) (*models.FileInfo, error) {
+func (a *AwsManager) GetFileInfo(fileName string, log *logger.Logger) (*models.FileInfo, error) {
 
 	if fileName == "" {
 		return nil, fmt.Errorf("file name is required")
