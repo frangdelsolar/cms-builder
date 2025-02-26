@@ -1,12 +1,11 @@
-*/logs*
+*logs*
 *.log
 *.db
 config.yaml
 coverage.out
 covprofile
 *test_output*
-*/test_output*
 *.env*
-*postman/*
+*postman-output*
 
 *tests.old*

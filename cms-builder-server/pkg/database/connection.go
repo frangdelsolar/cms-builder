@@ -40,7 +40,9 @@ type Database struct {
 // Otherwise, it returns an error indicating the connection failure.
 func LoadDB(config *DBConfig, log *logger.Logger) (*Database, error) {
 
-	if config == nil || (config.URL == "" && config.Path == "") {
+	log.Debug().Interface("config", config).Msg("Loading database...")
+
+	if config == nil {
 		return nil, ErrDBConfigNotProvided
 	}
 
@@ -57,6 +59,11 @@ func LoadDB(config *DBConfig, log *logger.Logger) (*Database, error) {
 
 	switch config.Driver {
 	case "postgres":
+
+		if config.URL == "" {
+			return db, fmt.Errorf("empty database URL")
+		}
+
 		connection, err := gorm.Open(postgres.Open(config.URL), &gorm.Config{
 			// Logger: logger.Default.LogMode(logger.Info),
 		})
@@ -66,6 +73,11 @@ func LoadDB(config *DBConfig, log *logger.Logger) (*Database, error) {
 		db.DB = connection
 
 	case "sqlite":
+
+		if config.Path == "" {
+			return db, fmt.Errorf("empty database path")
+		}
+
 		connection, err := gorm.Open(sqlite.Open(config.Path), &gorm.Config{
 			// Logger: logger.Default.LogMode(logger.Info),
 		})

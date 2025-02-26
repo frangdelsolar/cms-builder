@@ -1,624 +1,455 @@
 package postman
 
-// // TODO: Needs to figure out how to generate for those urls that are not comming from a model
+import (
+	"encoding/json"
+	"fmt"
+	"net/url"
+	"os"
+	"path/filepath"
+	"strings"
 
-// const (
-// 	PostmanSchemaFilePath = "postman/collection.json"
-// 	PostmanEnvFilePath    = "postman/environment.json"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	mgr "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
+)
 
-// 	PostmanSchemaVersion = "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-// 	PostmanVariableScope = "environment"
+// TODO: Needs to figure out how to generate for those urls that are not comming from a model
 
-// 	keyFirebaseApiKey  = "FIREBASE_API_KEY"
-// 	keyFirebaseIdToken = "FIREBASE_ID_TOKEN"
-// 	keyBaseUrl         = "URL"
-// 	keyEmail           = "EMAIL"
-// 	keyPassword        = "PASSWORD"
-// )
+const (
+	PostmanSchemaFilePath = "postman-output/collection.json"
+	PostmanEnvFilePath    = "postman-output/environment.json"
 
-// type PostmanEnvValue struct {
-// 	Key     string `json:"key"`
-// 	Value   string `json:"value"`
-// 	Type    string `json:"type,omitempty"`
-// 	Enabled bool   `json:"enabled"`
-// }
+	PostmanSchemaVersion = "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	PostmanVariableScope = "environment"
 
-// type PostmanEnv struct {
-// 	ID                   string            `json:"id"`
-// 	Name                 string            `json:"name"`
-// 	Values               []PostmanEnvValue `json:"values"`
-// 	PostmanVariableScope string            `json:"_postman_variable_scope"`
-// 	PostmanExportedAt    time.Time         `json:"_postman_exported_at"`
-// 	PostmanExportedUsing string            `json:"_postman_exported_using"`
-// }
+	keyFirebaseApiKey  = "FIREBASE_API_KEY"
+	keyFirebaseIdToken = "FIREBASE_ID_TOKEN"
+	keyBaseUrl         = "URL"
+	keyAdminEmail      = "ADMIN_EMAIL"
+	keyAdminPassword   = "ADMIN_PASSWORD"
+	keyOrigin          = "ORIGIN"
+)
 
-// type PostmanCollectionInfo struct {
-// 	PostmanID  string `json:"_postman_id"`
-// 	Name       string `json:"name"`
-// 	Schema     string `json:"schema"`
-// 	ExporterID string `json:"_exporter_id"`
-// }
+var log = logger.Default
 
-// // PostmanHeader struct for request headers
-// type PostmanHeader struct {
-// 	Key   string `json:"key"`
-// 	Value string `json:"value"`
-// 	Type  string `json:"type,omitempty"` // Optional type for extensibility
-// }
+func Placeholder(key string) string {
+	return "{{" + key + "}}"
+}
 
-// // Raw struct for raw data
-// type PostmanRequestOptionsRaw struct {
-// 	Language string `json:"language"`
-// }
-// type PostmanRequestOptions struct {
-// 	Raw PostmanRequestOptionsRaw `json:"options"`
-// }
+func ExportPostman(
+	appName,
+	environment,
+	baseUrl,
+	adminEmail,
+	adminPassword,
+	firebaseApiKey string,
+	resources []mgr.Resource,
+) error {
 
-// type PostmanFormDataItem struct {
-// 	Key   string `json:"key"`
-// 	Type  string `json:"type"`
-// 	Src   string `json:"src"`
-// 	Value string `json:"value"`
-// }
+	log.Debug().Interface("resources", len(resources)).Msg("Exporting postman...")
 
-// // PostmanRequestBody struct for request body content
-// type PostmanRequestBody struct {
-// 	Mode     string                `json:"mode"`
-// 	Raw      string                `json:"raw"`
-// 	Options  PostmanRequestOptions `json:"options"`
-// 	FormData []PostmanFormDataItem `json:"formdata"`
-// }
+	schemaCollection, err := GetPostmanCollection(appName, resources)
+	if err != nil {
+		return err
+	}
+	envCollection, err := GetPostmanEnv(
+		appName,
+		environment,
+		baseUrl,
+		adminEmail,
+		adminPassword,
+		firebaseApiKey,
+	)
+	if err != nil {
+		return err
+	}
 
-// type PostmanBearer struct {
-// 	Key   string `json:"key"`
-// 	Value string `json:"value"`
-// 	Type  string `json:"type"`
-// }
+	// write the schema to a file
+	err = WriteFile(PostmanSchemaFilePath, schemaCollection)
+	if err != nil {
+		return err
+	}
 
-// // PostmanRequestAuth struct for request authentication details
-// type PostmanRequestAuth struct {
-// 	Type   string          `json:"type"`
-// 	Bearer []PostmanBearer `json:"bearer"`
-// }
+	// write the env to a file
+	err = WriteFile(PostmanEnvFilePath, envCollection)
+	if err != nil {
+		return err
+	}
 
-// type PostmanQuery struct {
-// 	Key      string `json:"key"`
-// 	Value    string `json:"value"`
-// 	Disabled bool   `json:"disabled"`
-// }
+	return nil
+}
 
-// // PostmanRequestURL struct for request URL components
-// type PostmanRequestURL struct {
-// 	Raw      string         `json:"raw"`
-// 	Host     []string       `json:"host"`
-// 	Path     []string       `json:"path"`
-// 	Query    []PostmanQuery `json:"query"`
-// 	Protocol string         `json:"protocol"`
-// }
+func NewPostmanCollectionInfo(appName string) PostmanCollectionInfo {
+	return PostmanCollectionInfo{
+		Name:   strings.ToUpper(appName),
+		Schema: PostmanSchemaVersion,
+	}
+}
 
-// // PostmanCollectionItemItemRequest struct for individual request details
-// type PostmanCollectionItemItemRequest struct {
-// 	Auth   PostmanRequestAuth `json:"auth"`
-// 	Method string             `json:"method"`
-// 	Header []PostmanHeader    `json:"header"`
-// 	Body   PostmanRequestBody `json:"body"`
-// 	URL    PostmanRequestURL  `json:"url"`
-// }
+var PostmanRequestAuthItem = PostmanRequestAuth{
+	Type: "bearer",
+	Bearer: []PostmanBearer{
+		{
+			Key:   "token",
+			Value: Placeholder(keyFirebaseIdToken),
+			Type:  "string",
+		},
+	},
+}
 
-// type PostmanCollectionEventScript struct {
-// 	Exec     []string `json:"exec"`
-// 	Type     string   `json:"type"`
-// 	Packages struct {
-// 	} `json:"packages"`
-// }
+var AuthCollectionItem = PostmanCollectionItem{
+	Name: "Auth",
+	Item: []PostmanCollectionItemItem{
+		createAuthItem("Register", "POST", "{\n  \"name\": \"admin\",\n  \"email\": \""+Placeholder(keyAdminEmail)+"\",\n    \"password\": \""+Placeholder(keyAdminPassword)+"\"\n}", Placeholder(keyBaseUrl)+"/auth/register"),
+		createAuthItem("Login", "POST", "{\n    \"email\":\""+Placeholder(keyAdminEmail)+"\",\n    \"password\":\""+Placeholder(keyAdminPassword)+"\",\n    \"returnSecureToken\":true\n}\n", "https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key="+Placeholder(keyFirebaseApiKey)),
+	},
+}
 
-// type PostmanCollectionEvent struct {
-// 	Listen string                       `json:"listen"`
-// 	Script PostmanCollectionEventScript `json:"script"`
-// }
+var FilesCollectionItem = PostmanCollectionItem{
+	Name: "File",
+	Item: []PostmanCollectionItemItem{
+		createFileItem("Create File", "POST", "formdata", Placeholder(keyBaseUrl)+"/private/api/files/new"),
+		createFileItem("Download File", "GET", "", Placeholder(keyBaseUrl)+"/private/api/files/"+Placeholder("FILE_ID")+"/download"),
+		createFileItem("Delete File", "DELETE", "", Placeholder(keyBaseUrl)+"/private/api/files/"+Placeholder("FILE_ID")+"/delete"),
+		createFileItem("List File", "GET", "", Placeholder(keyBaseUrl)+"/private/api/files?page=1&limit=10"),
+		createFileItem("Update File", "PUT", "raw", Placeholder(keyBaseUrl)+"/private/api/files/"+Placeholder("FILE_ID")+"/update"),
+		createFileItem("Detail File", "GET", "", Placeholder(keyBaseUrl)+"/private/api/files/"+Placeholder("FILE_ID")+""),
+	},
+}
 
-// type PostmanCollectionItemItem struct {
-// 	Name     string                           `json:"name"`
-// 	Request  PostmanCollectionItemItemRequest `json:"request"`
-// 	Response []interface{}                    `json:"response"`
-// 	Event    []PostmanCollectionEvent         `json:"event,omitempty"`
-// }
+func createAuthItem(name, method, body, url string) PostmanCollectionItemItem {
+	return PostmanCollectionItemItem{
+		Name: name,
+		Request: PostmanCollectionItemItemRequest{
+			Auth: PostmanRequestAuth{
+				Type: "noauth",
+			},
+			Method: method,
+			Header: []PostmanHeader{},
+			Body: PostmanRequestBody{
+				Mode: "raw",
+				Raw:  body,
+				Options: PostmanRequestOptions{
+					Raw: PostmanRequestOptionsRaw{
+						Language: "json",
+					},
+				},
+			},
+			URL: parseURL(url),
+		},
+	}
+}
 
-// type PostmanCollectionItem struct {
-// 	Name string                      `json:"name"`
-// 	Item []PostmanCollectionItemItem `json:"item"`
-// }
+func createFileItem(name, method, bodyMode, url string) PostmanCollectionItemItem {
+	item := PostmanCollectionItemItem{
+		Name: name,
+		Request: PostmanCollectionItemItemRequest{
+			Method: method,
+			Header: []PostmanHeader{},
+			URL:    parseURL(url),
+		},
+	}
 
-// type PostmanCollection struct {
-// 	Info  PostmanCollectionInfo    `json:"info"`
-// 	Item  []PostmanCollectionItem  `json:"item"`
-// 	Auth  PostmanRequestAuth       `json:"auth"`
-// 	Event []PostmanCollectionEvent `json:"event"`
-// }
+	if bodyMode == "formdata" {
+		item.Request.Body = PostmanRequestBody{
+			Mode: "formdata",
+			FormData: []PostmanFormDataItem{
+				{
+					Key:   "file",
+					Type:  "file",
+					Value: "<FILE_NAME>",
+				},
+			},
+		}
+	} else if bodyMode == "raw" {
+		item.Request.Body = PostmanRequestBody{
+			Mode: "raw",
+			Raw:  "{\n    \"name\":\"<FILE_NAME>\"\n}\n",
+			Options: PostmanRequestOptions{
+				Raw: PostmanRequestOptionsRaw{
+					Language: "json",
+				},
+			},
+		}
+	}
 
-// func (b *Builder) ExportPostman() error {
-// 	schema, err := b.GetPostmanCollection()
-// 	if err != nil {
-// 		// return err
-// 	}
-// 	env, err := b.GetPostmanEnv()
-// 	if err != nil {
-// 		return err
-// 	}
+	return item
+}
 
-// 	// write the schema to a file
-// 	err = WriteFile(PostmanSchemaFilePath, schema)
-// 	if err != nil {
-// 		return err
-// 	}
+func parseURL(rawURL string) PostmanRequestURL {
 
-// 	// write the env to a file
-// 	err = WriteFile(PostmanEnvFilePath, env)
-// 	if err != nil {
-// 		return err
-// 	}
+	log.Debug().Str("rawURL", rawURL).Msg("parseURL")
 
-// 	return nil
-// }
+	u, _ := url.Parse(rawURL)
 
-// func (b *Builder) GetPostmanCollection() (*PostmanCollection, error) {
-// 	appName := config.GetString(EnvKeys.AppName)
-// 	if appName == "" {
-// 		appName = "CollectionName"
-// 	}
+	host := strings.Split(u.Host, ".")
+	path := strings.Split(u.Path, "/")
 
-// 	collection := PostmanCollection{
-// 		Info: PostmanCollectionInfo{
-// 			Name:   strings.ToUpper(appName),
-// 			Schema: PostmanSchemaVersion,
-// 		},
-// 		Auth: PostmanRequestAuth{
-// 			Type: "bearer",
-// 			Bearer: []PostmanBearer{
-// 				{
-// 					Key:   "token",
-// 					Value: "{{" + keyFirebaseIdToken + "}}",
-// 					Type:  "string",
-// 				},
-// 			},
-// 		},
-// 		Item:  make([]PostmanCollectionItem, 0),
-// 		Event: make([]PostmanCollectionEvent, 0),
-// 	}
-// 	// TODO: Routes now bring method and schema to build this dynamically
-// 	// for _, route := range b.Server.Routes {
+	log.Debug().Strs("host", host).Strs("path", path).Str("zero", path[0]).Msg("parseURL")
 
-// 	// 	appName := strings.Split(route.Route, "/")[0]
-// 	// 	if appName == "api"{
-// 	// 		appName = strings.Split(route.Route, "/")[1]
-// 	// 	}
+	if path[0] == Placeholder(keyBaseUrl) {
+		path = path[1:]
+		host = []string{Placeholder(keyBaseUrl)}
+	}
 
-// 	// 	collection.Item = append(collection.Item, PostmanCollectionItem{
-// 	// 		Name: appName,
-// 	// 		Item: []PostmanCollectionItemItem{
-// 	// 			{
-// 	// 				Name:    route.Name,
-// 	// 				Request: PostmanCollectionItemItemRequest{
-// 	// 									Auth: PostmanRequestAuth{
-// 	// 										Type: "noauth",
-// 	// 									},
-// 	// 									Method: "POST",
-// 	// 									Header: []PostmanHeader{},
-// 	// 									Body: PostmanRequestBody{
-// 	// 										Mode: "raw",
-// 	// 										Raw:  "{\n  \"name\": \"admin\",\n  \"email\": \"{{" + keyEmail + "}}\",\n    \"password\": \"{{" + keyPassword + "}}\"\n}",
-// 	// 										Options: PostmanRequestOptions{
-// 	// 											Raw: PostmanRequestOptionsRaw{
-// 	// 												Language: "json",
-// 	// 											},
-// 	// 										},
-// 	// 									},
-// 	// 									URL: PostmanRequestURL{
-// 	// 										Raw:   "{{URL}}/auth/register",
-// 	// 										Host:  []string{"{{URL}}"},
-// 	// 										Path:  []string{"auth", "register"},
-// 	// 										Query: []PostmanQuery{},
-// 	// 									},
-// 	// 								},
-// 	// 				Response: []interface{}{
-// 	// 					PostmanCollectionItemItemResponse{
-// 	// 						Headers: []PostmanHeader{},
-// 	// 					},
-// 	// 				},
-// 	// 			},
-// 	// 		},
-// 	// 	})
-// 	// }
+	log.Debug().Strs("host", host).Strs("path", path).Msg("parseURL")
 
-// 	// Auth
-// 	collection.Item = append(collection.Item, PostmanCollectionItem{
-// 		Name: "Auth",
-// 		Item: []PostmanCollectionItemItem{
-// 			{
-// 				Name: "Register",
-// 				Request: PostmanCollectionItemItemRequest{
-// 					Auth: PostmanRequestAuth{
-// 						Type: "noauth",
-// 					},
-// 					Method: "POST",
-// 					Header: []PostmanHeader{},
-// 					Body: PostmanRequestBody{
-// 						Mode: "raw",
-// 						Raw:  "{\n  \"name\": \"admin\",\n  \"email\": \"{{" + keyEmail + "}}\",\n    \"password\": \"{{" + keyPassword + "}}\"\n}",
-// 						Options: PostmanRequestOptions{
-// 							Raw: PostmanRequestOptionsRaw{
-// 								Language: "json",
-// 							},
-// 						},
-// 					},
-// 					URL: PostmanRequestURL{
-// 						Raw:   "{{URL}}/auth/register",
-// 						Host:  []string{"{{URL}}"},
-// 						Path:  []string{"auth", "register"},
-// 						Query: []PostmanQuery{},
-// 					},
-// 				},
-// 				Response: []interface{}{},
-// 			},
-// 			{
-// 				Name: "Login",
-// 				Event: []PostmanCollectionEvent{
-// 					{
-// 						Listen: "test",
-// 						Script: PostmanCollectionEventScript{
-// 							Type: "text/javascript",
-// 							Exec: []string{
-// 								"pm.environment.set(\"" + keyFirebaseIdToken + "\", pm.response.json().idToken);",
-// 							},
-// 						},
-// 					},
-// 				},
-// 				Request: PostmanCollectionItemItemRequest{
-// 					Auth: PostmanRequestAuth{
-// 						Type: "noauth",
-// 					},
-// 					Method: "POST",
-// 					Header: []PostmanHeader{},
-// 					Body: PostmanRequestBody{
-// 						Mode: "raw",
-// 						Raw:  "{\n    \"email\":\"{{" + keyEmail + "}}\",\n    \"password\":\"{{" + keyPassword + "}}\",\n    \"returnSecureToken\":true\n}\n",
-// 						Options: PostmanRequestOptions{
-// 							Raw: PostmanRequestOptionsRaw{
-// 								Language: "json",
-// 							},
-// 						},
-// 					},
-// 					URL: PostmanRequestURL{
-// 						Raw:      "https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword",
-// 						Protocol: "https",
-// 						Host:     []string{"www", "googleapis", "com"},
-// 						Path:     []string{"identitytoolkit", "v3", "relyingparty", "verifyPassword"},
-// 						Query: []PostmanQuery{
-// 							{
-// 								Key:   "key",
-// 								Value: "{{" + keyFirebaseApiKey + "}}",
-// 							},
-// 						},
-// 					},
-// 				},
-// 				Response: []interface{}{},
-// 			},
-// 		},
-// 	})
+	query := []PostmanQuery{}
+	for key, values := range u.Query() {
+		for _, value := range values {
+			query = append(query, PostmanQuery{Key: key, Value: value})
+		}
+	}
 
-// 	// Files
-// 	collection.Item = append(collection.Item, PostmanCollectionItem{
-// 		Name: "File",
-// 		Item: []PostmanCollectionItemItem{
-// 			{
-// 				Name: "Upload File",
-// 				Request: PostmanCollectionItemItemRequest{
-// 					Method: "POST",
-// 					Header: []PostmanHeader{},
-// 					Body: PostmanRequestBody{
-// 						Mode: "formdata",
-// 						FormData: []PostmanFormDataItem{
-// 							{
-// 								Key:   "file",
-// 								Type:  "file",
-// 								Value: "<FILE_NAME>",
-// 							},
-// 						},
-// 					},
-// 					URL: PostmanRequestURL{
-// 						Raw:   "{{URL}}/private/files/upload",
-// 						Host:  []string{"{{URL}}"},
-// 						Path:  []string{"private", "files", "upload"},
-// 						Query: []PostmanQuery{},
-// 					},
-// 				},
-// 				Response: []interface{}{},
-// 			},
-// 			{
-// 				Name: "Download File",
-// 				Request: PostmanCollectionItemItemRequest{
-// 					Method: "GET",
-// 					Header: []PostmanHeader{},
-// 					URL: PostmanRequestURL{
-// 						Raw:   "{{URL}}/private/files/<FILE_NAME>",
-// 						Host:  []string{"{{URL}}"},
-// 						Path:  []string{"private", "files", "<FILE_NAME>"},
-// 						Query: []PostmanQuery{},
-// 					},
-// 				},
-// 				Response: []interface{}{},
-// 			},
-// 			{
-// 				Name: "Delete File",
-// 				Request: PostmanCollectionItemItemRequest{
-// 					Method: "DELETE",
-// 					Header: []PostmanHeader{},
-// 					URL: PostmanRequestURL{
-// 						Raw:   "{{URL}}/private/files/<FILE_NAME>",
-// 						Host:  []string{"{{URL}}"},
-// 						Path:  []string{"private", "files", "<FILE_NAME>"},
-// 						Query: []PostmanQuery{},
-// 					},
-// 				},
-// 				Response: []interface{}{},
-// 			},
-// 		},
-// 	})
+	return PostmanRequestURL{
+		Raw:   rawURL,
+		Host:  host,
+		Path:  path,
+		Query: query,
+	}
+}
 
-// 	// Iterate over apps to build the collection
-// 	for _, app := range b.Admin.apps {
-// 		path := GetAppPath(&app)
-// 		body := GetBody(&app)
-// 		appId := app.Name() + "Id"
-// 		appIdExpr := "{{" + appId + "}}"
+var preRequestScript = PostmanCollectionEvent{
+	Listen: "prerequest",
+	Script: PostmanCollectionEventScript{
+		Type: "text/javascript",
+		Exec: []string{
+			"var origin = pm.environment.get(\"" + keyOrigin + "\")",
+			"",
+			"pm.request.headers.add({",
+			"    key: \"Origin\",",
+			"    value: origin",
+			"});",
+		},
+	},
+}
 
-// 		collection.Item = append(collection.Item, PostmanCollectionItem{
-// 			Name: app.Name(),
-// 			Item: []PostmanCollectionItemItem{
-// 				{
-// 					Name: "Create " + app.Name(),
-// 					Event: []PostmanCollectionEvent{
-// 						{
-// 							Listen: "test",
-// 							Script: PostmanCollectionEventScript{
-// 								Type: "text/javascript",
-// 								Exec: []string{
-// 									"pm.environment.set(\"" + appId + "\", pm.response.json().data.ID);",
-// 								},
-// 							},
-// 						},
-// 					},
-// 					Request: PostmanCollectionItemItemRequest{
-// 						Method: "POST",
-// 						Header: []PostmanHeader{},
-// 						Body: PostmanRequestBody{
-// 							Mode: "raw",
-// 							Raw:  body,
-// 							Options: PostmanRequestOptions{
-// 								Raw: PostmanRequestOptionsRaw{
-// 									Language: "json",
-// 								},
-// 							},
-// 						},
-// 						URL: PostmanRequestURL{
-// 							Raw: strings.Join(path, "/") + "/new",
-// 							Host: []string{
-// 								"{{" + keyBaseUrl + "}}",
-// 							},
-// 							Path:  append(path[1:], "new"),
-// 							Query: make([]PostmanQuery, 0),
-// 						},
-// 					},
-// 				},
-// 				{
-// 					Name: "List " + app.Name(),
-// 					Request: PostmanCollectionItemItemRequest{
-// 						Method: "GET",
-// 						Header: []PostmanHeader{},
-// 						URL: PostmanRequestURL{
-// 							Raw: strings.Join(path, "/"),
-// 							Host: []string{
-// 								"{{" + keyBaseUrl + "}}",
-// 							},
-// 							Path: path[1:],
-// 							Query: []PostmanQuery{
-// 								{
-// 									Key:   "page",
-// 									Value: "1",
-// 								},
-// 								{
-// 									Key:   "limit",
-// 									Value: "10",
-// 								},
-// 							},
-// 						},
-// 					},
-// 				},
-// 				{
-// 					Name: "Update " + app.Name(),
-// 					Request: PostmanCollectionItemItemRequest{
-// 						Method: "PUT",
-// 						Header: []PostmanHeader{},
-// 						Body: PostmanRequestBody{
-// 							Mode: "raw",
-// 							Raw:  body,
-// 							Options: PostmanRequestOptions{
-// 								Raw: PostmanRequestOptionsRaw{
-// 									Language: "json",
-// 								},
-// 							},
-// 						},
-// 						URL: PostmanRequestURL{
-// 							Raw: strings.Join(path, "/") + "/" + appIdExpr + "/update",
-// 							Host: []string{
-// 								"{{" + keyBaseUrl + "}}",
-// 							},
-// 							Path: append(path[1:], []string{
-// 								appIdExpr,
-// 								"update",
-// 							}...),
-// 						},
-// 					},
-// 				},
-// 				{
-// 					Name: "Detail " + app.Name(),
-// 					Request: PostmanCollectionItemItemRequest{
-// 						Method: "GET",
-// 						Header: []PostmanHeader{},
-// 						URL: PostmanRequestURL{
-// 							Raw: strings.Join(path, "/") + "/" + appIdExpr,
-// 							Host: []string{
-// 								"{{" + keyBaseUrl + "}}",
-// 							},
-// 							Path: append(path[1:], []string{
-// 								appIdExpr,
-// 							}...),
-// 						},
-// 					},
-// 				},
-// 				{
-// 					Name: "Delete " + app.Name(),
-// 					Request: PostmanCollectionItemItemRequest{
-// 						Method: "DELETE",
-// 						Header: []PostmanHeader{},
-// 						URL: PostmanRequestURL{
-// 							Raw: strings.Join(path, "/") + "/" + appIdExpr + "/delete",
-// 							Host: []string{
-// 								"{{" + keyBaseUrl + "}}",
-// 							},
-// 							Path: append(path[1:], []string{
-// 								appIdExpr,
-// 								"delete",
-// 							}...),
-// 						},
-// 					},
-// 				},
-// 			},
-// 		})
-// 	}
+func GetPostmanCollection(appName string, resources []mgr.Resource) (*PostmanCollection, error) {
+	if appName == "" {
+		appName = "CollectionName"
+	}
 
-// 	return &collection, nil
-// }
+	collection := PostmanCollection{
+		Info:  NewPostmanCollectionInfo(appName),
+		Auth:  PostmanRequestAuthItem,
+		Item:  []PostmanCollectionItem{AuthCollectionItem, FilesCollectionItem},
+		Event: []PostmanCollectionEvent{preRequestScript},
+	}
 
-// // GetPostmanEnv returns a PostmanEnv struct with the variables from the
-// // corresponding .env file. If the file does not exist or there is an error
-// // reading it, an error is returned.
-// func (b *Builder) GetPostmanEnv() (*PostmanEnv, error) {
-// 	appName := config.GetString(EnvKeys.AppName)
-// 	if appName == "" {
-// 		appName = "CollectionName"
-// 	}
+	for _, src := range resources {
+		resourceName, _ := src.GetName()
+		body, _ := mgr.InterfaceToMap(src.Model)
+		bodyJSON, _ := json.MarshalIndent(body, "", "   ")
 
-// 	environment := config.GetString(EnvKeys.Environment)
-// 	if environment == "" {
-// 		return nil, fmt.Errorf("unable to get environment")
-// 	}
-// 	envSchema := PostmanEnv{
-// 		PostmanVariableScope: PostmanVariableScope,
-// 		Values:               make([]PostmanEnvValue, 0),
-// 	}
-// 	envSchema.Name = strings.ToUpper(appName) + "_" + strings.ToUpper(environment)
+		resourceId := strings.ToUpper(resourceName) + "_ID"
+		resourceIdPlaceHolder := Placeholder(resourceId)
 
-// 	// Url
-// 	envSchema.Values = append(envSchema.Values, PostmanEnvValue{
-// 		Key:     keyBaseUrl,
-// 		Value:   config.GetString(EnvKeys.BaseUrl),
-// 		Enabled: true,
-// 	})
+		resourceItem := createResourceItem(resourceName)
 
-// 	// Email
-// 	envSchema.Values = append(envSchema.Values, PostmanEnvValue{
-// 		Key:     keyEmail,
-// 		Value:   config.GetString(EnvKeys.AdminEmail),
-// 		Enabled: true,
-// 	})
+		for _, route := range src.Routes {
+			path := route.Path
+			path = strings.Replace(path, "{id}", resourceIdPlaceHolder, 1)
 
-// 	// Password
-// 	envSchema.Values = append(envSchema.Values, PostmanEnvValue{
-// 		Key:     keyPassword,
-// 		Value:   config.GetString(EnvKeys.AdminPassword),
-// 		Enabled: true,
-// 	})
+			if route.RequiresAuth {
+				path = "/private" + path
+			}
+			url := Placeholder(keyBaseUrl) + path
 
-// 	// FirebaseAPIkey
-// 	envSchema.Values = append(envSchema.Values, PostmanEnvValue{
-// 		Key:     keyFirebaseApiKey,
-// 		Value:   config.GetString(EnvKeys.FirebaseApiKey),
-// 		Enabled: true,
-// 	})
+			for _, method := range route.Methods {
 
-// 	// FirebaseIdToken
-// 	envSchema.Values = append(envSchema.Values, PostmanEnvValue{
-// 		Key:     keyFirebaseIdToken,
-// 		Value:   "",
-// 		Enabled: true,
-// 	})
+				isCreate := false
+				if strings.Contains(path, "new") {
+					isCreate = true
+				}
 
-// 	return &envSchema, nil
-// }
+				item := createResourceSubItem(route.Name, method, string(bodyJSON), url, resourceIdPlaceHolder, route.RequiresAuth, isCreate)
+				resourceItem.Item = append(resourceItem.Item, item)
+			}
+		}
 
-// // WriteFile writes data to a file.
-// //
-// // It takes two arguments:
-// //
-// //   - filePath: The path to the file to write to.
-// //   - data: The data to write to the file. It must be a type that can be encoded
-// //     to JSON.
-// //
-// // The function creates the file if it does not exist, and overwrites it if it does.
-// // It also sets the indentation of the JSON encoder to 4 spaces.
-// //
-// // The function returns an error if it is unable to write to the file.
-// func WriteFile(filePath string, data interface{}) error {
+		collection.Item = append(collection.Item, resourceItem)
+	}
 
-// 	// Mkdir
-// 	err := os.MkdirAll(filepath.Dir(filePath), os.ModePerm)
-// 	if err != nil {
-// 		return err
-// 	}
+	return &collection, nil
+}
 
-// 	file, err := os.Create(filePath)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer file.Close()
+func createResourceItem(resourceName string) PostmanCollectionItem {
+	return PostmanCollectionItem{
+		Name: resourceName,
+		Item: []PostmanCollectionItemItem{},
+	}
+}
 
-// 	encoder := json.NewEncoder(file)
-// 	encoder.SetIndent("", "    ")
-// 	err = encoder.Encode(data)
-// 	if err != nil {
-// 		return err
-// 	}
+func createResourceSubItem(routeName, method, body, url, idPlaceHolder string, requiresAuth bool, isCreate bool) PostmanCollectionItemItem {
+	item := PostmanCollectionItemItem{
+		Name: routeName,
+		Request: PostmanCollectionItemItemRequest{
+			Method: method,
+			Header: []PostmanHeader{},
+			Body: PostmanRequestBody{
+				Mode: "raw",
+				Raw:  body,
+				Options: PostmanRequestOptions{
+					Raw: PostmanRequestOptionsRaw{
+						Language: "json",
+					},
+				},
+			},
+			URL: parseURL(url),
+		},
+	}
 
-// 	log.Info().Str("filePath", filePath).Msg("Wrote file")
+	// Add authentication if required
+	if requiresAuth {
+		item.Request.Auth = PostmanRequestAuth{
+			Type: "bearer",
+			Bearer: []PostmanBearer{
+				{
+					Key:   "token",
+					Value: Placeholder(keyFirebaseIdToken),
+					Type:  "string",
+				},
+			},
+		}
+	} else {
+		item.Request.Auth = PostmanRequestAuth{
+			Type: "noauth",
+		}
+	}
 
-// 	return nil
-// }
+	// Add event scripts for "Create" requests to set environment variables
+	if isCreate {
+		item.Event = []PostmanCollectionEvent{
+			{
+				Listen: "test",
+				Script: PostmanCollectionEventScript{
+					Type: "text/javascript",
+					Exec: []string{
+						"pm.environment.set(\"" + idPlaceHolder + "\", pm.response.json().data.ID);",
+					},
+				},
+			},
+		}
+	}
 
-// func GetAppPath(app *App) []string {
-// 	path := []string{"{{" + keyBaseUrl + "}}"}
-// 	if !app.SkipUserBinding {
-// 		path = append(path, "private")
-// 	}
-// 	path = append(path, []string{
-// 		"api",
-// 		app.PluralName(),
-// 	}...)
+	// Handle different request types
+	switch method {
+	case "POST":
+		item.Request.Body = PostmanRequestBody{
+			Mode: "raw",
+			Raw:  body,
+			Options: PostmanRequestOptions{
+				Raw: PostmanRequestOptionsRaw{
+					Language: "json",
+				},
+			},
+		}
+	case "PUT":
+		item.Request.Body = PostmanRequestBody{
+			Mode: "raw",
+			Raw:  body,
+			Options: PostmanRequestOptions{
+				Raw: PostmanRequestOptionsRaw{
+					Language: "json",
+				},
+			},
+		}
+	case "DELETE":
+		// No body for DELETE requests
+		item.Request.Body = PostmanRequestBody{}
+	case "GET":
+		// No body for GET requests
+		item.Request.Body = PostmanRequestBody{}
+	}
 
-// 	return path
-// }
+	return item
+}
 
-// func GetBody(app *App) string {
+func GetPostmanEnv(
+	appName,
+	environment,
+	baseUrl,
+	adminEmail,
+	adminPassword,
+	firebaseApiKey string,
 
-// 	data, err := JsonifyInterface(app.Model)
-// 	if err != nil {
-// 		return ""
-// 	}
+) (*PostmanEnv, error) {
+	if appName == "" {
+		appName = "CollectionName"
+	}
 
-// 	jsonData, err := json.MarshalIndent(data, "", "   ")
-// 	if err != nil {
-// 		return ""
-// 	}
+	if environment == "" {
+		return nil, fmt.Errorf("missing environment")
+	}
+	envSchema := PostmanEnv{
+		PostmanVariableScope: PostmanVariableScope,
+		Values:               make([]PostmanEnvValue, 0),
+	}
+	envSchema.Name = strings.ToUpper(appName) + "_" + strings.ToUpper(environment)
 
-// 	return string(jsonData)
-// }
+	// Url
+	envSchema.Values = append(envSchema.Values, PostmanEnvValue{
+		Key:     keyBaseUrl,
+		Value:   baseUrl,
+		Enabled: true,
+	})
+
+	// Email
+	envSchema.Values = append(envSchema.Values, PostmanEnvValue{
+		Key:     keyAdminEmail,
+		Value:   adminEmail,
+		Enabled: true,
+	})
+
+	// Password
+	envSchema.Values = append(envSchema.Values, PostmanEnvValue{
+		Key:     keyAdminPassword,
+		Value:   adminPassword,
+		Enabled: true,
+	})
+
+	// FirebaseAPIkey
+	envSchema.Values = append(envSchema.Values, PostmanEnvValue{
+		Key:     keyFirebaseApiKey,
+		Value:   firebaseApiKey,
+		Enabled: true,
+	})
+
+	// FirebaseIdToken
+	envSchema.Values = append(envSchema.Values, PostmanEnvValue{
+		Key:     keyFirebaseIdToken,
+		Value:   "",
+		Enabled: true,
+	})
+
+	envSchema.Values = append(envSchema.Values, PostmanEnvValue{
+		Key:     keyOrigin,
+		Value:   baseUrl,
+		Enabled: true,
+	})
+
+	return &envSchema, nil
+}
+
+func WriteFile(filePath string, data interface{}) error {
+
+	// Mkdir
+	err := os.MkdirAll(filepath.Dir(filePath), os.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	file, err := os.Create(filePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "    ")
+	err = encoder.Encode(data)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

@@ -37,7 +37,6 @@ func SetupUserResource(firebase *clients.FirebaseManager, db *database.Database,
 		Delete: nil, // Use default
 	}
 
-	// TODO: See how to overcome circular dependency.... This one needs system User, but system user needs this resource to be created
 	routes := []server.Route{
 		{
 			Path:         "/auth/register",

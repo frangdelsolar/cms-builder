@@ -2,6 +2,22 @@
 
 Will initialize
 
+# Use it through the command line
+
+Install by running
+
+```bash
+go install github.com/frangdelsolar/cms-builder/cms-builder-server
+```
+
+This command will compile the application and place the binary in $GOPATH/bin.
+
+Then run
+
+```bash
+cms-builder-server -env=prod -postman=true
+```
+
 ## Config Reader
 
 The builder uses the `viper` library to manage application configuration loaded from a YAML file (default: `config.yaml`).

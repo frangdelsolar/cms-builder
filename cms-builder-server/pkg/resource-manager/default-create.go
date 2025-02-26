@@ -80,6 +80,8 @@ var DefaultCreateHandler ApiFunction = func(a *Resource, db *database.Database) 
 			return
 		}
 
+		log.Debug().Msgf("Instance: %v", instance)
+
 		// 7. Run Validations
 		validationErrors := a.Validate(instance, log)
 		if len(validationErrors.Errors) > 0 {
