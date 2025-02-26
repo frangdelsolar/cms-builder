@@ -149,14 +149,14 @@ func GetRequestQueryParams(r *http.Request) (*QueryParams, error) {
 	limit, err := GetIntQueryParam("limit", q)
 	if err != nil {
 		limit = 10
-		log.Warn().Err(err).Msgf("Error validating limit. Using default limit %d", limit)
+		log.Debug().Err(err).Msgf("Error validating limit. Using default limit %d", limit)
 	}
 	params.Limit = limit
 
 	page, err := GetIntQueryParam("page", q)
 	if err != nil {
 		page = 1
-		log.Warn().Err(err).Msgf("Error validating page. Using default page %d", page)
+		log.Debug().Err(err).Msgf("Error validating page. Using default page %d", page)
 	}
 	params.Page = page
 
@@ -166,7 +166,7 @@ func GetRequestQueryParams(r *http.Request) (*QueryParams, error) {
 	order, err = ValidateOrderParam(orderParam)
 	if err != nil || order == "" {
 		order = "id desc"
-		log.Warn().Err(err).Msgf("Error validating order. Using default order %s", order)
+		log.Debug().Err(err).Msgf("Error validating order. Using default order %s", order)
 	}
 
 	params.Order = order

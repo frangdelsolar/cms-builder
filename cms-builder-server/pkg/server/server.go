@@ -85,10 +85,10 @@ func (s *Server) Run(getRoutes GetRoutesFunc, apiBaseUrl string) error {
 	publicRouter := s.Root
 	publicRouter.Use(
 		RecoveryMiddleware,
+		AuthMiddleware(s.GodToken, s.GodUser, s.Firebase, s.DB, s.SystemUser),
 		RequestLoggerMiddleware(s.DB),
 		LoggingMiddleware(s.LoggerConfig),
 		CorsMiddleware(s.AllowedOrigins),
-		AuthMiddleware(s.GodToken, s.GodUser, s.Firebase, s.DB, s.SystemUser),
 		TimeoutMiddleware,
 		RateLimitMiddleware(),
 	)

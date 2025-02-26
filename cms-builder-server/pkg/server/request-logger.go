@@ -41,7 +41,7 @@ func RequestLoggerMiddleware(db *database.Database) func(next http.Handler) http
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-			if r.Method == "OPTIONS" {
+			if r.Method == http.MethodOptions {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -49,6 +49,8 @@ func RequestLoggerMiddleware(db *database.Database) func(next http.Handler) http
 			start := time.Now()
 			ctx := r.Context()
 			ctx = context.WithValue(ctx, CtxRequestStartTime, start)
+			requestIdentifier := uuid.New().String()
+			ctx = context.WithValue(ctx, CtxRequestIdentifier, requestIdentifier)
 			r = r.WithContext(ctx)
 
 			wrappedWriter := &WriterWrapper{
@@ -58,17 +60,12 @@ func RequestLoggerMiddleware(db *database.Database) func(next http.Handler) http
 			}
 
 			var err error
-			var requestBody string
-			var requestHeaders string
+			var requestBody []byte
+			var requestHeaders map[string][]string
 			var responseBody string
 
-			requestIdentifier := uuid.New().String()
-			r = r.WithContext(context.WithValue(r.Context(), CtxRequestIdentifier, requestIdentifier))
-
 			defer func() {
-
 				duration := time.Since(start)
-
 				statusCode := wrappedWriter.StatusCode
 
 				errorMessage := ""
@@ -81,11 +78,25 @@ func RequestLoggerMiddleware(db *database.Database) func(next http.Handler) http
 					log.Error().Err(err).Msg("Error unescaping query")
 				}
 
+				user := GetRequestUser(r)
+				var userID string
+				var roles string
+
+				if user != nil {
+					userID = user.Email
+					roles = user.Roles
+				}
+
+				headersJSON, marshalErr := json.Marshal(requestHeaders)
+				if marshalErr != nil {
+					log.Error().Err(marshalErr).Msg("Error marshaling headers")
+				}
+
 				logEntry := models.RequestLog{
 					Timestamp:         start,
 					Ip:                r.RemoteAddr,
-					UserId:            r.Header.Get(RequestedByParamKey.S()),
-					Roles:             r.Header.Get(RolesParamKey.S()),
+					UserId:            userID,
+					Roles:             roles,
 					Method:            r.Method,
 					Path:              r.URL.Path,
 					Query:             query,
@@ -94,48 +105,40 @@ func RequestLoggerMiddleware(db *database.Database) func(next http.Handler) http
 					Origin:            r.Header.Get("Origin"),
 					Referer:           r.Header.Get("Referer"),
 					Error:             errorMessage,
-					Header:            requestHeaders,
-					Body:              requestBody,
+					Header:            string(headersJSON),
+					Body:              string(requestBody),
 					Response:          responseBody,
 					RequestIdentifier: requestIdentifier,
 				}
 
-				err = db.DB.Create(&logEntry).Error
-				if err != nil {
-					log.Error().Err(err).Msg("Error creating request log")
+				if db != nil && db.DB != nil {
+					if createErr := db.DB.Create(&logEntry).Error; createErr != nil {
+						log.Error().Err(createErr).Msg("Error creating request log")
+					}
+				} else {
+					log.Error().Msg("Database or DB instance is nil, cannot create request log")
 				}
+
+				log.Debug().Interface("user", user).Msg("Request User")
 			}()
 
-			bodyBytes, readErr := io.ReadAll(r.Body)
-			if readErr != nil {
-				err = readErr // Capture the error
+			// Read request body
+			requestBody, err = io.ReadAll(r.Body)
+			if err != nil {
 				log.Error().Err(err).Msg("Error reading request body")
 			}
+			r.Body = io.NopCloser(bytes.NewReader(requestBody))
 
-			r.Body = io.NopCloser(bytes.NewReader(bodyBytes))
-
-			// Capture headers before next.ServeHTTP
-			headers := make(map[string][]string)
-			for name, values := range r.Header {
-				headers[name] = values
-			}
-
-			headerJSON, marshalErr := json.Marshal(headers)
-			if marshalErr != nil {
-				err = marshalErr
-				log.Error().Err(err).Msg("Error marshaling headers")
-			}
+			// Capture headers
+			requestHeaders = r.Header
 
 			next.ServeHTTP(wrappedWriter, r)
 
-			// Check for errors after the handler has run
-			if wrappedWriter.StatusCode >= 400 || readErr != nil || marshalErr != nil {
-				// If there was an error during the request, log the body and headers
-				if wrappedWriter.StatusCode >= 400 {
+			// Capture response body and status code
+			if wrappedWriter.StatusCode >= http.StatusBadRequest {
+				responseBody = wrappedWriter.Body.String()
+				if wrappedWriter.StatusCode >= http.StatusInternalServerError {
 					err = errors.New(http.StatusText(wrappedWriter.StatusCode))
-					requestHeaders = string(headerJSON)
-					requestBody = string(bodyBytes)
-					responseBody = wrappedWriter.Body.String()
 				}
 			}
 		})

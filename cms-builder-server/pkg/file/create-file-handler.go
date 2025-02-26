@@ -22,6 +22,8 @@ func CreateStoredFilesHandler(db *database.Database, st store.Store) manager.Api
 			user := requestCtx.User
 			requestId := requestCtx.RequestId
 
+			log.Debug().Interface("storeconfig", st.GetConfig()).Msg("CreateStoredFilesHandler")
+
 			// 1. Validate Request Method
 			err := ValidateRequestMethod(r, http.MethodPost)
 			if err != nil {

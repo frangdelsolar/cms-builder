@@ -119,8 +119,7 @@ func AuthMiddleware(envGodToken string, godUser *models.User, firebase *clients.
 			}
 
 			if localUser != nil {
-
-				log.Info().Str("user", localUser.Email).Msg("Authenticated as")
+				log.Debug().Str("user", localUser.Email).Msg("Authenticated as")
 
 				// Create a new context with both values
 				ctx := r.Context()

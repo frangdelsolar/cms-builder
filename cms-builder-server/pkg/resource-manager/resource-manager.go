@@ -95,7 +95,11 @@ func (r *ResourceManager) AddResource(input *ResourceConfig) (*Resource, error) 
 
 	r.Resources[name] = resource
 
-	r.Logger.Debug().Str("name", name).Int("routes", len(resource.Routes)).Msg("Resource added to resource manager with")
+	// Migrate
+	err = r.DB.DB.AutoMigrate(resource.Model)
+	if err != nil {
+		return nil, err
+	}
 
 	return resource, nil
 }
@@ -184,8 +188,6 @@ func InitializeRoutes(r *Resource, input []server.Route, db *database.Database) 
 			return err
 		}
 	}
-
-	fmt.Printf("Routes initialized %d routes for resource: %s\n", len(routes), name)
 
 	return nil
 }

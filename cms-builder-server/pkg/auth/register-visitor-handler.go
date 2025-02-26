@@ -11,7 +11,7 @@ import (
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 )
 
-func RegisterVisitorController(firebase *clients.FirebaseManager, db *database.Database, systemUser *models.User) http.HandlerFunc {
+func RegisterVisitorController(firebase *clients.FirebaseManager, db *database.Database, getSystemUser func() *models.User) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -53,6 +53,13 @@ func RegisterVisitorController(firebase *clients.FirebaseManager, db *database.D
 
 		input.Roles = []models.Role{
 			models.VisitorRole,
+		}
+
+		systemUser := getSystemUser()
+		if systemUser == nil {
+			log.Error().Msg("System user not found")
+			SendJsonResponse(w, http.StatusInternalServerError, nil, "System user not found")
+			return
 		}
 
 		// 5. Create User

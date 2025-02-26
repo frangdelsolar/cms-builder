@@ -241,11 +241,6 @@ func (r *Resource) Validate(instance interface{}, log *logger.Logger) Validation
 
 // AddRoute adds a custom route to the resource.
 func (r *Resource) AddRoute(route server.Route) error {
-	logger.Default.Debug().
-		Str("name", route.Name).
-		Str("path", route.Path).
-		Msg("Adding route to Resource")
-
 	if r.Routes == nil {
 		r.Routes = make(map[string]server.Route)
 	}

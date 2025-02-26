@@ -16,7 +16,7 @@ func ProtectedRouteMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx.Logger.Info().Str("user", ctx.User.Email).Bool("authenticated", ctx.IsAuthenticated).Msg("Entering protected route")
+		ctx.Logger.Debug().Bool("authenticated", ctx.IsAuthenticated).Msg("Entering protected route")
 		next.ServeHTTP(w, r)
 	})
 }

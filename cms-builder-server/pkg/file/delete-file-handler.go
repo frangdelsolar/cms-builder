@@ -65,7 +65,7 @@ func DeleteStoredFilesHandler(db *database.Database, st store.Store) manager.Api
 				return
 			}
 
-			res = queries.Delete(db, instance, user, requestId)
+			res = queries.Delete(db, &instance, user, requestId)
 			if res.Error != nil {
 				SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
 				return

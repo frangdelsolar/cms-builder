@@ -10,8 +10,6 @@ import (
 // RecoveryMiddleware catches panics and logs them.
 func RecoveryMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-		logger.Default.Info().Msg("RecoveryMiddleware")
 		defer func() {
 			err := recover()
 			if err != nil {

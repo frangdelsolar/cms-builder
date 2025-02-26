@@ -60,10 +60,10 @@ func (o *Orchestrator) init() error {
 		o.InitAuth,
 		o.InitDatabaseLogger,
 		o.InitRequestLogger,
-		o.InitFiles,
 		o.InitUsers,
 		o.InitServer,
 		o.InitStore,
+		o.InitFiles,
 		o.InitScheduler,
 	}
 
@@ -147,7 +147,12 @@ func (o *Orchestrator) InitResourceManager() error {
 }
 
 func (o *Orchestrator) InitAuth() error {
-	resourceConfig := auth.SetupUserResource(o.FirebaseClient, o.DB, o.Logger)
+
+	var getSystemUser = func() *models.User {
+		return o.Users.System
+	}
+
+	resourceConfig := auth.SetupUserResource(o.FirebaseClient, o.DB, o.Logger, getSystemUser)
 	_, err := o.ResourceManager.AddResource(resourceConfig)
 	return err
 }
@@ -165,6 +170,10 @@ func (o *Orchestrator) InitRequestLogger() error {
 }
 
 func (o *Orchestrator) InitFiles() error {
+
+	storeConfig := o.Store.GetConfig()
+	o.Logger.Info().Interface("storeConfig", storeConfig).Msg("Initializing store")
+
 	fileConfig := file.SetupFileResource(o.ResourceManager, o.DB, o.Store, o.Logger)
 	_, err := o.ResourceManager.AddResource(fileConfig)
 	return err

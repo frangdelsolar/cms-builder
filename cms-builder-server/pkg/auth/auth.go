@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"net/http"
+
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/clients"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
@@ -9,7 +11,7 @@ import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 )
 
-func SetupUserResource(firebase *clients.FirebaseManager, db *database.Database, log *logger.Logger) *manager.ResourceConfig {
+func SetupUserResource(firebase *clients.FirebaseManager, db *database.Database, log *logger.Logger, getSystemUser func() *models.User) *manager.ResourceConfig {
 
 	log.Info().Msg("Initializing User resource")
 
@@ -36,14 +38,15 @@ func SetupUserResource(firebase *clients.FirebaseManager, db *database.Database,
 	}
 
 	// TODO: See how to overcome circular dependency.... This one needs system User, but system user needs this resource to be created
-	routes := []server.Route{}
-	// {
-	// 	Path: "/auth/register",
-	// 	// Handler:      RegisterVisitorController(firebase, db, systemUser),
-	// 	Name:         "register",
-	// 	RequiresAuth: false,
-	// 	Method:       http.MethodPost,
-	// },
+	routes := []server.Route{
+		{
+			Path:         "/auth/register",
+			Handler:      RegisterVisitorController(firebase, db, getSystemUser),
+			Name:         "register",
+			RequiresAuth: false,
+			Methods:      []string{http.MethodPost},
+		},
+	}
 
 	config := &manager.ResourceConfig{
 		Model:           models.User{},
@@ -53,8 +56,6 @@ func SetupUserResource(firebase *clients.FirebaseManager, db *database.Database,
 		Handlers:        handlers,
 		Routes:          routes,
 	}
-
-	log.Debug().Interface("config", config).Msg("User resource initialized")
 
 	return config
 }
