@@ -1,4 +1,4 @@
-package orchestrator
+package builder
 
 import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"

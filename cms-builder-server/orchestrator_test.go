@@ -1,4 +1,4 @@
-package orchestrator_test
+package builder_test
 
 import (
 	"os"
@@ -7,8 +7,8 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 
+	. "github.com/frangdelsolar/cms-builder/cms-builder-server"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
-	orc "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/orchestrator"
 )
 
 func TestMain(m *testing.M) {
@@ -22,13 +22,13 @@ func TestMain(m *testing.M) {
 }
 
 func TestNewOrchestrator(t *testing.T) {
-	o, err := orc.NewOrchestrator()
+	o, err := NewOrchestrator()
 	assert.NoError(t, err)
 	assert.NotNil(t, o.Config)
 
 	// Config Reader
 	config := o.Config
-	appName := config.GetString(orc.EnvKeys.AppName)
+	appName := config.GetString(EnvKeys.AppName)
 	assert.Equal(t, "test", appName)
 
 	// Logger

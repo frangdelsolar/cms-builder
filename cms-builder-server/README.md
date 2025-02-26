@@ -1,52 +1,105 @@
-# Go App Builder v1.5.5
+# Orchestrator
 
-This is a Go library that provides a foundation for building applications. It offers functionalities for:
+Will initialize
 
-- [**Configuration Management**](#configuration-management): Loads configuration options from a YAML file.
-- [**Logging**](#logger): Manages application logs for debugging and monitoring purposes.
-- [**Database**](#database): Establishes connections to databases using GORM.
-- [**Server**](#server): Provides a basic HTTP server with routing capabilities.
-- [**Admin**](#admin):
-- [**Firebase**]:
-
-### Getting Started
-
-1. **Install dependencies**:
-
-```bash
-go get github.com/frangdelsolar/go-builder
-```
-
-2. **Import the library**:
-
-```go
-import "github.com/frangdelsolar/go-builder"
-```
-
-3. **Create a builder instance**:
-
-```go
-config := &builder.BuilderConfig{
-  ConfigFile: &builder.ConfigFile{
-    UseConfigFile: true,  // Optional, defaults to false
-    ConfigPath:    "config.yaml", // Optional, defaults to "config.yaml"
-  },
-}
-
-builder := builder.NewBuilder(config)
-```
-
----
-
-## Configuration Management
+## Config Reader
 
 The builder uses the `viper` library to manage application configuration loaded from a YAML file (default: `config.yaml`).
 If you pass configuration settings on [builder initialization](#getting-started), you may have access to a `viper` instance.
 
+## Example of initialization with retry
+
 ```go
-ConfigFile: &builder.ConfigFile{
-  UseConfigFile: true,  // Optional, defaults to false
-  ConfigPath:    "config.yaml", // Optional, defaults to "config.yaml"
+package main
+
+import (
+	"errors"
+	"fmt"
+	"os"
+	"sync"
+	"time"
+
+	orc "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/orchestrator"
+	"github.com/joho/godotenv"
+)
+
+func main() {
+	prepareEnvironment()
+
+	e, err := orc.NewOrchestrator()
+	if err != nil {
+		panic(err)
+	}
+
+	startServer(e)
+
+}
+
+var (
+	retryTimestamps []time.Time
+	retryMutex      sync.Mutex
+	retryLimit      = 5
+	retryWindow     = 2 * time.Minute
+)
+
+func shouldRetry() bool {
+	retryMutex.Lock()
+	defer retryMutex.Unlock()
+
+	// Remove timestamps older than the retry window
+	now := time.Now()
+	var validTimestamps []time.Time
+	for _, t := range retryTimestamps {
+		if now.Sub(t) <= retryWindow {
+			validTimestamps = append(validTimestamps, t)
+		} else {
+			fmt.Printf("Removing old timestamp: %v\n", t)
+		}
+	}
+	retryTimestamps = validTimestamps
+
+	fmt.Printf("Retry timestamps: %v\n", retryTimestamps)
+
+	// Check if the number of retries within the window exceeds the limit
+	if len(retryTimestamps) >= retryLimit {
+		fmt.Println("Retry limit exceeded")
+		return false
+	}
+
+	// Add the current retry timestamp
+	retryTimestamps = append(retryTimestamps, now)
+	fmt.Println("Retrying...")
+	return true
+}
+
+func startServer(e *orc.Orchestrator) {
+	defer func() {
+		if r := recover(); r != nil {
+			// Log the panic and restart the server
+			err, ok := r.(error)
+			if !ok {
+				err = fmt.Errorf("panic: %v", r)
+			}
+
+			fmt.Println("Panic recovered, error:", err)
+			e.Logger.Error().Err(err).Msg("Server panicked, checking retry logic...")
+
+			// Check retry logic
+			if shouldRetry() {
+				time.Sleep(5 * time.Second)
+				fmt.Println("Restarting server...")
+				startServer(e)
+			} else {
+				fmt.Println("Retry limit exceeded, server not restarted")
+				e.Logger.Error().Err(errors.New("retry limit exceeded")).Msg("Server cannot be restarted, retry limit exceeded")
+			}
+		}
+	}()
+
+	if err := e.Run(); err != nil {
+		fmt.Println("Server run error:", err)
+		e.Logger.Error().Err(err).Msg("Error running server")
+	}
 }
 ```
 
@@ -60,200 +113,13 @@ This method retrieves the underlying `viper` instance used by the builder. You c
 - `GetFloat64(key string) float64`: Returns the value for the given key as a float64.
 - `GetBool(key string) bool`: Returns the value for the given key as a bool.
 
+`environment.go` has a `EnvKeys` var that should contain the same keys in the environment.
+this assures safetu when getting the variables
+
 ```go
-configReader := builder.GetConfigReader()
-firebaseSecret := configReader.GetString("firebaseSecret")
+	o, err := orc.NewOrchestrator()
+	config := o.Config
+	appName := config.GetString(orc.EnvKeys.AppName)
 ```
-
-### Reference
-
-Refer to the viper documentation for a complete list of available methods: https://github.com/spf13/viper
-
----
 
 ## Logger
-
-The builder provides a pre-configured `zerolog` logger instance. It allows for centralized logging with customizable levels and output destination.
-**Levels**: You can configure the logging level using the `LogLevel` field in the `LoggerConfig` struct. Supported levels are:
-
-- `debug`
-- `info`
-- `warn`
-- `error`
-- `fatal`
-  **Output**: By default, logs are written to both console and a file (`logs/default.log`). You can disable writing to a file by setting `WriteToFile` to false in the `LoggerConfig`. You can also customize the log file path with `LogFilePath`.
-
-### Accessing the Logger:
-
-```go
-loggerConfig := builder.LoggerConfig{
-  LogLevel:    "debug",
-  LogFilePath: "logs/default.log",
-  WriteToFile: true,
-}
-engine.SetLoggerConfig(loggerConfig)
-
-// Logging example
-log, err = engine.GetLogger()
-if err != nil {
-  // handle error
-}
-log.Info().Msg("Some logging test")
-```
-
-### Reference
-
-For more information on zerolog and its advanced features, refer to the official documentation: https://github.com/rs/zerolog
-
----
-
-## Database
-
-The builder library provides functionalities for connecting to databases using the GORM library.
-
-### Database configuration
-
-```go
-type DBConfig struct {
-    // URL: Used for connecting to a PostgreSQL database.
-    // Provide a complete connection string (e.g., "postgres://user:password@host:port/database").
-    URL string
-    // Path: Used for connecting to a SQLite database.
-    // Provide the path to the SQLite database file.
-    Path string
-}
-```
-
-Note: You can only specify one connection method (either `URL` or `Path`) at a time.
-
-### Establishing a Database Connection
-
-To establish a connection to the database, use the `builder.ConnectDB` method:
-
-```go
-dbConfig := builder.DBConfig{
-    // URL:  "postgres://user:password@host:port/database",
-    Path: cfg.GetString("dbFile"), // Example using a config file
-}
-err := builder.ConnectDB(&dbConfig)
-if err != nil {
-    // Handle error
-}
-```
-
-### Reference
-
-For more information refer to [GORM documentation](https://gorm.io/)
-
----
-
-## Server
-
-The builder library provides a basic HTTP server with routing capabilities, middleware support, and basic configuration options.
-
-### Server configuration
-
-You can configure the server host and port using the builder.ServerConfig struct:
-
-```go
-// Server setup
-serverConfig := builder.ServerConfig{
-  Host: cfg.GetString("host"),
-  Port: cfg.GetString("port"),
-}
-err = engine.SetServerConfig(serverConfig)
-if err != nil {
-  // handle error
-}
-```
-
-Note: If not configured, the server will default to listening on all interfaces (`0.0.0.0`) and port `8080`.
-
-### Retrieve the server instance
-
-You can access the server instance using the `builder.GetServer` method:
-
-```go
-svr, err := engine.GetServer()
-if err != nil {
-  // handle error
-}
-```
-
-### Adding middlewares
-
-Middleware allows you to intercept requests and responses, adding functionalities like logging, authentication, or request validation before reaching the actual route handler. You can chain multiple middleware functions.
-
-```go
-svr.AddMiddleware(func(next http.Handler) http.Handler {
-  return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-    log.Info().Msg(r.RequestURI)
-    next.ServeHTTP(w, r)
-  })
-})
-```
-
-### Adding routes
-
-```go
-svr.AddRoute("/", func(w http.ResponseWriter, r *http.Request) {
-  fmt.Fprintf(w, "Home")
-}, "home")
-```
-
-### Start the server
-
-Start the server listening for requests with the `svr.Run` method:
-
-```go
-svr.Run()
-```
-
-### Reference
-
-For extra documentation, visit [Mux](https://github.com/gorilla/mux)
-
----
-
-## Admin
-
-Once you have initialized your server, you can setup your admin panel
-
-```go
-	svr, err := engine.GetServer()
-	if err != nil {
-    // handle
-	}
-
-  ...
-
-	// Admin setup --> Needs to happen after the server is setup
-	err = engine.SetupAdmin()
-	if err != nil {
-		log.Error().Err(err).Msg("Error setting up admin panel")
-		panic(err)
-	}
-
-	admin := engine.GetAdmin()
-	admin.Register(&Example{})
-
-  ...
-
-	svr.Run()
-```
-
-This will setup db migration for that entity
-and also the endpoints for crud operations
-
-- list: `/`
-- new: `/new`
-- details: `/{id}`
-- edit: `/{id}/edit`
-- delete: `/{id}/delete`
-
----
-
-## Firebase
-
-Have configured `firebaseSecret` which should be a base64 encoding of the secret provided by google.
-call the method `builder.SetupFirebase()`

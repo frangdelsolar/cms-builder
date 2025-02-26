@@ -115,7 +115,7 @@ func (s *Server) Run(getRoutes GetRoutesFunc, apiBaseUrl string) error {
 
 		methods := route.Methods
 		methods = append(methods, http.MethodOptions)
-		s.Logger.Info().Str("path", "/private"+route.Path).Msg("Private")
+		s.Logger.Error().Str("path", "/private"+route.Path).Msg("Private")
 
 		authRouter.HandleFunc(route.Path, route.Handler).Name(route.Name).Methods(methods...)
 	}
