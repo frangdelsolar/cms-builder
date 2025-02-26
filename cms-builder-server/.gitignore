@@ -8,3 +8,5 @@ covprofile
 */test_output*
 *.env*
 *postman/*
+
+*tests.old*
