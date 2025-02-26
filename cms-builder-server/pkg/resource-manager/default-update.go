@@ -19,27 +19,20 @@ var DefaultUpdateHandler ApiFunction = func(a *Resource, db *database.Database) 
 		requestId := requestCtx.RequestId
 		isAdmin := user.HasRole(models.AdminRole)
 
-		appName, err := a.GetName()
-		if err != nil {
-			log.Error().Err(err).Msgf("Error getting app name")
-			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
-			return
-		}
-
 		// 1. Validate Request Method
-		err = ValidateRequestMethod(r, http.MethodPut)
+		err := ValidateRequestMethod(r, http.MethodPut)
 		if err != nil {
 			SendJsonResponse(w, http.StatusMethodNotAllowed, nil, err.Error())
 			return
 		}
 
 		// 2. Check Permissions
-		if !UserIsAllowed(a.Permissions, user.GetRoles(), OperationRead) {
+		if !UserIsAllowed(a.Permissions, user.GetRoles(), OperationRead, a.ResourceNames.Singular, log) {
 			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to access this resource")
 			return
 		}
 
-		if !UserIsAllowed(a.Permissions, user.GetRoles(), OperationUpdate) {
+		if !UserIsAllowed(a.Permissions, user.GetRoles(), OperationUpdate, a.ResourceNames.Singular, log) {
 			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to delete this resource")
 			return
 		}
@@ -105,7 +98,7 @@ var DefaultUpdateHandler ApiFunction = func(a *Resource, db *database.Database) 
 		// 10. Find differences with existing instance
 		differences := utils.CompareInterfaces(previousState, instance)
 		if diffMap, ok := differences.(map[string]interface{}); ok && len(diffMap) == 0 {
-			SendJsonResponse(w, http.StatusOK, instance, appName+" is up to date")
+			SendJsonResponse(w, http.StatusOK, instance, a.ResourceNames.Singular+" is up to date")
 			return
 		}
 
@@ -116,12 +109,7 @@ var DefaultUpdateHandler ApiFunction = func(a *Resource, db *database.Database) 
 			return
 		}
 
-		kebabName, err := a.GetKebabCasePluralName()
-		if err != nil {
-			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
-			return
-		}
-		msg := kebabName + " updated"
+		msg := a.ResourceNames.Singular + " has been updated"
 
 		// 12. Send Success Response
 		SendJsonResponse(w, http.StatusOK, instance, msg)

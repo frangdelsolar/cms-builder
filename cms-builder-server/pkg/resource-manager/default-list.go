@@ -25,7 +25,7 @@ var DefaultListHandler ApiFunction = func(a *Resource, db *database.Database) ht
 		}
 
 		// 2. Check Permissions
-		if !UserIsAllowed(a.Permissions, user.GetRoles(), OperationRead) {
+		if !UserIsAllowed(a.Permissions, user.GetRoles(), OperationRead, a.ResourceNames.Singular, log) {
 			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to read this resource")
 			return
 		}
@@ -72,12 +72,7 @@ var DefaultListHandler ApiFunction = func(a *Resource, db *database.Database) ht
 		}
 
 		// 7. Generate Success Message
-		kebabName, err := a.GetKebabCasePluralName()
-		if err != nil {
-			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
-			return
-		}
-		msg := kebabName + " list"
+		msg := a.ResourceNames.Plural + " List"
 
 		// 8. Send Paginated Response
 		SendJsonResponseWithPagination(w, http.StatusOK, instances, msg, pagination)

@@ -33,7 +33,7 @@ func TimelineHandler(m *manager.ResourceManager, db *database.Database) http.Han
 		}
 
 		// 3. Check Permissions
-		if !UserIsAllowed(a.Permissions, user.GetRoles(), OperationRead) {
+		if !UserIsAllowed(a.Permissions, user.GetRoles(), OperationRead, a.ResourceNames.Singular, log) {
 			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to read this resource")
 			return
 		}
@@ -62,7 +62,7 @@ func TimelineHandler(m *manager.ResourceManager, db *database.Database) http.Han
 			return
 		}
 
-		if !UserIsAllowed(queriedApp.Permissions, user.GetRoles(), OperationRead) {
+		if !UserIsAllowed(queriedApp.Permissions, user.GetRoles(), OperationRead, resourceName, log) {
 			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to read this resource")
 			return
 		}

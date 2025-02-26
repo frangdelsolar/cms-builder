@@ -26,12 +26,12 @@ var DefaultDeleteHandler ApiFunction = func(a *Resource, db *database.Database) 
 		}
 
 		// 2. Check Permissions
-		if !UserIsAllowed(a.Permissions, user.GetRoles(), OperationRead) {
+		if !UserIsAllowed(a.Permissions, user.GetRoles(), OperationRead, a.ResourceNames.Singular, log) {
 			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to access this resource")
 			return
 		}
 
-		if !UserIsAllowed(a.Permissions, user.GetRoles(), OperationDelete) {
+		if !UserIsAllowed(a.Permissions, user.GetRoles(), OperationDelete, a.ResourceNames.Singular, log) {
 			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to delete this resource")
 			return
 		}
@@ -67,12 +67,7 @@ var DefaultDeleteHandler ApiFunction = func(a *Resource, db *database.Database) 
 		}
 
 		// 6. Generate Success Message
-		appName, err := a.GetKebabCaseName()
-		if err != nil {
-			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
-			return
-		}
-		msg := appName + " deleted"
+		msg := a.ResourceNames.Singular + " has been eleted"
 
 		// 7. Send Success Response
 		SendJsonResponse(w, http.StatusOK, nil, msg)

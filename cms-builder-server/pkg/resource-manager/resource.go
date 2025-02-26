@@ -9,7 +9,6 @@ import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
 )
 
 // ApiFunction defines the signature for API handler functions.
@@ -25,6 +24,15 @@ type ApiHandlers struct {
 	Schema func(resource *Resource) http.HandlerFunc
 }
 
+type ResourceNames struct {
+	Singular      string `json:"singularName"`
+	Plural        string `json:"pluralName"`
+	SnakeSingular string `json:"snakeName"`
+	SnakePlural   string `json:"snakePluralName"`
+	KebabSingular string `json:"kebabName"`
+	KebabPlural   string `json:"kebabPluralName"`
+}
+
 // Resource represents a resource in the system, including its model, validators, and routes.
 type Resource struct {
 	Model           interface{}              // The model struct
@@ -33,6 +41,9 @@ type Resource struct {
 	Permissions     server.RolePermissionMap // Role-based permissions
 	Api             *ApiHandlers             // API handlers
 	Routes          map[string]server.Route  // Custom routes for this resource
+	ResourceNames   ResourceNames            `json:"resourceNames"` // Resource names
+	JsonSchema      json.RawMessage          `json:"jsonSchema"`    // JSON schema
+	FieldNames      map[string]string        `json:"fieldNames"`    // TODO: Map of field names
 }
 
 // GetSlice returns a new slice of the resource's model type.
@@ -55,56 +66,6 @@ func (r *Resource) GetOne() interface{} {
 		instanceType = instanceType.Elem()
 	}
 	return reflect.New(instanceType).Interface()
-}
-
-// GetName returns the name of the resource's model.
-func (r *Resource) GetName() (string, error) {
-	return utils.GetInterfaceName(r.Model)
-}
-
-// GetPluralName returns the pluralized name of the resource's model.
-func (r *Resource) GetPluralName() (string, error) {
-	name, err := r.GetName()
-	if err != nil {
-		return "", err
-	}
-	return utils.Pluralize(name), nil
-}
-
-// GetKebabCasePluralName returns the kebab-case version of the resource's plural name.
-func (r *Resource) GetKebabCaseName() (string, error) {
-	name, err := r.GetName()
-	if err != nil {
-		return "", err
-	}
-	return utils.KebabCase(name), nil
-}
-
-// GetKebabCaseName returns the kebab-case version of the resource's plural name.
-func (r *Resource) GetKebabCasePluralName() (string, error) {
-	name, err := r.GetPluralName()
-	if err != nil {
-		return "", err
-	}
-	return utils.KebabCase(name), nil
-}
-
-// GetKebabCasePluralName returns the kebab-case version of the resource's plural name.
-func (r *Resource) GetSnakeCaseName() (string, error) {
-	name, err := r.GetName()
-	if err != nil {
-		return "", err
-	}
-	return utils.SnakeCase(name), nil
-}
-
-// GetKebabCasePluralName returns the kebab-case version of the resource's plural name.
-func (r *Resource) GetSnakeCasePluralName() (string, error) {
-	name, err := r.GetPluralName()
-	if err != nil {
-		return "", err
-	}
-	return utils.SnakeCase(name), nil
 }
 
 // GetKeys returns a list of field names in the resource's model.

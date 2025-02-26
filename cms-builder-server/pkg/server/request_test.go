@@ -496,7 +496,7 @@ func TestUserIsAllowed(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Call the function
-			result := UserIsAllowed(tt.appPermissions, tt.userRoles, tt.action)
+			result := UserIsAllowed(tt.appPermissions, tt.userRoles, tt.action, "test-app-name", logger.Default)
 
 			// Verify the result
 			assert.Equal(t, tt.expectedResult, result, "Unexpected result for test case: %s", tt.name)

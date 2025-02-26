@@ -48,7 +48,7 @@ var DefaultCreateHandler ApiFunction = func(a *Resource, db *database.Database) 
 		}
 
 		// 2. Check Permissions
-		if !UserIsAllowed(a.Permissions, user.GetRoles(), OperationCreate) { // corrected to OperationCreate
+		if !UserIsAllowed(a.Permissions, user.GetRoles(), OperationCreate, a.ResourceNames.Singular, log) { // corrected to OperationCreate
 			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to create this resource")
 			return
 		}
@@ -97,12 +97,7 @@ var DefaultCreateHandler ApiFunction = func(a *Resource, db *database.Database) 
 		}
 
 		// 9. Generate Success Message
-		appName, err := a.GetKebabCaseName()
-		if err != nil {
-			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
-			return
-		}
-		msg := appName + "created"
+		msg := a.ResourceNames.Singular + " has been created"
 
 		// 10. Send Success Response
 		SendJsonResponse(w, http.StatusCreated, &instance, msg)

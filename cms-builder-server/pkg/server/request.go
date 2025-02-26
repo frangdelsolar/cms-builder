@@ -209,13 +209,14 @@ func ValidateOrderParam(orderParam string) (string, error) {
 	return order, nil
 }
 
-func UserIsAllowed(appPermissions RolePermissionMap, userRoles []models.Role, action CrudOperation) bool {
+func UserIsAllowed(appPermissions RolePermissionMap, userRoles []models.Role, action CrudOperation, resourceName string, log *logger.Logger) bool {
 
 	// Loop over the user's roles and their associated permissions
 	for _, role := range userRoles {
 		if _, ok := appPermissions[role]; ok {
 			for _, allowedAction := range appPermissions[role] {
 				if allowedAction == action {
+					log.Debug().Msgf("Granted access: User with role %s can %s resource %s", role, action, resourceName)
 					return true
 				}
 			}

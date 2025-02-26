@@ -32,7 +32,7 @@ func CreateStoredFilesHandler(db *database.Database, st store.Store) manager.Api
 			}
 
 			// 3. Check Permissions
-			if !UserIsAllowed(a.Permissions, user.GetRoles(), OperationCreate) {
+			if !UserIsAllowed(a.Permissions, user.GetRoles(), OperationCreate, a.ResourceNames.Singular, log) {
 				SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to read this resource")
 				return
 			}
@@ -79,7 +79,7 @@ func CreateStoredFilesHandler(db *database.Database, st store.Store) manager.Api
 				return
 			}
 
-			SendJsonResponse(w, http.StatusCreated, &fileData, "file created")
+			SendJsonResponse(w, http.StatusCreated, &fileData, a.ResourceNames.Singular+" created")
 		}
 	}
 }

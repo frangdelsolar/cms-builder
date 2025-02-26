@@ -23,9 +23,6 @@ type appInfo struct {
 func ApiHandler(mgr *ResourceManager, apiBaseUrl string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		requestCtx := GetRequestContext(r)
-		log := requestCtx.Logger
-
 		err := ValidateRequestMethod(r, http.MethodGet)
 		if err != nil {
 			SendJsonResponse(w, http.StatusMethodNotAllowed, nil, err.Error())
@@ -36,27 +33,15 @@ func ApiHandler(mgr *ResourceManager, apiBaseUrl string) http.HandlerFunc {
 
 		for _, rsc := range mgr.Resources {
 
-			name, err := rsc.GetName()
-			if err != nil {
-				log.Error().Err(err).Msg("Error getting name")
-				SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
-			}
-
-			plural, _ := rsc.GetPluralName()
-			snake, _ := rsc.GetSnakeCaseName()
-			snakes, _ := rsc.GetSnakeCasePluralName()
-			kebab, _ := rsc.GetKebabCaseName()
-			kebabs, _ := rsc.GetKebabCasePluralName()
-
-			url := apiBaseUrl + "/api/" + kebab + "/schema"
+			url := apiBaseUrl + "/api/" + rsc.ResourceNames.KebabPlural + "/schema"
 
 			data := appInfo{
-				Name:        name,
-				Plural:      plural,
-				Snake:       snake,
-				Kebab:       kebab,
-				SnakePlural: snakes,
-				KebabPlural: kebabs,
+				Name:        rsc.ResourceNames.Singular,
+				Plural:      rsc.ResourceNames.Plural,
+				Snake:       rsc.ResourceNames.SnakeSingular,
+				Kebab:       rsc.ResourceNames.KebabSingular,
+				SnakePlural: rsc.ResourceNames.SnakePlural,
+				KebabPlural: rsc.ResourceNames.KebabPlural,
 				Endpoints: map[string]Endpoint{
 					"schema": {
 						Method: http.MethodGet,

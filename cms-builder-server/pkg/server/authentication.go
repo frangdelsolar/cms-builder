@@ -31,7 +31,7 @@ func VerifyUser(userIdToken string, firebase *clients.FirebaseManager, db *datab
 
 	localUser := models.User{}
 
-	q := queries.FindOne(db, &localUser, "firebase_id = ?", accessToken.UID)
+	q := queries.FindOne(db, &localUser, "firebase_id = ?", accessToken.UID).Debug()
 	if q.Error != nil {
 		if !errors.Is(q.Error, gorm.ErrRecordNotFound) {
 			// Need
@@ -42,6 +42,8 @@ func VerifyUser(userIdToken string, firebase *clients.FirebaseManager, db *datab
 			return nil, q.Error
 		}
 	}
+
+	log.Debug().Interface("user", localUser).Msg("verifying")
 
 	return &localUser, nil
 }
@@ -119,7 +121,10 @@ func AuthMiddleware(envGodToken string, godUser *models.User, firebase *clients.
 			}
 
 			if localUser != nil {
-				log.Debug().Str("user", localUser.Email).Msg("Authenticated as")
+
+				roles := localUser.GetRoles()
+
+				log.Debug().Interface("roles", roles).Str("user", localUser.Email).Msg("Authenticated as")
 
 				// Create a new context with both values
 				ctx := r.Context()

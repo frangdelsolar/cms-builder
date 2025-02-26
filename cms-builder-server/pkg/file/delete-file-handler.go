@@ -28,12 +28,12 @@ func DeleteStoredFilesHandler(db *database.Database, st store.Store) manager.Api
 			}
 
 			// 3. Check Permissions
-			if !UserIsAllowed(a.Permissions, user.GetRoles(), OperationRead) {
+			if !UserIsAllowed(a.Permissions, user.GetRoles(), OperationRead, a.ResourceNames.Singular, log) {
 				SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to access this resource")
 				return
 			}
 
-			if !UserIsAllowed(a.Permissions, user.GetRoles(), OperationDelete) {
+			if !UserIsAllowed(a.Permissions, user.GetRoles(), OperationDelete, a.ResourceNames.Singular, log) {
 				SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to read this resource")
 				return
 			}
@@ -71,7 +71,7 @@ func DeleteStoredFilesHandler(db *database.Database, st store.Store) manager.Api
 				return
 			}
 
-			SendJsonResponse(w, http.StatusOK, nil, "File deleted")
+			SendJsonResponse(w, http.StatusOK, nil, a.ResourceNames.Singular+" deleted")
 		}
 	}
 

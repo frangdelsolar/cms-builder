@@ -24,7 +24,7 @@ var DefaultDetailHandler ApiFunction = func(a *Resource, db *database.Database) 
 		}
 
 		// 2. Check Permissions
-		if !UserIsAllowed(a.Permissions, user.GetRoles(), OperationRead) {
+		if !UserIsAllowed(a.Permissions, user.GetRoles(), OperationRead, a.ResourceNames.Singular, log) {
 			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to access this resource")
 			return
 		}
@@ -52,12 +52,7 @@ var DefaultDetailHandler ApiFunction = func(a *Resource, db *database.Database) 
 			return
 		}
 
-		kebabName, err := a.GetKebabCaseName()
-		if err != nil {
-			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
-			return
-		}
-		msg := kebabName + " detail"
+		msg := a.ResourceNames.Singular + " Detail"
 
 		// 5. Send Success Response
 		SendJsonResponse(w, http.StatusOK, instance, msg)

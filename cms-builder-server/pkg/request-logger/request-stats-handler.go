@@ -34,7 +34,7 @@ func RequestStatsHandler(mgr *manager.ResourceManager, db *database.Database) ht
 		}
 
 		// 3. Check Permissions
-		if !UserIsAllowed(a.Permissions, user.GetRoles(), OperationRead) {
+		if !UserIsAllowed(a.Permissions, user.GetRoles(), OperationRead, a.ResourceNames.Singular, log) {
 			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to read this resource")
 			return
 		}

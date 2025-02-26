@@ -8,7 +8,6 @@ import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
-	"github.com/rs/zerolog/log"
 )
 
 type ResourceManager struct {
@@ -64,17 +63,28 @@ func (r *ResourceManager) AddResource(input *ResourceConfig) (*Resource, error) 
 		Permissions:     make(server.RolePermissionMap),
 		Validators:      make(ValidatorsMap),
 		Routes:          map[string]server.Route{},
+		ResourceNames:   ResourceNames{},
+		JsonSchema:      nil,
 	}
 
 	// Validate Name
-	name, err := resource.GetName()
+	resourceNames, err := InitializeResourceNames(resource)
 	if err != nil {
+		r.Logger.Error().Err(err).Msg("Error initializing resource names")
 		return nil, err
 	}
+	resource.ResourceNames = resourceNames
+
+	name := resourceNames.Singular
 
 	if _, ok := r.Resources[name]; ok {
+		r.Logger.Error().Msgf("Resource with name %s already exists", name)
 		return nil, fmt.Errorf("resource with name %s already exists", name)
 	}
+
+	// TODO: Initialize JsonSchema
+
+	// TODO: Maybe I can initialize FieldNames, so that validations are easier
 
 	// Validate Permissions
 	if input.Permissions != nil {
@@ -124,126 +134,4 @@ func (r *ResourceManager) GetRoutes(apiBaseUrl string) []server.Route {
 	}
 
 	return routes
-}
-
-func InitializeRoutes(r *Resource, input []server.Route, db *database.Database) error {
-	name, _ := r.GetKebabCasePluralName()
-	baseRoute := "/api/" + name
-
-	routes := []server.Route{
-		{
-			Path:         baseRoute,
-			Handler:      r.Api.List(r, db),
-			Name:         fmt.Sprintf("%s:list", name),
-			RequiresAuth: true,
-			Methods:      []string{http.MethodGet},
-		},
-		{
-			Path:         baseRoute + "/schema",
-			Handler:      r.Api.Schema(r),
-			Name:         fmt.Sprintf("%s:schema", name),
-			RequiresAuth: false,
-			Methods:      []string{http.MethodGet},
-		},
-		{
-			Path:         baseRoute + "/new",
-			Handler:      r.Api.Create(r, db),
-			Name:         fmt.Sprintf("%s:create", name),
-			RequiresAuth: true,
-			Methods:      []string{http.MethodPost},
-		},
-		{
-			Path:         baseRoute + "/{id}/delete",
-			Handler:      r.Api.Delete(r, db),
-			Name:         fmt.Sprintf("%s:delete", name),
-			RequiresAuth: true,
-			Methods:      []string{http.MethodDelete},
-		},
-		{
-			Path:         baseRoute + "/{id}/update",
-			Handler:      r.Api.Update(r, db),
-			Name:         fmt.Sprintf("%s:update", name),
-			RequiresAuth: true,
-			Methods:      []string{http.MethodPut},
-		},
-		{
-			Path:         baseRoute + "/{id}",
-			Handler:      r.Api.Detail(r, db),
-			Name:         fmt.Sprintf("%s:detail", name),
-			RequiresAuth: true,
-			Methods:      []string{http.MethodGet},
-		},
-	}
-
-	for _, route := range routes {
-		err := r.AddRoute(route)
-		if err != nil {
-			return err
-		}
-	}
-
-	for _, route := range input {
-		err := r.AddRoute(route)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// InitializeValidators adds validators to the given resource.
-// It loops through the given map of validators and adds each one to the resource's Validators map.
-func InitializeValidators(r *Resource, input *ValidatorsMap) error {
-	for fieldName, validators := range *input {
-		for _, validator := range validators {
-			err := r.AddValidator(fieldName, validator)
-			if err != nil {
-				log.Error().Err(err).Str("field", fieldName).Msg("Failed to add validator")
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-// InitializeHandlers returns a new ApiHandlers struct with default handlers.
-// If the given input is not nil, it overwrites the default handlers with the given functions.
-func InitializeHandlers(input *ApiHandlers) *ApiHandlers {
-	handlers := &ApiHandlers{
-		List:   DefaultListHandler,
-		Detail: DefaultDetailHandler,
-		Create: DefaultCreateHandler,
-		Update: DefaultUpdateHandler,
-		Delete: DefaultDeleteHandler,
-		Schema: DefaultSchemaHandler,
-	}
-
-	if input != nil {
-		if input.List != nil {
-			handlers.List = input.List
-		}
-
-		if input.Detail != nil {
-			handlers.Detail = input.Detail
-		}
-
-		if input.Create != nil {
-			handlers.Create = input.Create
-		}
-
-		if input.Update != nil {
-			handlers.Update = input.Update
-		}
-
-		if input.Delete != nil {
-			handlers.Delete = input.Delete
-		}
-
-		if input.Schema != nil {
-			handlers.Schema = input.Schema
-		}
-	}
-
-	return handlers
 }

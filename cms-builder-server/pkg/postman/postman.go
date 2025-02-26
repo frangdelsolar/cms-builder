@@ -96,27 +96,42 @@ var PostmanRequestAuthItem = PostmanRequestAuth{
 	},
 }
 
-var AuthCollectionItem = PostmanCollectionItem{
-	Name: "Auth",
-	Item: []PostmanCollectionItemItem{
-		createAuthItem("Register", "POST", "{\n  \"name\": \"admin\",\n  \"email\": \""+Placeholder(keyAdminEmail)+"\",\n    \"password\": \""+Placeholder(keyAdminPassword)+"\"\n}", Placeholder(keyBaseUrl)+"/auth/register"),
-		createAuthItem("Login", "POST", "{\n    \"email\":\""+Placeholder(keyAdminEmail)+"\",\n    \"password\":\""+Placeholder(keyAdminPassword)+"\",\n    \"returnSecureToken\":true\n}\n", "https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key="+Placeholder(keyFirebaseApiKey)),
-	},
+func AuthCollectionItem() PostmanCollectionItem {
+	var loginItemItem = createAuthItem("Login", "POST", "{\n    \"email\":\""+Placeholder(keyAdminEmail)+"\",\n    \"password\":\""+Placeholder(keyAdminPassword)+"\",\n    \"returnSecureToken\":true\n}\n", "https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key="+Placeholder(keyFirebaseApiKey), "https")
+	loginItemItem.Event = []PostmanCollectionEvent{
+		{
+			Listen: "test",
+			Script: PostmanCollectionEventScript{
+				Type: "text/javascript",
+				Exec: []string{
+					"pm.environment.set(\"" + keyFirebaseIdToken + "\", pm.response.json().idToken);",
+				},
+			},
+		},
+	}
+	authCollection := PostmanCollectionItem{
+		Name: "Auth",
+		Item: []PostmanCollectionItemItem{
+			createAuthItem("Register", "POST", "{\n  \"name\": \"admin\",\n  \"email\": \""+Placeholder(keyAdminEmail)+"\",\n    \"password\": \""+Placeholder(keyAdminPassword)+"\"\n}", Placeholder(keyBaseUrl)+"/auth/register", ""),
+			loginItemItem,
+		},
+	}
+	return authCollection
 }
 
 var FilesCollectionItem = PostmanCollectionItem{
 	Name: "File",
 	Item: []PostmanCollectionItemItem{
-		createFileItem("Create File", "POST", "formdata", Placeholder(keyBaseUrl)+"/private/api/files/new"),
-		createFileItem("Download File", "GET", "", Placeholder(keyBaseUrl)+"/private/api/files/"+Placeholder("FILE_ID")+"/download"),
-		createFileItem("Delete File", "DELETE", "", Placeholder(keyBaseUrl)+"/private/api/files/"+Placeholder("FILE_ID")+"/delete"),
-		createFileItem("List File", "GET", "", Placeholder(keyBaseUrl)+"/private/api/files?page=1&limit=10"),
-		createFileItem("Update File", "PUT", "raw", Placeholder(keyBaseUrl)+"/private/api/files/"+Placeholder("FILE_ID")+"/update"),
-		createFileItem("Detail File", "GET", "", Placeholder(keyBaseUrl)+"/private/api/files/"+Placeholder("FILE_ID")+""),
+		createFileItem("Create File", "POST", "formdata", Placeholder(keyBaseUrl)+"/private/api/files/new", ""),
+		createFileItem("Download File", "GET", "", Placeholder(keyBaseUrl)+"/private/api/files/"+Placeholder("FILE_ID")+"/download", ""),
+		createFileItem("Delete File", "DELETE", "", Placeholder(keyBaseUrl)+"/private/api/files/"+Placeholder("FILE_ID")+"/delete", ""),
+		createFileItem("List File", "GET", "", Placeholder(keyBaseUrl)+"/private/api/files?page=1&limit=10", ""),
+		createFileItem("Update File", "PUT", "raw", Placeholder(keyBaseUrl)+"/private/api/files/"+Placeholder("FILE_ID")+"/update", ""),
+		createFileItem("Detail File", "GET", "", Placeholder(keyBaseUrl)+"/private/api/files/"+Placeholder("FILE_ID")+"", ""),
 	},
 }
 
-func createAuthItem(name, method, body, url string) PostmanCollectionItemItem {
+func createAuthItem(name, method, body, url string, protocol string) PostmanCollectionItemItem {
 	return PostmanCollectionItemItem{
 		Name: name,
 		Request: PostmanCollectionItemItemRequest{
@@ -134,18 +149,18 @@ func createAuthItem(name, method, body, url string) PostmanCollectionItemItem {
 					},
 				},
 			},
-			URL: parseURL(url),
+			URL: parseURL(url, protocol),
 		},
 	}
 }
 
-func createFileItem(name, method, bodyMode, url string) PostmanCollectionItemItem {
+func createFileItem(name, method, bodyMode, url string, protocol string) PostmanCollectionItemItem {
 	item := PostmanCollectionItemItem{
 		Name: name,
 		Request: PostmanCollectionItemItemRequest{
 			Method: method,
 			Header: []PostmanHeader{},
-			URL:    parseURL(url),
+			URL:    parseURL(url, protocol),
 		},
 	}
 
@@ -175,7 +190,7 @@ func createFileItem(name, method, bodyMode, url string) PostmanCollectionItemIte
 	return item
 }
 
-func parseURL(rawURL string) PostmanRequestURL {
+func parseURL(rawURL string, protocol string) PostmanRequestURL {
 
 	log.Debug().Str("rawURL", rawURL).Msg("parseURL")
 
@@ -189,6 +204,8 @@ func parseURL(rawURL string) PostmanRequestURL {
 	if path[0] == Placeholder(keyBaseUrl) {
 		path = path[1:]
 		host = []string{Placeholder(keyBaseUrl)}
+		// } else {
+		// 	host = []string{u.Hostname()}
 	}
 
 	log.Debug().Strs("host", host).Strs("path", path).Msg("parseURL")
@@ -200,12 +217,18 @@ func parseURL(rawURL string) PostmanRequestURL {
 		}
 	}
 
-	return PostmanRequestURL{
+	requestUrl := PostmanRequestURL{
 		Raw:   rawURL,
 		Host:  host,
 		Path:  path,
 		Query: query,
 	}
+
+	if protocol != "" {
+		requestUrl.Protocol = protocol
+	}
+
+	return requestUrl
 }
 
 var preRequestScript = PostmanCollectionEvent{
@@ -231,12 +254,13 @@ func GetPostmanCollection(appName string, resources []mgr.Resource) (*PostmanCol
 	collection := PostmanCollection{
 		Info:  NewPostmanCollectionInfo(appName),
 		Auth:  PostmanRequestAuthItem,
-		Item:  []PostmanCollectionItem{AuthCollectionItem, FilesCollectionItem},
+		Item:  []PostmanCollectionItem{AuthCollectionItem(), FilesCollectionItem},
 		Event: []PostmanCollectionEvent{preRequestScript},
 	}
+	protocol := ""
 
 	for _, src := range resources {
-		resourceName, _ := src.GetName()
+		resourceName := src.ResourceNames.Singular
 		body, _ := mgr.InterfaceToMap(src.Model)
 		bodyJSON, _ := json.MarshalIndent(body, "", "   ")
 
@@ -261,7 +285,7 @@ func GetPostmanCollection(appName string, resources []mgr.Resource) (*PostmanCol
 					isCreate = true
 				}
 
-				item := createResourceSubItem(route.Name, method, string(bodyJSON), url, resourceIdPlaceHolder, route.RequiresAuth, isCreate)
+				item := createResourceSubItem(route.Name, method, string(bodyJSON), url, resourceIdPlaceHolder, route.RequiresAuth, isCreate, protocol)
 				resourceItem.Item = append(resourceItem.Item, item)
 			}
 		}
@@ -279,7 +303,7 @@ func createResourceItem(resourceName string) PostmanCollectionItem {
 	}
 }
 
-func createResourceSubItem(routeName, method, body, url, idPlaceHolder string, requiresAuth bool, isCreate bool) PostmanCollectionItemItem {
+func createResourceSubItem(routeName, method, body, url, idPlaceHolder string, requiresAuth bool, isCreate bool, protocol string) PostmanCollectionItemItem {
 	item := PostmanCollectionItemItem{
 		Name: routeName,
 		Request: PostmanCollectionItemItemRequest{
@@ -294,7 +318,7 @@ func createResourceSubItem(routeName, method, body, url, idPlaceHolder string, r
 					},
 				},
 			},
-			URL: parseURL(url),
+			URL: parseURL(url, protocol),
 		},
 	}
 
