@@ -1,6 +1,7 @@
 package file
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
@@ -9,6 +10,7 @@ import (
 	manager "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store"
+	"gorm.io/gorm"
 )
 
 func DeleteStoredFilesHandler(db *database.Database, st store.Store) manager.ApiFunction {
@@ -45,17 +47,15 @@ func DeleteStoredFilesHandler(db *database.Database, st store.Store) manager.Api
 
 			instanceId := GetUrlParam("id", r)
 			instance := models.File{}
-			res := queries.FindOne(db, &instance, instanceId, query, user.StringID())
 
+			res := queries.FindOne(db, &instance, instanceId, query, user.StringID())
 			if res.Error != nil {
+				if errors.Is(res.Error, gorm.ErrRecordNotFound) {
+					SendJsonResponse(w, http.StatusNotFound, nil, "Instance not found")
+					return
+				}
 				log.Error().Err(res.Error).Msgf("Error finding instance")
 				SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
-				return
-			}
-
-			if instance == (models.File{}) {
-				log.Error().Msgf("Instance not found")
-				SendJsonResponse(w, http.StatusNotFound, nil, "Instance not found")
 				return
 			}
 

@@ -85,9 +85,7 @@ const ResearchRequests = ({ data }) => {
       );
     }
 
-    const identifiers = filteredRequests.map(
-      (request) => request.request_identifier
-    );
+    const identifiers = filteredRequests.map((request) => request.trace_id);
     setRequestIdentifiers(identifiers);
     setSelectedRequestIdentifier(""); // Reset selected request identifier
   };
@@ -96,7 +94,7 @@ const ResearchRequests = ({ data }) => {
   const fetchRequestDetail = () => {
     if (selectedRequestIdentifier && data && Array.isArray(data)) {
       const requestDetail = data.find(
-        (request) => request.request_identifier === selectedRequestIdentifier
+        (request) => request.trace_id === selectedRequestIdentifier
       );
       setSelectedRequestDetail(requestDetail);
     }
@@ -195,9 +193,7 @@ const ResearchRequests = ({ data }) => {
 
         {/* Display Request Details */}
         {selectedRequestDetail && (
-          <RequestPreview
-            requestId={selectedRequestDetail.request_identifier}
-          />
+          <RequestPreview requestId={selectedRequestDetail.trace_id} />
         )}
       </CardContent>
     </Card>

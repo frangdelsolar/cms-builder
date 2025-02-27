@@ -49,8 +49,8 @@ func RequestLoggerMiddleware(db *database.Database) func(next http.Handler) http
 			start := time.Now()
 			ctx := r.Context()
 			ctx = context.WithValue(ctx, CtxRequestStartTime, start)
-			requestIdentifier := uuid.New().String()
-			ctx = context.WithValue(ctx, CtxRequestIdentifier, requestIdentifier)
+			traceId := uuid.New().String()
+			ctx = context.WithValue(ctx, CtxTraceId, traceId)
 			r = r.WithContext(ctx)
 
 			log := logger.Default
@@ -85,7 +85,7 @@ func RequestLoggerMiddleware(db *database.Database) func(next http.Handler) http
 				var roles string
 
 				if user != nil {
-					userID = user.Email
+					userID = user.StringID()
 					roles = user.Roles
 				}
 
@@ -95,22 +95,23 @@ func RequestLoggerMiddleware(db *database.Database) func(next http.Handler) http
 				}
 
 				logEntry := models.RequestLog{
-					Timestamp:         start,
-					Ip:                r.RemoteAddr,
-					UserId:            userID,
-					Roles:             roles,
-					Method:            r.Method,
-					Path:              r.URL.Path,
-					Query:             query,
-					Duration:          duration.Nanoseconds() / 1e6,
-					StatusCode:        fmt.Sprintf("%d", statusCode),
-					Origin:            r.Header.Get("Origin"),
-					Referer:           r.Header.Get("Referer"),
-					Error:             errorMessage,
-					Header:            string(headersJSON),
-					Body:              string(requestBody),
-					Response:          responseBody,
-					RequestIdentifier: requestIdentifier,
+					Timestamp:  start,
+					Ip:         r.RemoteAddr,
+					UserId:     userID,
+					UserLabel:  user.Email,
+					Roles:      roles,
+					Method:     r.Method,
+					Path:       r.URL.Path,
+					Query:      query,
+					Duration:   duration.Nanoseconds() / 1e6,
+					StatusCode: fmt.Sprintf("%d", statusCode),
+					Origin:     r.Header.Get("Origin"),
+					Referer:    r.Header.Get("Referer"),
+					Error:      errorMessage,
+					Header:     string(headersJSON),
+					Body:       string(requestBody),
+					Response:   responseBody,
+					TraceId:    traceId,
 				}
 
 				if db != nil && db.DB != nil {

@@ -160,7 +160,7 @@ func TestGetRequestId(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 			// Add the context value to the request
-			ctx := context.WithValue(req.Context(), CtxRequestIdentifier, tt.contextValue)
+			ctx := context.WithValue(req.Context(), CtxTraceId, tt.contextValue)
 			req = req.WithContext(ctx)
 
 			// Call the function
@@ -262,7 +262,7 @@ func TestGetRequestContext(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 	// Add context values to the request
-	ctx := context.WithValue(req.Context(), CtxRequestIdentifier, "test-request-id")
+	ctx := context.WithValue(req.Context(), CtxTraceId, "test-request-id")
 	ctx = context.WithValue(ctx, CtxRequestIsAuth, true)
 	ctx = context.WithValue(ctx, CtxRequestUser, &models.User{ID: 1, Name: "John Doe"})
 	ctx = context.WithValue(ctx, CtxRequestLogger, &zerolog.Logger{})

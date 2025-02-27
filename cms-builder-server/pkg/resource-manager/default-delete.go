@@ -1,12 +1,14 @@
 package resourcemanager
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/queries"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
+	"gorm.io/gorm"
 )
 
 // DefaultDeleteHandler handles the deletion of a resource.
@@ -45,17 +47,15 @@ var DefaultDeleteHandler ApiFunction = func(a *Resource, db *database.Database) 
 		// 4. Retrieve Instance ID and Fetch Instance
 		instanceId := GetUrlParam("id", r)
 		instance := a.GetOne()
-		res := queries.FindOne(db, instance, instanceId, query, user.StringID())
 
+		res := queries.FindOne(db, instance, instanceId, query, user.StringID())
 		if res.Error != nil {
+			if errors.Is(res.Error, gorm.ErrRecordNotFound) {
+				SendJsonResponse(w, http.StatusNotFound, nil, "Instance not found")
+				return
+			}
 			log.Error().Err(res.Error).Msgf("Error finding instance")
 			SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
-			return
-		}
-
-		if instance == nil {
-			log.Error().Msgf("Instance not found")
-			SendJsonResponse(w, http.StatusNotFound, nil, "Instance not found")
 			return
 		}
 

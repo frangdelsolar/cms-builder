@@ -48,13 +48,13 @@ func TestSave(t *testing.T) {
 
 		// Verify the history entry was created
 		var historyEntry DatabaseLog
-		err = db.Where("request_id = ?", "request-123").First(&historyEntry).Error
+		err = db.Where("trace_id = ?", "request-123").First(&historyEntry).Error
 		assert.NoError(t, err)
 		assert.Equal(t, UpdateCRUDAction, historyEntry.Action)
 		assert.Equal(t, testUser.StringID(), historyEntry.UserId)
 		assert.Equal(t, testUser.StringID(), historyEntry.ResourceId)
 		assert.Equal(t, "User", historyEntry.ResourceName)
-		assert.Equal(t, "request-123", historyEntry.RequestId)
+		assert.Equal(t, "request-123", historyEntry.TraceId)
 	})
 
 	// Test case: Successful save (create)
@@ -79,13 +79,13 @@ func TestSave(t *testing.T) {
 
 		// Verify the history entry was created
 		var historyEntry DatabaseLog
-		err = db.Where("request_id = ?", "request-456").First(&historyEntry).Error
+		err = db.Where("trace_id = ?", "request-456").First(&historyEntry).Error
 		assert.NoError(t, err)
 		assert.Equal(t, UpdateCRUDAction, historyEntry.Action)
 		assert.Equal(t, testUser.StringID(), historyEntry.UserId)
 		assert.Equal(t, newUser.StringID(), historyEntry.ResourceId)
 		assert.Equal(t, "User", historyEntry.ResourceName)
-		assert.Equal(t, "request-456", historyEntry.RequestId)
+		assert.Equal(t, "request-456", historyEntry.TraceId)
 	})
 
 	// TODO: Test case: Error creating history entry

@@ -18,11 +18,11 @@ import (
 type ContextParamKey string
 
 const (
-	CtxRequestIdentifier ContextParamKey = "requestIdentifier"
-	CtxRequestStartTime  ContextParamKey = "requestStartTime"
-	CtxRequestLogger     ContextParamKey = "requestLogger"
-	CtxRequestIsAuth     ContextParamKey = "requestIsAuth"
-	CtxRequestUser       ContextParamKey = "requestUser"
+	CtxTraceId          ContextParamKey = "traceId"
+	CtxRequestStartTime ContextParamKey = "requestStartTime"
+	CtxRequestLogger    ContextParamKey = "requestLogger"
+	CtxRequestIsAuth    ContextParamKey = "requestIsAuth"
+	CtxRequestUser      ContextParamKey = "requestUser"
 )
 
 const (
@@ -58,7 +58,7 @@ func GetRequestAccessToken(r *http.Request) string {
 
 func GetRequestId(r *http.Request) string {
 	ctx := r.Context()
-	if requestId, ok := ctx.Value(CtxRequestIdentifier).(string); ok {
+	if requestId, ok := ctx.Value(CtxTraceId).(string); ok {
 		return requestId
 	}
 

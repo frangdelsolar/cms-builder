@@ -1,12 +1,14 @@
 package resourcemanager
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/queries"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
+	"gorm.io/gorm"
 )
 
 var DefaultDetailHandler ApiFunction = func(a *Resource, db *database.Database) http.HandlerFunc {
@@ -41,14 +43,13 @@ var DefaultDetailHandler ApiFunction = func(a *Resource, db *database.Database) 
 
 		res := queries.FindOne(db, instance, query, instanceId, user.StringID())
 		if res.Error != nil {
+			if errors.Is(res.Error, gorm.ErrRecordNotFound) {
+				SendJsonResponse(w, http.StatusNotFound, nil, "Instance not found")
+				return
+			}
+
 			log.Error().Err(res.Error).Msgf("Error finding instance")
 			SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
-			return
-		}
-
-		if instance == nil {
-			log.Error().Msgf("Instance not found")
-			SendJsonResponse(w, http.StatusNotFound, nil, "Instance not found")
 			return
 		}
 

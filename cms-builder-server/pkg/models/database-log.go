@@ -28,7 +28,7 @@ type DatabaseLog struct {
 	ResourceId   string     `json:"resourceId"`
 	Timestamp    string     `gorm:"type:timestamp" json:"timestamp"`
 	Detail       string     `json:"detail"`
-	RequestId    string     `json:"requestId"`
+	TraceId      string     `json:"traceId"`
 }
 
 // NewDatabaseLogEntry takes an action of type CRUDAction, a user ID, and an object, and returns a pointer to a HistoryEntry and an error.
@@ -36,7 +36,7 @@ type DatabaseLog struct {
 // The object is expected to be a struct with a JSON tag for the ID field named "ID".
 // The function returns an error if the object cannot be marshaled or unmarshaled to JSON.
 // The function uses the GetStructName function to get the name of the struct from the object passed in.
-func NewDatabaseLogEntry(action CRUDAction, user *User, object interface{}, difference interface{}, requestId string) (*DatabaseLog, error) {
+func NewDatabaseLogEntry(action CRUDAction, user *User, object interface{}, difference interface{}, traceId string) (*DatabaseLog, error) {
 
 	name, err := utils.GetInterfaceName(object)
 	if err != nil {
@@ -80,7 +80,7 @@ func NewDatabaseLogEntry(action CRUDAction, user *User, object interface{}, diff
 		ResourceName: name,
 		Timestamp:    time.Now().Format(time.RFC3339Nano),
 		Detail:       detail,
-		RequestId:    requestId,
+		TraceId:      traceId,
 	}
 
 	return historyEntry, nil

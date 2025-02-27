@@ -45,13 +45,13 @@ func TestDelete(t *testing.T) {
 
 		// Verify the history entry was created
 		var historyEntry DatabaseLog
-		err = db.Where("request_id = ?", "request-123").First(&historyEntry).Error
+		err = db.Where("trace_id = ?", "request-123").First(&historyEntry).Error
 		assert.NoError(t, err)
 		assert.Equal(t, models.DeleteCRUDAction, historyEntry.Action)
 		assert.Equal(t, testUser.StringID(), historyEntry.UserId)
 		assert.Equal(t, testUser.StringID(), historyEntry.ResourceId)
 		assert.Equal(t, "User", historyEntry.ResourceName)
-		assert.Equal(t, "request-123", historyEntry.RequestId)
+		assert.Equal(t, "request-123", historyEntry.TraceId)
 	})
 
 	// TODO: Test case: Entity does not exist

@@ -93,7 +93,16 @@ func (s *Server) Run(getRoutes GetRoutesFunc, apiBaseUrl string) error {
 		RateLimitMiddleware(),
 	)
 
+	routesSeen := map[string]bool{}
+
 	for _, route := range routes {
+
+		// Check for duplicates - We shouldn't have two routes with the same path
+		if routesSeen[route.Path] {
+			panic("Duplicate route: " + route.Path + " - " + route.Name)
+		}
+		routesSeen[route.Path] = true
+
 		if route.RequiresAuth {
 			continue
 		}

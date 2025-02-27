@@ -99,7 +99,7 @@ func RequestStatsHandler(mgr *manager.ResourceManager, db *database.Database) ht
 
 		var instances []map[string]interface{}
 		requestLogRes := db.DB.Model(a.Model).
-			Select("request_identifier, timestamp, status_code, method, duration, path").
+			Select("trace_id, timestamp, status_code, method, duration, path").
 			Where(query, oneDayAgo, now).
 			Order("timestamp desc").
 			Find(&instances)

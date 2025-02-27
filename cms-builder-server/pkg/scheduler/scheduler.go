@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
@@ -10,6 +11,7 @@ import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
 	"github.com/go-co-op/gocron/v2"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 const (
@@ -56,7 +58,9 @@ func (s *Scheduler) GetOrCreateJobDefinition(jdInput models.SchedulerJobDefiniti
 	q := "name = ?"
 	res := queries.FindOne(s.DB, &instance, q, jdInput.Name)
 	if res.Error != nil {
-		return nil, res.Error
+		if !errors.Is(res.Error, gorm.ErrRecordNotFound) {
+			return nil, res.Error
+		}
 	}
 
 	if instance.Name != "" {

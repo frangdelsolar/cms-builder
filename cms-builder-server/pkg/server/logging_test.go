@@ -38,7 +38,7 @@ func TestLoggingMiddleware_LogsRequest(t *testing.T) {
 
 	// Add a request ID to the context
 	requestId := "test-request-id"
-	ctx := context.WithValue(req.Context(), CtxRequestIdentifier, requestId)
+	ctx := context.WithValue(req.Context(), CtxTraceId, requestId)
 	req = req.WithContext(ctx)
 
 	// Record the response

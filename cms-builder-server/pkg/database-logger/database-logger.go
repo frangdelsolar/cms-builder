@@ -24,9 +24,9 @@ func SetupDBLoggerResource(resourceManager *manager.ResourceManager, db *databas
 	handlers := &manager.ApiHandlers{} // default
 	routes := []server.Route{
 		{
-			Path:         "/database-logs/timeline",
+			Path:         "/api/database-timeline",
 			Handler:      TimelineHandler(resourceManager, db),
-			Name:         "database-logs:timeline",
+			Name:         "database-timeline",
 			RequiresAuth: true,
 			Methods:      []string{http.MethodGet},
 		},

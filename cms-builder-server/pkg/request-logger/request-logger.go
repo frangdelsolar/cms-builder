@@ -24,14 +24,14 @@ func SetupRequestLoggerResource(resourceManager *manager.ResourceManager, db *da
 	handlers := &manager.ApiHandlers{} // default
 	routes := []server.Route{
 		{
-			Path:         "/api/request-logs-stats",
+			Path:         "/request-logs-stats",
 			Handler:      RequestStatsHandler(resourceManager, db),
 			Name:         "request-logs-stats",
 			RequiresAuth: true,
 			Methods:      []string{http.MethodGet},
 		},
 		{
-			Path:         "/api/request-logs/{id}",
+			Path:         "/request-logs/{id}", // TODO modify to make it ?traceId
 			Handler:      RequestLogHandler(resourceManager, db),
 			Name:         "request-logs-detail",
 			RequiresAuth: true,
