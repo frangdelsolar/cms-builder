@@ -192,14 +192,9 @@ func createFileItem(name, method, bodyMode, url string, protocol string) Postman
 
 func parseURL(rawURL string, protocol string) PostmanRequestURL {
 
-	log.Debug().Str("rawURL", rawURL).Msg("parseURL")
-
 	u, _ := url.Parse(rawURL)
-
 	host := strings.Split(u.Host, ".")
 	path := strings.Split(u.Path, "/")
-
-	log.Debug().Strs("host", host).Strs("path", path).Str("zero", path[0]).Msg("parseURL")
 
 	if path[0] == Placeholder(keyBaseUrl) {
 		path = path[1:]
@@ -207,8 +202,6 @@ func parseURL(rawURL string, protocol string) PostmanRequestURL {
 		// } else {
 		// 	host = []string{u.Hostname()}
 	}
-
-	log.Debug().Strs("host", host).Strs("path", path).Msg("parseURL")
 
 	query := []PostmanQuery{}
 	for key, values := range u.Query() {

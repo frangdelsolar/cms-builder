@@ -58,14 +58,30 @@ func (a *AwsManager) GetClient() (*s3.Client, error) {
 	return s3.NewFromConfig(cfg), nil
 }
 
+func AllowWrite(file string) bool {
+
+	// If the file is in the filterFiles map, return false
+	var filterFiles = map[string]bool{
+		"cors.json": true,
+	}
+
+	_, ok := filterFiles[file]
+	return !ok
+}
+
 // UploadFile uploads the given file to the given bucket with the given key.
 // It uploads the file with public-read permissions. If there is an error
 // uploading the file, it logs an error and returns the error.
 func (a *AwsManager) UploadFile(directory string, fileName string, file []byte, log *logger.Logger) (string, error) {
-	log.Info().Str("fileName", fileName).Msg("Uploading file to S3.")
+	log.Debug().Str("fileName", fileName).Msg("Uploading file to S3.")
 
 	if fileName == "" {
 		return "", fmt.Errorf("file name is required")
+	}
+
+	if !AllowWrite(fileName) {
+		log.Warn().Str("fileName", fileName).Msg("File cannot be overriden")
+		return "", nil
 	}
 
 	ctx := context.Background()
@@ -104,9 +120,9 @@ func (a *AwsManager) DeleteFile(fileName string, log *logger.Logger) error {
 		return fmt.Errorf("file name is required")
 	}
 
-	if fileName == "cors.json" {
-		log.Warn().Msg("Skipping cors.json from deletion")
-		return nil
+	if !AllowWrite(fileName) {
+		log.Warn().Str("fileName", fileName).Msg("File cannot be overriden")
+		return fmt.Errorf("file cannot be overriden")
 	}
 
 	ctx := context.Background()

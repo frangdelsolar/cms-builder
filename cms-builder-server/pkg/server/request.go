@@ -165,7 +165,6 @@ func GetRequestQueryParams(r *http.Request) (*QueryParams, error) {
 	order, err = ValidateOrderParam(orderParam)
 	if err != nil || order == "" {
 		order = "id desc"
-		log.Debug().Err(err).Msgf("Error validating order. Using default order %s", order)
 	}
 
 	params.Order = order
