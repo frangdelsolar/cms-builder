@@ -16,7 +16,7 @@ func SetupSchedulerTaskResource() *manager.ResourceConfig {
 	}
 
 	config := &manager.ResourceConfig{
-		Model:           models.SchedulerTask{},
+		Model:           SchedulerTask{},
 		SkipUserBinding: skipUserBinding,
 		Permissions:     permissions,
 	}
@@ -35,7 +35,7 @@ func SetupSchedulerJobDefinitionResource() *manager.ResourceConfig {
 	}
 
 	config := &manager.ResourceConfig{
-		Model:           models.SchedulerJobDefinition{},
+		Model:           SchedulerJobDefinition{},
 		SkipUserBinding: skipUserBinding,
 		Permissions:     permissions,
 	}
