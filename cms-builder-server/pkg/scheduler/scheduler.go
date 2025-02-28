@@ -47,7 +47,7 @@ func NewScheduler(db *database.Database, schedulerUser *models.User, log *logger
 	}, nil
 }
 
-type SchedulerJobFunction func()
+type SchedulerJobFunction any
 
 func (s *Scheduler) RegisterJob(jdInput SchedulerJobDefinition, jobFunction SchedulerJobFunction, jobParameters ...any) error {
 
@@ -62,11 +62,6 @@ func (s *Scheduler) RegisterJob(jdInput SchedulerJobDefinition, jobFunction Sche
 		s.Logger.Error().Err(err).Msg("Error creating frequency definition")
 		return err
 	}
-
-	// resultsCollector := func(results interface{}) {
-	// 	s.Logger.Info().Interface("results", results).Msg("Results")
-	// 	fmt.Printf("Task collector: %v\n", results)
-	// }
 
 	// Create the job instance
 	_, err = s.createCronJobInstance(frequencyDefinition, jobDefinition, jobFunction, jobParameters...)

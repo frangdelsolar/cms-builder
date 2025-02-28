@@ -6,5 +6,9 @@ import (
 )
 
 func FindOne(db *database.Database, entity interface{}, query string, args ...interface{}) *gorm.DB {
-	return db.DB.Where(query, args...).First(entity)
+	if query == "" {
+		return db.DB.First(entity)
+	}
+
+	return db.DB.Where(query, args...).Debug().First(entity)
 }

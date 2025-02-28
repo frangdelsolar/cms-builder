@@ -33,6 +33,13 @@ type Database struct {
 	Config *DBConfig
 }
 
+func (d *Database) Close() {
+	if d.DB != nil {
+		sqlDB, _ := d.DB.DB()
+		sqlDB.Close()
+	}
+}
+
 // LoadDB establishes a connection to the database based on the provided configuration.
 //
 // It takes a pointer to a DBConfig struct as input, which specifies the connection details.

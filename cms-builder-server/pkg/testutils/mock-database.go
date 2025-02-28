@@ -11,9 +11,9 @@ import (
 
 func GetMockResourceInstance() *MockStruct {
 	return &MockStruct{
-		SystemData: &models.SystemData{
-			CreatedByID: uint(99999),
-			UpdatedByID: uint(99999),
+		SystemData: models.SystemData{
+			CreatedByID: uint(9879769658658765678),
+			UpdatedByID: uint(999765865865856899),
 		},
 		Field1: "value1",
 		Field2: "value2",
@@ -29,8 +29,6 @@ func GetTestDB() *database.Database {
 	}
 
 	dbPath = filepath.Join(dbPath, "test.db")
-
-	// defer os.RemoveAll(dbPath)
 
 	testConfig := &database.DBConfig{
 		Driver: "sqlite",

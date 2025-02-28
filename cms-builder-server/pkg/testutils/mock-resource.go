@@ -10,7 +10,7 @@ import (
 )
 
 type MockStruct struct {
-	*models.SystemData
+	models.SystemData
 	Field1 string `json:"field1"`
 	Field2 string `json:"field2"`
 }

@@ -55,19 +55,19 @@ var DefaultDeleteHandler ApiFunction = func(a *Resource, db *database.Database) 
 				return
 			}
 			log.Error().Err(res.Error).Msgf("Error finding instance")
-			SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
+			SendJsonResponse(w, http.StatusInternalServerError, nil, "Error finding resource")
 			return
 		}
 
 		// 5. Delete Instance
 		res = queries.Delete(db, instance, user, requestId)
 		if res.Error != nil {
-			SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
+			SendJsonResponse(w, http.StatusInternalServerError, nil, "Error deleting resource")
 			return
 		}
 
 		// 6. Generate Success Message
-		msg := a.ResourceNames.Singular + " has been eleted"
+		msg := a.ResourceNames.Singular + " has been deleted"
 
 		// 7. Send Success Response
 		SendJsonResponse(w, http.StatusOK, nil, msg)

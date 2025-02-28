@@ -40,7 +40,7 @@ func (r RequestParamKey) S() string {
 
 func ValidateRequestMethod(r *http.Request, method string) error {
 	if r.Method != method {
-		return fmt.Errorf("invalid request method: %s", r.Method)
+		return fmt.Errorf("Method not allowed")
 	}
 	return nil
 }
@@ -220,6 +220,7 @@ func UserIsAllowed(appPermissions RolePermissionMap, userRoles []models.Role, ac
 			}
 		}
 	}
+	log.Debug().Msgf("Denied access: User can not %s resource %s", action, resourceName)
 
 	return false
 }

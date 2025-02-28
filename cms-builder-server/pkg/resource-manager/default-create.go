@@ -56,19 +56,19 @@ var DefaultCreateHandler ApiFunction = func(a *Resource, db *database.Database) 
 		// 3. Format Request Body and Filter Keys
 		body, err := FormatRequestBody(r, filterKeys)
 		if err != nil {
-			SendJsonResponse(w, http.StatusBadRequest, nil, err.Error())
+			SendJsonResponse(w, http.StatusBadRequest, nil, "Invalid request body")
 			return
 		}
 
 		// 4. Add User Information
-		body["CreatedByID"] = user.StringID()
-		body["UpdatedByID"] = user.StringID()
+		body["CreatedByID"] = user.ID
+		body["UpdatedByID"] = user.ID
 
 		// 5. Marshal Body to JSON
 		bodyBytes, err := json.Marshal(body)
 		if err != nil {
 			log.Error().Err(err).Msg("Error marshalling request body")
-			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+			SendJsonResponse(w, http.StatusInternalServerError, nil, "Invalid request body")
 			return
 		}
 
@@ -76,11 +76,9 @@ var DefaultCreateHandler ApiFunction = func(a *Resource, db *database.Database) 
 		instance := a.GetOne()
 		err = json.Unmarshal(bodyBytes, &instance)
 		if err != nil {
-			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+			SendJsonResponse(w, http.StatusInternalServerError, nil, "Invalid request body")
 			return
 		}
-
-		log.Debug().Msgf("Instance: %v", instance)
 
 		// 7. Run Validations
 		validationErrors := a.Validate(instance, log)
@@ -92,7 +90,7 @@ var DefaultCreateHandler ApiFunction = func(a *Resource, db *database.Database) 
 		// 8. Create Instance in Database
 		res := queries.Create(db, instance, user, requestId)
 		if res.Error != nil {
-			SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
+			SendJsonResponse(w, http.StatusInternalServerError, nil, "Error creating resource")
 			return
 		}
 
