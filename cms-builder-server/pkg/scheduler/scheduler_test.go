@@ -9,9 +9,9 @@ import (
 )
 
 func TestNewScheduler(t *testing.T) {
-	mockDb := tu.GetTestDB()
+	mockDb := tu.NewTestDB()
 	mockUser := tu.GetTestUser()
-	mockLogger := tu.GetTestLogger()
+	mockLogger := tu.NewTestLogger()
 
 	scheduler, err := NewScheduler(mockDb, mockUser, mockLogger)
 	assert.NoError(t, err)
@@ -23,9 +23,9 @@ func TestNewScheduler(t *testing.T) {
 
 func TestShutdown(t *testing.T) {
 
-	mockDb := tu.GetTestDB()
+	mockDb := tu.NewTestDB()
 	mockUser := tu.GetTestUser()
-	mockLogger := tu.GetTestLogger()
+	mockLogger := tu.NewTestLogger()
 
 	scheduler, err := NewScheduler(mockDb, mockUser, mockLogger)
 	assert.NoError(t, err)

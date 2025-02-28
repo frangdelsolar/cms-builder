@@ -10,5 +10,5 @@ func FindOne(db *database.Database, entity interface{}, query string, args ...in
 		return db.DB.First(entity)
 	}
 
-	return db.DB.Where(query, args...).Debug().First(entity)
+	return db.DB.Where(query, args...).First(entity)
 }

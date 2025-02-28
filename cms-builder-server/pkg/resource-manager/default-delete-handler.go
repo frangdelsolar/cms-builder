@@ -2,6 +2,7 @@ package resourcemanager
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
@@ -19,6 +20,8 @@ var DefaultDeleteHandler ApiFunction = func(a *Resource, db *database.Database) 
 		user := requestCtx.User
 		requestId := requestCtx.RequestId
 		isAdmin := user.HasRole(models.AdminRole)
+
+		fmt.Println("Deleting Instance")
 
 		// 1. Validate Request Method
 		err := ValidateRequestMethod(r, http.MethodDelete)
@@ -39,16 +42,16 @@ var DefaultDeleteHandler ApiFunction = func(a *Resource, db *database.Database) 
 		}
 
 		// 3. Construct Query (User Binding)
-		query := ""
+		query := "id = ?"
 		if !(a.SkipUserBinding || isAdmin) {
-			query = "created_by_id = ?"
+			query += " AND created_by_id = ?"
 		}
 
 		// 4. Retrieve Instance ID and Fetch Instance
 		instanceId := GetUrlParam("id", r)
 		instance := a.GetOne()
 
-		res := queries.FindOne(db, instance, instanceId, query, user.StringID())
+		res := queries.FindOne(db, instance, query, instanceId, user.StringID())
 		if res.Error != nil {
 			if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 				SendJsonResponse(w, http.StatusNotFound, nil, "Instance not found")

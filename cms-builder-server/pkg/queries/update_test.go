@@ -3,32 +3,26 @@ package queries_test
 import (
 	"testing"
 
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/queries"
+	tu "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testutils"
 	"github.com/stretchr/testify/assert"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 )
 
 func TestSave(t *testing.T) {
 	// Setup in-memory SQLite database
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
-	assert.NoError(t, err)
+	database := tu.NewTestDB()
 
 	// Auto migrate the User and HistoryEntry models
-	err = db.AutoMigrate(&User{}, &DatabaseLog{})
+	err := database.DB.AutoMigrate(&User{}, &DatabaseLog{})
 	assert.NoError(t, err)
-
-	// Create a Database instance
-	database := &Database{DB: db}
 
 	// Create a test user
 	testUser := User{
 		Name:  "John Doe",
 		Email: "john.doe@example.com",
 	}
-	db.Create(&testUser)
+	database.DB.Create(&testUser)
 
 	// Test case: Successful save (update)
 	t.Run("Successful save (update)", func(t *testing.T) {
@@ -42,13 +36,13 @@ func TestSave(t *testing.T) {
 
 		// Verify the user was updated
 		var updatedUser User
-		err := db.First(&updatedUser, testUser.ID).Error
+		err := database.DB.First(&updatedUser, testUser.ID).Error
 		assert.NoError(t, err)
 		assert.Equal(t, "john.doe.updated@example.com", updatedUser.Email)
 
 		// Verify the history entry was created
 		var historyEntry DatabaseLog
-		err = db.Where("trace_id = ?", "request-123").First(&historyEntry).Error
+		err = database.DB.Where("trace_id = ?", "request-123").First(&historyEntry).Error
 		assert.NoError(t, err)
 		assert.Equal(t, UpdateCRUDAction, historyEntry.Action)
 		assert.Equal(t, testUser.StringID(), historyEntry.UserId)
@@ -72,14 +66,14 @@ func TestSave(t *testing.T) {
 
 		// Verify the user was created
 		var createdUser User
-		err := db.First(&createdUser, newUser.ID).Error
+		err := database.DB.First(&createdUser, newUser.ID).Error
 		assert.NoError(t, err)
 		assert.Equal(t, "Jane Doe", createdUser.Name)
 		assert.Equal(t, "jane.doe@example.com", createdUser.Email)
 
 		// Verify the history entry was created
 		var historyEntry DatabaseLog
-		err = db.Where("trace_id = ?", "request-456").First(&historyEntry).Error
+		err = database.DB.Where("trace_id = ?", "request-456").First(&historyEntry).Error
 		assert.NoError(t, err)
 		assert.Equal(t, UpdateCRUDAction, historyEntry.Action)
 		assert.Equal(t, testUser.StringID(), historyEntry.UserId)

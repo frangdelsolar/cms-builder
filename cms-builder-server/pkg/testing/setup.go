@@ -1,4 +1,4 @@
-package testutils
+package testing
 
 import (
 	"io/ioutil"
@@ -7,20 +7,25 @@ import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
+	mgr "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
+	"github.com/joho/godotenv"
 )
 
-func GetMockResourceInstance() *MockStruct {
-	return &MockStruct{
-		SystemData: models.SystemData{
-			CreatedByID: uint(9879769658658765678),
-			UpdatedByID: uint(999765865865856899),
-		},
-		Field1: "value1",
-		Field2: "value2",
-	}
+func init() {
+	godotenv.Load()
 }
 
-func GetTestDB() *database.Database {
+type TestUtils struct {
+	Db          *database.Database
+	Logger      *logger.Logger
+	Mgr         *mgr.ResourceManager
+	Src         *mgr.Resource
+	AdminUser   *models.User
+	VisitorUser *models.User
+	NoRoleUser  *models.User
+}
+
+func NewTestDB() *database.Database {
 
 	// create a temp db in test.db
 	dbPath, err := ioutil.TempDir("", "test-")
@@ -29,6 +34,9 @@ func GetTestDB() *database.Database {
 	}
 
 	dbPath = filepath.Join(dbPath, "test.db")
+
+	// TODO: remove next line
+	dbPath = "test.db"
 
 	testConfig := &database.DBConfig{
 		Driver: "sqlite",
@@ -44,15 +52,6 @@ func GetTestDB() *database.Database {
 	return db
 }
 
-func GetTestUser() *models.User {
-	return &models.User{
-		ID:    uint(999),
-		Name:  "Test User",
-		Email: "YHs7r@example.com",
-		Roles: "admin",
-	}
-}
-
-func GetTestLogger() *logger.Logger {
+func NewTestLogger() *logger.Logger {
 	return logger.Default
 }

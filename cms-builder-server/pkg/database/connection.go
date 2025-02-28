@@ -25,6 +25,9 @@ type DBConfig struct {
 var (
 	ErrDBNotInitialized    = fmt.Errorf("database not initialized")
 	ErrDBConfigNotProvided = fmt.Errorf("database config not provided")
+	ErrInvalidDriver       = fmt.Errorf("invalid driver: must be 'sqlite' or 'postgres'")
+	ErrEmptySQLitePath     = fmt.Errorf("empty database path for SQLite")
+	ErrEmptyPostgresURL    = fmt.Errorf("empty database URL for PostgreSQL")
 )
 
 // Database represents a database connection managed by GORM.
@@ -33,11 +36,20 @@ type Database struct {
 	Config *DBConfig
 }
 
-func (d *Database) Close() {
+func (d *Database) Close() error {
 	if d.DB != nil {
-		sqlDB, _ := d.DB.DB()
-		sqlDB.Close()
+		sqlDB, err := d.DB.DB() // Get the underlying *sql.DB instance
+		if err != nil {
+			return fmt.Errorf("failed to get underlying database connection: %v", err)
+		}
+		err = sqlDB.Close() // Close the database connection
+		if err != nil {
+			return fmt.Errorf("failed to close database connection: %v", err)
+		}
+		d.DB = nil // Set the DB field to nil
+		return nil
 	}
+	return fmt.Errorf("database not initialized")
 }
 
 // LoadDB establishes a connection to the database based on the provided configuration.
@@ -46,9 +58,6 @@ func (d *Database) Close() {
 // On successful connection, it returns a pointer to a Database instance encapsulating the GORM DB object.
 // Otherwise, it returns an error indicating the connection failure.
 func LoadDB(config *DBConfig, log *logger.Logger) (*Database, error) {
-
-	log.Debug().Interface("config", config).Msg("Loading database...")
-
 	if config == nil {
 		return nil, ErrDBConfigNotProvided
 	}
@@ -57,44 +66,38 @@ func LoadDB(config *DBConfig, log *logger.Logger) (*Database, error) {
 		log = logger.Default
 	}
 
-	if config.Driver == "" || (config.Driver != "postgres" && config.Driver != "sqlite") {
-		log.Warn().Msg("Driver not provided or invalid. Defaulting to SQLite")
-		config.Driver = "sqlite"
+	// Validate the driver
+	if config.Driver != "sqlite" && config.Driver != "postgres" {
+		return nil, ErrInvalidDriver
 	}
 
-	db := &Database{}
+	// Validate required fields based on the driver
+	switch config.Driver {
+	case "sqlite":
+		if config.Path == "" {
+			return nil, ErrEmptySQLitePath
+		}
+	case "postgres":
+		if config.URL == "" {
+			return nil, ErrEmptyPostgresURL
+		}
+	}
+
+	// Load the database based on the driver
+	db := &Database{Config: config}
+	var err error
 
 	switch config.Driver {
-	case "postgres":
-
-		if config.URL == "" {
-			return db, fmt.Errorf("empty database URL")
-		}
-
-		connection, err := gorm.Open(postgres.Open(config.URL), &gorm.Config{
-			// Logger: logger.Default.LogMode(logger.Info),
-		})
-		if err != nil {
-			return db, err
-		}
-		db.DB = connection
-
 	case "sqlite":
-
-		if config.Path == "" {
-			return db, fmt.Errorf("empty database path")
-		}
-
-		connection, err := gorm.Open(sqlite.Open(config.Path), &gorm.Config{
-			// Logger: logger.Default.LogMode(logger.Info),
-		})
-		if err != nil {
-			return db, err
-		}
-		db.DB = connection
+		db.DB, err = gorm.Open(sqlite.Open(config.Path), &gorm.Config{})
+	case "postgres":
+		db.DB, err = gorm.Open(postgres.Open(config.URL), &gorm.Config{})
 	}
 
-	db.Config = config
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to database: %v", err)
+	}
 
+	log.Debug().Interface("config", config).Msg("Database loaded successfully")
 	return db, nil
 }

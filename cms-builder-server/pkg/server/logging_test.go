@@ -8,7 +8,6 @@ import (
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
-	tu "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testutils"
 	"github.com/stretchr/testify/assert"
 )
 

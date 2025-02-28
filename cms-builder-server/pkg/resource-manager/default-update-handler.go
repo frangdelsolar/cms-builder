@@ -40,9 +40,9 @@ var DefaultUpdateHandler ApiFunction = func(a *Resource, db *database.Database) 
 		}
 
 		// 3. Construct Query (User Binding)
-		query := ""
+		query := "id = ?"
 		if !(a.SkipUserBinding || isAdmin) {
-			query = "created_by_id = ?"
+			query += " AND created_by_id = ?"
 		}
 
 		// 4. Retrieve Instance ID and Fetch Instance
@@ -56,7 +56,7 @@ var DefaultUpdateHandler ApiFunction = func(a *Resource, db *database.Database) 
 				return
 			}
 			log.Error().Err(res.Error).Msgf("Error finding instance")
-			SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
+			SendJsonResponse(w, http.StatusInternalServerError, nil, "Error finding resource")
 			return
 		}
 
@@ -66,25 +66,25 @@ var DefaultUpdateHandler ApiFunction = func(a *Resource, db *database.Database) 
 		// 5. Format Request Body and Filter Keys
 		body, err := FormatRequestBody(r, filterKeys)
 		if err != nil {
-			SendJsonResponse(w, http.StatusBadRequest, nil, err.Error())
+			SendJsonResponse(w, http.StatusBadRequest, nil, "Invalid request body")
 			return
 		}
 
 		// 6. Add User Information
-		body["UpdatedByID"] = user.StringID()
+		body["UpdatedByID"] = user.ID
 
 		// 7. Marshal Body to JSON
 		bodyBytes, err := json.Marshal(body)
 		if err != nil {
 			log.Error().Err(err).Msg("Error marshalling request body")
-			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+			SendJsonResponse(w, http.StatusInternalServerError, nil, "Invalid request body")
 			return
 		}
 
 		// 8. Unmarshal Body into Instance
 		err = json.Unmarshal(bodyBytes, &instance)
 		if err != nil {
-			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+			SendJsonResponse(w, http.StatusInternalServerError, nil, "Invalid request body")
 			return
 		}
 
@@ -105,7 +105,7 @@ var DefaultUpdateHandler ApiFunction = func(a *Resource, db *database.Database) 
 		// 11. Create Instance in Database
 		res = queries.Update(db, instance, user, differences, requestId)
 		if res.Error != nil {
-			SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
+			SendJsonResponse(w, http.StatusInternalServerError, nil, "Error updating resource")
 			return
 		}
 
