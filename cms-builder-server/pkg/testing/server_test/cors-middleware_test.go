@@ -6,14 +6,15 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/rs/zerolog"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	"github.com/stretchr/testify/assert"
 )
 
 // TestCorsMiddleware_AllowedOrigin tests that the middleware allows requests from allowed origins.
 func TestCorsMiddleware_AllowedOrigin(t *testing.T) {
 	// Create a logger
-	logger := zerolog.New(nil)
+	logger := logger.Default
 
 	allowedOrigins := []string{"https://example.com"}
 	middleware := CorsMiddleware(allowedOrigins)
@@ -28,7 +29,7 @@ func TestCorsMiddleware_AllowedOrigin(t *testing.T) {
 	req.Header.Set("Origin", "https://example.com")
 
 	// Add the logger to the request context
-	ctx := context.WithValue(req.Context(), "logger", &logger)
+	ctx := context.WithValue(req.Context(), CtxRequestLogger, &logger)
 	req = req.WithContext(ctx)
 
 	// Record the response
@@ -45,7 +46,7 @@ func TestCorsMiddleware_AllowedOrigin(t *testing.T) {
 // TestCorsMiddleware_DisallowedOrigin tests that the middleware blocks requests from disallowed origins.
 func TestCorsMiddleware_DisallowedOrigin(t *testing.T) {
 	// Create a logger
-	logger := zerolog.New(nil)
+	logger := logger.Default
 
 	allowedOrigins := []string{"https://example.com"}
 	middleware := CorsMiddleware(allowedOrigins)
@@ -60,7 +61,7 @@ func TestCorsMiddleware_DisallowedOrigin(t *testing.T) {
 	req.Header.Set("Origin", "https://malicious.com")
 
 	// Add the logger to the request context
-	ctx := context.WithValue(req.Context(), "logger", &logger)
+	ctx := context.WithValue(req.Context(), CtxRequestLogger, &logger)
 	req = req.WithContext(ctx)
 
 	// Record the response
@@ -75,7 +76,7 @@ func TestCorsMiddleware_DisallowedOrigin(t *testing.T) {
 // TestCorsMiddleware_WildcardOrigin tests that the middleware allows requests from any origin when "*" is allowed.
 func TestCorsMiddleware_WildcardOrigin(t *testing.T) {
 	// Create a logger
-	logger := zerolog.New(nil)
+	logger := logger.Default
 
 	allowedOrigins := []string{"*"}
 	middleware := CorsMiddleware(allowedOrigins)
@@ -90,7 +91,7 @@ func TestCorsMiddleware_WildcardOrigin(t *testing.T) {
 	req.Header.Set("Origin", "https://example.com")
 
 	// Add the logger to the request context
-	ctx := context.WithValue(req.Context(), "logger", &logger)
+	ctx := context.WithValue(req.Context(), CtxRequestLogger, &logger)
 	req = req.WithContext(ctx)
 
 	// Record the response
@@ -105,7 +106,7 @@ func TestCorsMiddleware_WildcardOrigin(t *testing.T) {
 // TestCorsMiddleware_OptionsRequest tests that the middleware handles OPTIONS requests correctly.
 func TestCorsMiddleware_OptionsRequest(t *testing.T) {
 	// Create a logger
-	logger := zerolog.New(nil)
+	logger := logger.Default
 
 	allowedOrigins := []string{"https://example.com"}
 	middleware := CorsMiddleware(allowedOrigins)
@@ -120,7 +121,7 @@ func TestCorsMiddleware_OptionsRequest(t *testing.T) {
 	req.Header.Set("Origin", "https://example.com")
 
 	// Add the logger to the request context
-	ctx := context.WithValue(req.Context(), "logger", &logger)
+	ctx := context.WithValue(req.Context(), CtxRequestLogger, &logger)
 	req = req.WithContext(ctx)
 
 	// Record the response
@@ -136,7 +137,7 @@ func TestCorsMiddleware_OptionsRequest(t *testing.T) {
 // TestCorsMiddleware_MissingOrigin tests that the middleware does not allow requests without an Origin header.
 func TestCorsMiddleware_MissingOrigin(t *testing.T) {
 	// Create a logger
-	logger := zerolog.New(nil)
+	logger := logger.Default
 
 	allowedOrigins := []string{"https://example.com"}
 	middleware := CorsMiddleware(allowedOrigins)
@@ -150,7 +151,7 @@ func TestCorsMiddleware_MissingOrigin(t *testing.T) {
 	req := httptest.NewRequest("GET", "https://example.com", nil)
 
 	// Add the logger to the request context
-	ctx := context.WithValue(req.Context(), "logger", &logger)
+	ctx := context.WithValue(req.Context(), CtxRequestLogger, &logger)
 	req = req.WithContext(ctx)
 
 	// Record the response

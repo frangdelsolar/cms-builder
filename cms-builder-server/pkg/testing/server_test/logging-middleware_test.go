@@ -8,15 +8,18 @@ import (
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
+	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing"
 	"github.com/stretchr/testify/assert"
 )
 
-var logConfig = &logger.LoggerConfig{
-	LogLevel: "info",
-}
-
 func TestLoggingMiddleware_LogsRequest(t *testing.T) {
-	mockUser := tu.GetTestUser()
+
+	var logConfig = &logger.LoggerConfig{
+		LogLevel: "info",
+	}
+
+	mockUser := CreateAdminUser()
+
 	// Create a test handler
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 

@@ -8,6 +8,8 @@ import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	mgr "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/scheduler"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	"github.com/joho/godotenv"
 )
 
@@ -23,6 +25,11 @@ type TestUtils struct {
 	AdminUser   *models.User
 	VisitorUser *models.User
 	NoRoleUser  *models.User
+
+	Scheduler     *scheduler.Scheduler
+	SchedulerUser *models.User
+
+	Server *server.Server
 }
 
 func NewTestDB() *database.Database {
@@ -36,7 +43,7 @@ func NewTestDB() *database.Database {
 	dbPath = filepath.Join(dbPath, "test.db")
 
 	// TODO: remove next line
-	dbPath = "test.db"
+	// dbPath = "test.db"
 
 	testConfig := &database.DBConfig{
 		Driver: "sqlite",

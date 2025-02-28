@@ -62,13 +62,13 @@ func TestResource_GetKeys(t *testing.T) {
 		{
 			name:          "struct with JSON tags",
 			model:         TestModel{},
-			expectedKeys:  []string{"id", "name", "email"},
+			expectedKeys:  []string{"Id", "Name", "Email"},
 			expectedError: false,
 		},
 		{
 			name:          "pointer to struct with JSON tags",
 			model:         &TestModel{},
-			expectedKeys:  []string{"id", "name", "email"},
+			expectedKeys:  []string{"Id", "Name", "Email"},
 			expectedError: false,
 		},
 		{

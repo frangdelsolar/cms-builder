@@ -9,7 +9,7 @@ func ProtectedRouteMiddleware(next http.Handler) http.Handler {
 
 		ctx := GetRequestContext(r)
 
-		if !ctx.IsAuthenticated || ctx.User == nil {
+		if !ctx.IsAuthenticated || ctx.User == nil || ctx.User.ID == 0 {
 			ctx.Logger.Error().Interface("user", ctx.User).Bool("authenticated", ctx.IsAuthenticated).Msg("Not allowed to enter protected route")
 
 			SendJsonResponse(w, http.StatusUnauthorized, nil, "Unauthorized")

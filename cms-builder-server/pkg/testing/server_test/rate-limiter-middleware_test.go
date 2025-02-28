@@ -39,7 +39,8 @@ func TestRateLimitMiddleware(t *testing.T) {
 	assert.Equal(t, http.StatusTooManyRequests, w.Code)
 
 	// Test after the window has passed
-	time.Sleep(WaitingSeconds + 1*time.Second)
+	t.Log("Waiting for the window to pass for", WaitingSeconds+1, "seconds")
+	time.Sleep((WaitingSeconds + 1) * time.Second)
 	w = httptest.NewRecorder()
 	wrappedHandler.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusOK, w.Code)
