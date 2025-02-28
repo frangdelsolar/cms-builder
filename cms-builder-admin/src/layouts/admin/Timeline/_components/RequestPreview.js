@@ -38,7 +38,7 @@ const RequestPreview = ({ requestId }) => {
       const resp = await apiService.getRequestLogEntries(requestId);
 
       const actions = [];
-      resp.data.history_entries.forEach((action) => {
+      resp.data.database_logs.forEach((action) => {
         const label = `${action.username} ${action.action} ${action.resourceName} (${action.resourceId})`;
         actions.push(label);
       });

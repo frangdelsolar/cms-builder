@@ -26,7 +26,7 @@ const HistoryEntriesList = () => {
     let fn = async () => {
       try {
         const response = await apiService.list(
-          "history-entries",
+          "database-logs",
           1,
           10,
           "-timestamp"
