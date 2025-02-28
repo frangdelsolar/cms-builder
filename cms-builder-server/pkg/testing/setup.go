@@ -1,9 +1,6 @@
 package testing
 
 import (
-	"io/ioutil"
-	"path/filepath"
-
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
@@ -34,16 +31,7 @@ type TestUtils struct {
 
 func NewTestDB() *database.Database {
 
-	// create a temp db in test.db
-	dbPath, err := ioutil.TempDir("", "test-")
-	if err != nil {
-		panic(err)
-	}
-
-	dbPath = filepath.Join(dbPath, "test.db")
-
-	// TODO: remove next line
-	// dbPath = "test.db"
+	dbPath := "test.db"
 
 	testConfig := &database.DBConfig{
 		Driver: "sqlite",

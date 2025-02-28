@@ -1,49 +1,63 @@
 package server_test
 
 import (
+	"net/http"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestLocalResponseWriter(t *testing.T) {
+func TestLocalResponseWriter_Header(t *testing.T) {
 	// Create a LocalResponseWriter instance
 	writer := &server.LocalResponseWriter{}
 
-	t.Run("Header returns correct Content-Type", func(t *testing.T) {
-		// Get the headers
-		headers := writer.Header()
+	// Call the Header method
+	header := writer.Header()
 
-		// Assert that the "Content-Type" header is set to "application/json"
-		assert.Equal(t, "application/json", headers.Get("Content-Type"))
-	})
+	// Assertions
+	assert.Equal(t, "application/json", header.Get("Content-Type"))
+}
 
-	t.Run("Write appends data to the buffer", func(t *testing.T) {
-		// Data to write
-		data := []byte(`{"message": "hello"}`)
+func TestLocalResponseWriter_Write(t *testing.T) {
+	// Create a LocalResponseWriter instance
+	writer := &server.LocalResponseWriter{}
 
-		// Write the data to the LocalResponseWriter
-		_, err := writer.Write(data)
+	// Data to write
+	data := []byte("test data")
 
-		// Assert there was no error
-		assert.NoError(t, err)
+	// Call the Write method
+	bytesWritten, err := writer.Write(data)
 
-		// Get the written data
-		writtenData := writer.GetWrittenData()
+	// Assertions
+	assert.NoError(t, err)
+	assert.Equal(t, 0, bytesWritten) // The Write method always returns 0
+	assert.Equal(t, "test data", writer.GetWrittenData())
+}
 
-		// Assert that the written data matches the input data
-		assert.Equal(t, `{"message": "hello"}`, writtenData)
-	})
+func TestLocalResponseWriter_WriteHeader(t *testing.T) {
+	// Create a LocalResponseWriter instance
+	writer := &server.LocalResponseWriter{}
 
-	t.Run("WriteHeader does nothing", func(t *testing.T) {
-		// Use WriteHeader method with any status code
-		writer.WriteHeader(200)
+	// Call the WriteHeader method
+	writer.WriteHeader(http.StatusOK)
 
-		// We cannot directly assert anything with WriteHeader, but we can verify that
-		// it doesn't cause an error and doesn't affect the written data
-		writtenData := writer.GetWrittenData()
-		assert.Equal(t, "", writtenData) // No data should be written from WriteHeader
-	})
+	// Assertions
+	// The WriteHeader method does nothing, so no explicit assertions are needed
+	// This test ensures the method does not panic or cause errors
+}
+
+func TestLocalResponseWriter_GetWrittenData(t *testing.T) {
+	// Create a LocalResponseWriter instance
+	writer := &server.LocalResponseWriter{}
+
+	// Write some data to the buffer
+	writer.Write([]byte("test data 1"))
+	writer.Write([]byte("test data 2"))
+
+	// Call the GetWrittenData method
+	writtenData := writer.GetWrittenData()
+
+	// Assertions
+	assert.Equal(t, "test data 1test data 2", writtenData)
 }

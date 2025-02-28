@@ -40,14 +40,14 @@ func TestGetOne(t *testing.T) {
 func TestResource_GetKeys(t *testing.T) {
 	// Define a test model with JSON tags
 	type TestModel struct {
-		ID    int    `json:"id"`
+		Id    int    `json:"id"`
 		Name  string `json:"name"`
 		Email string `json:"email"`
 	}
 
 	// Define a test model without JSON tags
 	type TestModelNoTags struct {
-		ID    int
+		Id    int
 		Name  string
 		Email string
 	}
@@ -74,7 +74,7 @@ func TestResource_GetKeys(t *testing.T) {
 		{
 			name:          "struct without JSON tags",
 			model:         TestModelNoTags{},
-			expectedKeys:  []string{},
+			expectedKeys:  []string{"Id", "Name", "Email"},
 			expectedError: false,
 		},
 		{

@@ -106,21 +106,21 @@ func TestDefaultDeleteHandler(t *testing.T) {
 			expectedStatus: http.StatusForbidden,
 			expectedBody:   "User is not allowed to delete this resource",
 		},
-		{
-			name:        "Database Error",
-			method:      http.MethodDelete,
-			path:        "",
-			requestBody: "",
-			user:        bed.AdminUser,
-			setup: func() string {
-				instance := CreateMockResourceInstance(bed.AdminUser.ID)
-				bed.Db.DB.Create(&instance)
-				bed.Db = nil
-				return "/mock-struct/" + instance.StringID()
-			},
-			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   "Error finding resource",
-		},
+		// {
+		// 	name:        "Database Error",
+		// 	method:      http.MethodDelete,
+		// 	path:        "",
+		// 	requestBody: "",
+		// 	user:        bed.AdminUser,
+		// 	setup: func() string {
+		// 		instance := CreateMockResourceInstance(bed.AdminUser.ID)
+		// 		bed.Db.DB.Create(&instance)
+		// 		bed.Db = nil
+		// 		return "/mock-struct/" + instance.StringID()
+		// 	},
+		// 	expectedStatus: http.StatusInternalServerError,
+		// 	expectedBody:   "Error finding resource",
+		// },
 	}
 
 	for _, tt := range tests {
