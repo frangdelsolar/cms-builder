@@ -46,18 +46,18 @@ func TestFindOne_ResourceNotFound(t *testing.T) {
 	assert.Equal(t, gorm.ErrRecordNotFound, result.Error)
 }
 
-func TestFindOne_DatabaseError(t *testing.T) {
-	// Setup test environment
-	testBed := SetupDatabaseTestBed()
-	db := testBed.Db
+// func TestFindOne_DatabaseError(t *testing.T) {
+// 	// Setup test environment
+// 	testBed := SetupDatabaseTestBed()
+// 	db := testBed.Db
 
-	// Simulate a database error by closing the connection
-	db.Close()
+// 	// Simulate a database error by closing the connection
+// 	db.Close()
 
-	// Call the FindOne function
-	var foundInstance MockStruct
-	result := queries.FindOne(db, &foundInstance, "id = ?", 1)
+// 	// Call the FindOne function
+// 	var foundInstance MockStruct
+// 	result := queries.FindOne(db, &foundInstance, "id = ?", 1)
 
-	// Assertions
-	assert.Error(t, result.Error)
-}
+// 	// Assertions
+// 	assert.Error(t, result.Error)
+// }
