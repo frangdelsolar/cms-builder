@@ -46,6 +46,8 @@ func createTestResource(t *testing.T, db *database.Database, createdByID uint) *
 }
 
 func createTestRequest(t *testing.T, method, path, body string, user *models.User, log *logger.Logger) *http.Request {
+
+	t.Log("requesting", method, path)
 	req, err := http.NewRequest(method, path, bytes.NewBufferString(body))
 	assert.NoError(t, err)
 

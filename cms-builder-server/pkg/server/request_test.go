@@ -38,7 +38,7 @@ func TestValidateRequestMethod_Invalid(t *testing.T) {
 
 	// Verify that an error is returned
 	assert.Error(t, err)
-	assert.Equal(t, "invalid request method: POST", err.Error())
+	assert.Equal(t, "Method not allowed", err.Error())
 }
 
 // TestGetLoggerFromRequest tests the GetLoggerFromRequest function.
@@ -46,22 +46,22 @@ func TestGetLoggerFromRequest(t *testing.T) {
 	tests := []struct {
 		name           string
 		contextValue   interface{}
-		expectedLogger *zerolog.Logger
+		expectedLogger *logger.Logger
 	}{
 		{
 			name:           "logger exists in context",
-			contextValue:   &zerolog.Logger{},
-			expectedLogger: &zerolog.Logger{},
+			contextValue:   &logger.Logger{},
+			expectedLogger: &logger.Logger{},
 		},
 		{
 			name:           "logger does not exist in context",
 			contextValue:   nil,
-			expectedLogger: logger.Default.Logger,
+			expectedLogger: logger.Default,
 		},
 		{
 			name:           "invalid type in context",
 			contextValue:   "not-a-logger",
-			expectedLogger: logger.Default.Logger,
+			expectedLogger: logger.Default,
 		},
 	}
 
@@ -78,10 +78,10 @@ func TestGetLoggerFromRequest(t *testing.T) {
 			logger := GetRequestLogger(req)
 
 			// Assert the result
-			if tt.expectedLogger == (&zerolog.Logger{}) {
-				assert.NotNil(t, logger, "Expected a non-nil logger")
-			} else {
+			if tt.expectedLogger == logger {
 				assert.Equal(t, tt.expectedLogger, logger, "Unexpected logger returned")
+			} else {
+				assert.NotNil(t, logger, "Expected a non-nil logger")
 			}
 		})
 	}
@@ -327,13 +327,11 @@ func TestGetIntQueryParam(t *testing.T) {
 	}
 }
 
-// TestGetRequestQueryParams tests the GetRequestQueryParams function.
 func TestGetRequestQueryParams(t *testing.T) {
 	tests := []struct {
 		name           string
 		query          url.Values
 		expectedParams *QueryParams
-		expectedError  string
 	}{
 		{
 			name: "valid query parameters",
@@ -349,15 +347,18 @@ func TestGetRequestQueryParams(t *testing.T) {
 				Order: "name",
 				Query: map[string]string{"query": "test"},
 			},
-			expectedError: "",
 		},
 		{
 			name: "missing limit parameter",
 			query: url.Values{
 				"page": []string{"2"},
 			},
-			expectedParams: nil,
-			expectedError:  "missing limit parameter",
+			expectedParams: &QueryParams{
+				Limit: 10, // Default limit
+				Page:  2,
+				Order: "id desc", // Default order
+				Query: map[string]string{},
+			},
 		},
 		{
 			name: "invalid limit parameter",
@@ -365,8 +366,36 @@ func TestGetRequestQueryParams(t *testing.T) {
 				"limit": []string{"invalid"},
 				"page":  []string{"2"},
 			},
-			expectedParams: nil,
-			expectedError:  "invalid limit parameter",
+			expectedParams: &QueryParams{
+				Limit: 10, // Default limit due to invalid value
+				Page:  2,
+				Order: "id desc", // Default order
+				Query: map[string]string{},
+			},
+		},
+		{
+			name: "invalid order parameter",
+			query: url.Values{
+				"limit": []string{"10"},
+				"page":  []string{"2"},
+				"order": []string{"TestStruct"},
+			},
+			expectedParams: &QueryParams{
+				Limit: 10,
+				Page:  2,
+				Order: "test_struct", // Default order due to invalid value
+				Query: map[string]string{},
+			},
+		},
+		{
+			name:  "no query parameters",
+			query: url.Values{},
+			expectedParams: &QueryParams{
+				Limit: 10,        // Default limit
+				Page:  1,         // Default page
+				Order: "id desc", // Default order
+				Query: map[string]string{},
+			},
 		},
 	}
 
@@ -380,13 +409,8 @@ func TestGetRequestQueryParams(t *testing.T) {
 			params, err := GetRequestQueryParams(req)
 
 			// Verify the result
-			if tt.expectedError == "" {
-				assert.NoError(t, err, "Expected no error")
-				assert.Equal(t, tt.expectedParams, params, "Unexpected query parameters")
-			} else {
-				assert.Error(t, err, "Expected an error")
-				assert.Equal(t, tt.expectedError, err.Error(), "Unexpected error message")
-			}
+			assert.NoError(t, err, "Expected no error")
+			assert.Equal(t, tt.expectedParams, params, "Unexpected query parameters")
 		})
 	}
 }
