@@ -31,7 +31,7 @@ func NewLocalStore(config *StoreConfig, folder string, baseUrl string) (*LocalSt
 		return nil, fmt.Errorf("uploader folder is empty")
 	}
 
-	if config.MaxSize >= 0 {
+	if config.MaxSize <= 0 {
 		return nil, fmt.Errorf("invalid max size: %d", config.MaxSize)
 	}
 
