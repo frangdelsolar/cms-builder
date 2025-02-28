@@ -1,4 +1,4 @@
-package builder
+package orchestrator
 
 import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"

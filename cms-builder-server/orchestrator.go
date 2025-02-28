@@ -1,4 +1,4 @@
-package builder
+package orchestrator
 
 import (
 	"fmt"
@@ -18,7 +18,7 @@ import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store"
 )
 
-const orchestratorVersion = "2.0.0"
+const orchestratorVersion = "1.6.0"
 
 type OrchestratorUsers struct {
 	God       *models.User

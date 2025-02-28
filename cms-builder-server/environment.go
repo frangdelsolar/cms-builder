@@ -1,4 +1,4 @@
-package builder
+package orchestrator
 
 // ConfigKeys define the keys used in the configuration file
 type ConfigKeys struct {
