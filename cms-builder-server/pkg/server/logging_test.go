@@ -8,7 +8,7 @@ import (
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
-	"github.com/rs/zerolog"
+	tu "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testutils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,14 +17,13 @@ var logConfig = &logger.LoggerConfig{
 }
 
 func TestLoggingMiddleware_LogsRequest(t *testing.T) {
+	mockUser := tu.GetTestUser()
 	// Create a test handler
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		// Retrieve the logger from the context
 		loggerFromContext := r.Context().Value(CtxRequestLogger)
-		log, ok := loggerFromContext.(*zerolog.Logger)
-		assert.True(t, ok)
-		assert.NotNil(t, log)
+		assert.NotNil(t, loggerFromContext)
 
 		w.WriteHeader(http.StatusOK)
 	})
@@ -38,7 +37,11 @@ func TestLoggingMiddleware_LogsRequest(t *testing.T) {
 
 	// Add a request ID to the context
 	requestId := "test-request-id"
-	ctx := context.WithValue(req.Context(), CtxTraceId, requestId)
+
+	ctx := req.Context()
+	ctx = context.WithValue(ctx, CtxRequestIsAuth, true)
+	ctx = context.WithValue(ctx, CtxRequestUser, mockUser)
+	ctx = context.WithValue(ctx, CtxTraceId, requestId)
 	req = req.WithContext(ctx)
 
 	// Record the response
