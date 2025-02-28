@@ -33,7 +33,7 @@ func SetupDBLoggerResource(resourceManager *manager.ResourceManager, db *databas
 	}
 
 	config := &manager.ResourceConfig{
-		Model:           models.DatabaseLog{},
+		Model:           database.DatabaseLog{},
 		SkipUserBinding: skipUserBinding,
 		Validators:      validators,
 		Permissions:     permissions,

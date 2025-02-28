@@ -1,6 +1,7 @@
 package resourcemanager
 
 import (
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	mgr "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing"
@@ -13,7 +14,7 @@ func SetupHandlerTestBed() TestUtils {
 		panic(err)
 	}
 
-	err = db.DB.AutoMigrate(models.DatabaseLog{})
+	err = db.DB.AutoMigrate(database.DatabaseLog{})
 	if err != nil {
 		panic(err)
 	}

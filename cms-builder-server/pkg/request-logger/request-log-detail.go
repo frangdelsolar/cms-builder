@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/queries"
 	manager "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	"gorm.io/gorm"
@@ -56,7 +56,7 @@ func RequestLogHandler(mgr *manager.ResourceManager, db *database.Database) http
 			return
 		}
 
-		a, err = mgr.GetResource(&models.DatabaseLog{})
+		a, err = mgr.GetResource(&database.DatabaseLog{})
 		if err != nil {
 			log.Error().Err(err).Msgf("Error getting resource")
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
@@ -69,7 +69,7 @@ func RequestLogHandler(mgr *manager.ResourceManager, db *database.Database) http
 		}
 
 		// Create slice to store HistoryEntries
-		var databaseLogs []models.DatabaseLog
+		var databaseLogs []database.DatabaseLog
 
 		// Join HistoryEntries with RequestLog
 		joinQuery := "database_logs.trace_id = ?" // Use parameterized query

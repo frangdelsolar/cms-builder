@@ -9,9 +9,9 @@ import (
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/clients"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/queries"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
 
 	firebaseAuth "firebase.google.com/go/auth"

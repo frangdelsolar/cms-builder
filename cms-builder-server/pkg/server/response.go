@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/queries"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 )
 
 // Following these standards

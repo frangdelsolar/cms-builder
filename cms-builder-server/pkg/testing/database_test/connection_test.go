@@ -1,8 +1,9 @@
-package database
+package database_test
 
 import (
 	"testing"
 
+	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	"github.com/stretchr/testify/assert"
 )

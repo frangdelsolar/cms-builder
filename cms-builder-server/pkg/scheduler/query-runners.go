@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/queries"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
 	"github.com/google/uuid"
 	"gorm.io/gorm"

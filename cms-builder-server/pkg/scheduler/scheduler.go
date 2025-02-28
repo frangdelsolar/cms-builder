@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/queries"
 	"github.com/go-co-op/gocron/v2"
 	"github.com/google/uuid"
 )

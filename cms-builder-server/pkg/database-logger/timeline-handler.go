@@ -5,8 +5,7 @@ import (
 	"net/http"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/queries"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	manager "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	"gorm.io/gorm"
@@ -27,7 +26,7 @@ func TimelineHandler(m *manager.ResourceManager, db *database.Database) http.Han
 		}
 
 		// 2. Get Resource
-		a, err := m.GetResource(&models.DatabaseLog{})
+		a, err := m.GetResource(&database.DatabaseLog{})
 		if err != nil {
 			log.Error().Err(err).Msgf("Error getting resource")
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())

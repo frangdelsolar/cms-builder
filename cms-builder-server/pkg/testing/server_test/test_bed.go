@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/clients"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing"
@@ -20,7 +21,7 @@ func SetupServerTestBed() TestUtils {
 		panic(err)
 	}
 
-	err = db.DB.AutoMigrate(models.DatabaseLog{})
+	err = db.DB.AutoMigrate(database.DatabaseLog{})
 	if err != nil {
 		panic(err)
 	}

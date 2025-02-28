@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/scheduler"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing"
@@ -13,7 +14,7 @@ func SetupSchedulerTestBed() TestUtils {
 		panic(err)
 	}
 
-	err = db.DB.AutoMigrate(models.DatabaseLog{})
+	err = db.DB.AutoMigrate(database.DatabaseLog{})
 	if err != nil {
 		panic(err)
 	}

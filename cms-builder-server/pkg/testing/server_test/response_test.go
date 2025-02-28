@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/queries"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 )
 
