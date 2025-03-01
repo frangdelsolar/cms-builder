@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"mime"
 	"mime/multipart"
+	"net/http"
+	"path/filepath"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/clients"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
@@ -30,24 +33,35 @@ func (s *S3Store) GetPath() string {
 // If successful, it returns a FileData object containing the file's name, path, and URL.
 // If there is an error at any step, it logs the error and returns the error.
 func (s *S3Store) StoreFile(fileName string, file multipart.File, header *multipart.FileHeader, log *logger.Logger) (fileData *models.File, err error) {
-
-	contentType := header.Header.Get("Content-Type")
-
-	log.Debug().Str("content-type", contentType).Msg("File Content Type")
-
-	validContentType, err := ValidateContentType(contentType, s.Config.SupportedMimeTypes)
-	if err != nil {
-		return fileData, err
-	}
-
-	if !validContentType {
-		return fileData, fmt.Errorf("invalid content type: %s", contentType)
-	}
+	fileData = &models.File{}
 
 	fileBytes, err := getFileBytes(file)
 	if err != nil {
 		log.Error().Err(err).Msg("Error getting file bytes")
 		return fileData, err
+	}
+
+	// Detect the content type from the file content
+	contentType := http.DetectContentType(fileBytes)
+
+	// If the detected content type is "application/octet-stream",
+	// fall back to the file extension for a better guess
+	if contentType == "application/octet-stream" {
+		contentType = mime.TypeByExtension(filepath.Ext(fileName))
+		if contentType == "" {
+			contentType = "application/octet-stream" // Default MIME type
+		}
+	}
+
+	log.Debug().Str("detected-content-type", contentType).Msg("Detected file content type")
+
+	// Validate the detected content type
+	valid, err := ValidateContentType(contentType, s.Config.SupportedMimeTypes)
+	if err != nil {
+		return fileData, err
+	}
+	if !valid {
+		return fileData, fmt.Errorf("invalid content type: %s", contentType)
 	}
 
 	fileName = RandomizeFileName(fileName)
@@ -60,7 +74,7 @@ func (s *S3Store) StoreFile(fileName string, file multipart.File, header *multip
 		return fileData, err
 	}
 
-	url := "https://" + s.AwsConfig.Bucket + location
+	url := "https://" + s.AwsConfig.Bucket + "/" + location
 
 	fileData = &models.File{
 		Name: fileName,
@@ -106,11 +120,15 @@ func (s *S3Store) ListFiles(log *logger.Logger) ([]string, error) {
 }
 
 func (s *S3Store) ReadFile(file *models.File, log *logger.Logger) ([]byte, error) {
-	return s.Client.DownloadFile(file.Path, log)
+	return s.Client.DownloadFile(file.Url, log)
 }
 
 func (s *S3Store) GetFileInfo(file *models.File, log *logger.Logger) (*models.FileInfo, error) {
-	return s.Client.GetFileInfo(file.Path, log)
+	info, err := s.Client.GetFileInfo(file.Path, log)
+
+	info.ContentType = file.MimeType
+
+	return info, err
 }
 
 // getFileBytes reads the contents of a multipart.models.File into a byte array.

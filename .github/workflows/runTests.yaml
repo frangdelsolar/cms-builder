@@ -23,7 +23,7 @@ jobs:
       UPLOADER_MAX_SIZE: 5000
       UPLOADER_AUTHENTICATE: true
       UPLOADER_SUPPORTED_MIME_TYPES: "*"
-      UPLOADER_FOLDER: ${{ github.workspace }}/test_output
+      UPLOADER_FOLDER: ${{ github.workspace }}media
       STORE_TYPE: local
       AWS_BUCKET: ${{ secrets.AWS_BUCKET }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -52,21 +52,21 @@ jobs:
         run: go test -v -race -covermode atomic -coverprofile=covprofile ./...
         if: always()
 
-      # - name: Install goveralls
-      #   run: go install github.com/mattn/goveralls@latest
+      - name: Install goveralls
+        run: go install github.com/mattn/goveralls@latest
 
-      # - name: Send coverage
-      #   working-directory: cms-builder-server
-      #   env:
-      #     COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   run: $HOME/go/bin/goveralls -coverprofile=covprofile -service=github
+      - name: Send coverage
+        working-directory: cms-builder-server
+        env:
+          COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: $HOME/go/bin/goveralls -coverprofile=covprofile -service=github
 
-      # - name: Upload test artifacts (optional)
-      #   uses: actions/upload-artifact@v4
-      #   if: failure()
-      #   with:
-      #     name: test-results
-      #     path: ${{ github.workspace }}/
+      - name: Upload test artifacts (optional)
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-results
+          path: ${{ github.workspace }}/
 
       - name: Fail workflow on test failures (optional)
         uses: styfle/cancel-workflow-action@0.8.0

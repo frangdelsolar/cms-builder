@@ -22,7 +22,6 @@ type ConfigKeys struct {
 	FirebaseApiKey        string `json:"firebaseApiKey"`        // Firebase API key
 	GodToken              string `json:"godToken"`              // God token
 	UploaderMaxSize       string `json:"uploaderMaxSize"`       // Uploader max size in MB
-	UploaderAuthenticate  string `json:"uploaderAuthenticate"`  // Whether files will be public or private accessible
 	UploaderSupportedMime string `json:"uploaderSupportedMime"` // Supported mime types for uploaded files
 	UploaderFolder        string `json:"uploaderFolder"`        // Uploader folder
 	StoreType             string `json:"storeType"`             // Uploader store type
@@ -55,7 +54,6 @@ var EnvKeys = ConfigKeys{
 	FirebaseSecret:        "FIREBASE_SECRET",
 	FirebaseApiKey:        "FIREBASE_API_KEY",
 	UploaderMaxSize:       "UPLOADER_MAX_SIZE",
-	UploaderAuthenticate:  "UPLOADER_AUTHENTICATE",
 	UploaderSupportedMime: "UPLOADER_SUPPORTED_MIME_TYPES",
 	UploaderFolder:        "UPLOADER_FOLDER",
 	StoreType:             "STORE_TYPE",

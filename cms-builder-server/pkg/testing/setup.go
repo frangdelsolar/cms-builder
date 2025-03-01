@@ -7,6 +7,7 @@ import (
 	mgr "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/scheduler"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store"
 	"github.com/joho/godotenv"
 )
 
@@ -27,6 +28,8 @@ type TestUtils struct {
 	SchedulerUser *models.User
 
 	Server *server.Server
+
+	Store store.Store
 }
 
 func NewTestDB() *database.Database {

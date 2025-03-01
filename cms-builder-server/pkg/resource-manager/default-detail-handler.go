@@ -41,8 +41,6 @@ var DefaultDetailHandler ApiFunction = func(a *Resource, db *database.Database) 
 		instanceId := GetUrlParam("id", r)
 		instance := a.GetOne()
 
-		log.Debug().Str("path", r.URL.Path).Str("instance_id", instanceId).Str("q", query).Msg("Fetching Instance")
-
 		res := queries.FindOne(db, instance, query, instanceId, user.StringID())
 		if res.Error != nil {
 			if errors.Is(res.Error, gorm.ErrRecordNotFound) {

@@ -14,6 +14,7 @@ type SchedulerTask struct {
 	Status            TaskStatus `json:"status"`
 	CronJobId         string     `json:"cronJobId"`
 	Error             string     `json:"error"`
+	Results           string     `json:"results"`
 }
 
 type JobFrequencyType string
