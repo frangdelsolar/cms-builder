@@ -253,14 +253,14 @@ func (o *Orchestrator) InitScheduler() error {
 	taskConfig := scheduler.SetupSchedulerTaskResource()
 	o.ResourceManager.AddResource(taskConfig)
 
-	jobConfig := scheduler.SetupSchedulerJobDefinitionResource()
-	o.ResourceManager.AddResource(jobConfig)
-
 	sch, err := scheduler.NewScheduler(o.DB, o.Users.Scheduler, o.Logger)
 	if err != nil {
 		return fmt.Errorf("error initializing scheduler: %w", err)
 	}
 	o.Scheduler = sch
+
+	jobConfig := scheduler.SetupSchedulerJobDefinitionResource(o.ResourceManager, o.DB, sch.JobRegistry)
+	o.ResourceManager.AddResource(jobConfig)
 
 	return nil
 }

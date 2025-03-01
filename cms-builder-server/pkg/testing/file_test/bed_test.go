@@ -1,13 +1,19 @@
-package resourcemanager
+package file_test
 
 import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/file"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	mgr "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
+	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing"
+	"github.com/joho/godotenv"
 )
 
-func SetupHandlerTestBed() TestUtils {
+func SetupFileTestBed() TestUtils {
+
+	godotenv.Load(".test.env")
+
 	db := NewTestDB()
 	err := db.DB.AutoMigrate(models.User{})
 	if err != nil {
@@ -19,11 +25,20 @@ func SetupHandlerTestBed() TestUtils {
 		panic(err)
 	}
 
-	log := NewTestLogger()
-	mgr := mgr.NewResourceManager(db, log)
+	err = db.DB.AutoMigrate(models.File{})
+	if err != nil {
+		panic(err)
+	}
 
-	srcConfig := SetupMockResource()
-	src, err := mgr.AddResource(srcConfig)
+	log := NewTestLogger()
+
+	storeConfig := StoreConfig{
+		MaxSize:            1024 * 1024 * 1024,
+		SupportedMimeTypes: []string{"image/png", "image/jpeg", "image/jpg"},
+		Folder:             "test-files",
+	}
+
+	localStore, err := NewLocalStore(&storeConfig, "test-files", "http://localhost:8080")
 	if err != nil {
 		panic(err)
 	}
@@ -47,13 +62,21 @@ func SetupHandlerTestBed() TestUtils {
 		panic(err)
 	}
 
+	manager := mgr.NewResourceManager(db, log)
+
+	fileSetup := SetupFileResource(manager, db, localStore, log)
+	fileResource, err := manager.AddResource(fileSetup)
+	if err != nil {
+		panic(err)
+	}
+
 	return TestUtils{
 		Db:          db,
 		Logger:      log,
-		Mgr:         mgr,
-		Src:         src,
+		Store:       localStore,
 		AdminUser:   admin,
 		VisitorUser: visitor,
 		NoRoleUser:  noRole,
+		Src:         fileResource,
 	}
 }

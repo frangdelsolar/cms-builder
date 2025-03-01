@@ -38,6 +38,20 @@ type Scheduler struct {
 	DB          *database.Database // Database connection for persisting job data.
 	Logger      *logger.Logger     // Logger for logging scheduler events.
 	TaskManager TaskManager        // Thread-safe map for storing job results.
+	JobRegistry JobRegistry        // Registry of task functions and their parameters.
+}
+
+// RegisterTask registers a task function with the scheduler.
+// Parameters:
+//   - taskName: Name of the task.
+//   - taskFunction: Function to execute for the task.
+//   - parameters: Parameters for the task function.
+func (s *Scheduler) RegisterTask(taskName string, taskFunction SchedulerTaskFunc, parameters ...any) {
+	s.JobRegistry.Jobs[taskName] = TaskDefinition{
+		Function:   taskFunction,
+		Parameters: parameters,
+	}
+	s.Logger.Info().Str("TaskName", taskName).Msg("Task registered with parameters")
 }
 
 // NewScheduler initializes a new scheduler instance.
@@ -63,6 +77,7 @@ func NewScheduler(db *database.Database, schedulerUser *models.User, log *logger
 		DB:          db,
 		Logger:      log,
 		TaskManager: TaskManager{Tasks: map[string]string{}},
+		JobRegistry: JobRegistry{Jobs: map[string]TaskDefinition{}},
 	}, nil
 }
 
@@ -97,6 +112,8 @@ func (s *Scheduler) RegisterJob(jdInput SchedulerJobDefinition, jobFunction Sche
 		return err
 	}
 
+	s.RegisterTask(jobDefinition.Name, jobFunction, jobParameters...)
+
 	return nil
 }
 
@@ -117,37 +134,35 @@ type SchedulerTaskFunc func(jobParameters ...any) (string, error) // results, er
 //   - gocron.Job: Created job instance.
 //   - error: Error if job creation fails.
 func (s *Scheduler) createCronJobInstance(frequency gocron.JobDefinition, jobDefinition *SchedulerJobDefinition, taskFunction SchedulerTaskFunc, taskParameters ...any) (gocron.Job, error) {
+	s.Logger.Info().Int("parameters", len(taskParameters)).Interface("params", taskParameters).Msg("Running createCronJobInstance")
 
-	resultsCollector := func(jobName string, parameters ...any) error {
-		results, err := taskFunction(parameters...)
+	// wrappedTaskFunction wraps the original taskFunction to include logging and error handling.
+	wrappedTaskFunction := func() {
+		s.Logger.Debug().Msg("Running wrappedTaskFunction")
 
-		s.Logger.Info().Str("JobName", jobName).Str("Results", results).Msg("Running results collector for")
-		s.TaskManager.Set(jobName, results)
+		// Execute the original task function
+		results, err := taskFunction(taskParameters...)
 
-		return err
-	}
+		// Store the results in the TaskManager
+		s.TaskManager.Set(jobDefinition.Name, results)
 
-	// updatedParameters is a slice that combines the required parameters for the taskFunction:
-	// 1. resultsCollector: To allow the task to store its results.
-	// 2. jobDefinition.Name: To identify the job.
-	// 3. Any additional parameters (taskParameters) provided by the caller.
-	//
-	// This ensures that the taskFunction receives all the parameters it needs in the correct order.
-	updatedParameters := []any{jobDefinition.Name}
-	if len(taskParameters) > 0 {
-		updatedParameters = append(updatedParameters, taskParameters...)
+		if err != nil {
+			s.Logger.Error().Err(err).Str("JobName", jobDefinition.Name).Msg("Task execution failed")
+			return
+		}
+
+		s.Logger.Info().Str("JobName", jobDefinition.Name).Str("Results", results).Msg("Task execution succeeded")
 	}
 
 	// Create and return a new cron job using the gocron scheduler.
 	// The job is configured with:
 	// - The specified frequency.
-	// - A task that executes the taskFunction with the updatedParameters.
+	// - A task that executes the wrappedTaskFunction.
 	// - Event listeners for before, after, and error handling.
 	return s.Cron.NewJob(
 		frequency,
 		gocron.NewTask(
-			resultsCollector,
-			updatedParameters...,
+			wrappedTaskFunction,
 		),
 		gocron.WithEventListeners(
 			gocron.BeforeJobRuns(
