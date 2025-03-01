@@ -17,8 +17,8 @@ func getOrCreateJobDefinition(db *database.Database, schedulerUser *models.User,
 	// If there is a job definition with the same name, return it
 	// Name must be unique
 	var instance SchedulerJobDefinition
-	q := "name = ?"
-	res := queries.FindOne(db, &instance, q, jdInput.Name)
+	q := "name = ? AND frequency_type = ? AND at_time = ? AND cron_expr = ? AND with_seconds = ? AND at_time = ?"
+	res := queries.FindOne(db, &instance, q, jdInput.Name, jdInput.FrequencyType, jdInput.AtTime, jdInput.CronExpr, jdInput.WithSeconds, jdInput.AtTime)
 	if res.Error != nil {
 		if !errors.Is(res.Error, gorm.ErrRecordNotFound) {
 			return nil, res.Error
@@ -26,16 +26,7 @@ func getOrCreateJobDefinition(db *database.Database, schedulerUser *models.User,
 	}
 
 	if instance.Name != "" {
-		if instance.Name == jdInput.Name &&
-			instance.FrequencyType == jdInput.FrequencyType &&
-			instance.AtTime == jdInput.AtTime &&
-			instance.CronExpr == jdInput.CronExpr &&
-			instance.WithSeconds == jdInput.WithSeconds {
-			return &instance, nil
-		} else {
-			// TODO: MAYBE CLOSE OR MARK AS INACTIVE
-			// AND THEN CREATE A NEW ONE
-		}
+		return &instance, nil
 	}
 
 	// If there is no job definition with the same name, create it
@@ -62,20 +53,20 @@ func getOrCreateJobDefinition(db *database.Database, schedulerUser *models.User,
 	return &instance, nil
 }
 
-func updateTaskStatus(db *database.Database, schedulerUser *models.User, cronJobId string, status TaskStatus, errMsg string, requestId string) error {
-	task := getSchedulerTask(db, cronJobId)
+func updateTaskStatus(db *database.Database, schedulerUser *models.User, cronJobId string, status TaskStatus, errMsg string, requestId string, results string) error {
+	task := GetSchedulerTask(db, cronJobId)
+	task.SystemData.UpdatedByID = schedulerUser.ID
 	task.Status = status
-	if errMsg != "" {
-		task.Error = errMsg
-	}
+	task.Error = errMsg
+	task.Results = results
 
-	previousState := getSchedulerTask(db, cronJobId)
+	previousState := GetSchedulerTask(db, cronJobId)
 	differences := utils.CompareInterfaces(previousState, task)
 
 	return queries.Update(db, &task, schedulerUser, differences, requestId).Error
 }
 
-func getSchedulerTask(db *database.Database, cronJobId string) *SchedulerTask {
+func GetSchedulerTask(db *database.Database, cronJobId string) *SchedulerTask {
 	var task SchedulerTask
 
 	q := "cron_job_id = ?"

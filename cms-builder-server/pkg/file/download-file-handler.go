@@ -2,7 +2,10 @@ package file
 
 import (
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
+	"os"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
@@ -46,9 +49,9 @@ func DownloadStoredFileHandler(mgr *manager.ResourceManager, db *database.Databa
 			return
 		}
 
-		query := ""
+		query := "id = ?"
 		if !(a.SkipUserBinding || isAdmin) {
-			query = "created_by_id = ?"
+			query += " AND created_by_id = ?"
 		}
 
 		instanceId := GetUrlParam("id", r)
@@ -65,14 +68,26 @@ func DownloadStoredFileHandler(mgr *manager.ResourceManager, db *database.Databa
 			return
 		}
 
-		bytes, err := st.ReadFile(&instance, log)
+		// Open the file
+		file, err := os.Open(instance.Path)
 		if err != nil {
-			log.Error().Err(err).Msg("Error reading file")
+			log.Error().Err(err).Msg("Error opening file")
+			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+			return
+		}
+		defer file.Close()
+
+		// Set headers for file download
+		w.Header().Set("Content-Type", instance.MimeType)
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", instance.Name))
+
+		// Stream the file to the response writer
+		_, err = io.Copy(w, file)
+		if err != nil {
+			log.Error().Err(err).Msg("Error streaming file to response")
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
 		}
 
-		w.Header().Set("Content-Type", "bytes")
-		w.Write(bytes)
 	}
 }

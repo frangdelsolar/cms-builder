@@ -40,9 +40,9 @@ func DeleteStoredFilesHandler(db *database.Database, st store.Store) manager.Api
 				return
 			}
 
-			query := ""
+			query := "id = ?"
 			if !(a.SkipUserBinding || isAdmin) {
-				query = "created_by_id = ?"
+				query += " AND created_by_id = ?"
 			}
 
 			instanceId := GetUrlParam("id", r)
