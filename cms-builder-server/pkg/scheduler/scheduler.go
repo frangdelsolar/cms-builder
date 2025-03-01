@@ -75,6 +75,9 @@ func NewScheduler(db *database.Database, schedulerUser *models.User, log *logger
 // Returns:
 //   - error: Error if job registration fails.
 func (s *Scheduler) RegisterJob(jdInput SchedulerJobDefinition, jobFunction SchedulerTaskFunc, jobParameters ...any) error {
+
+	s.Logger.Info().Interface("JobDefinition", jdInput).Msg("Registering job")
+
 	jobDefinition, err := getOrCreateJobDefinition(s.DB, s.User, jdInput)
 	if err != nil {
 		s.Logger.Error().Err(err).Msg("Error creating job")
@@ -101,7 +104,7 @@ func (s *Scheduler) RegisterJob(jdInput SchedulerJobDefinition, jobFunction Sche
 type ResultsCollectorFunc func(jobName string, results string)
 
 // SchedulerTaskFunc is a function to execute a job.
-type SchedulerTaskFunc func(resultsCollector ResultsCollectorFunc, jobName string, jobParameters ...any)
+type SchedulerTaskFunc func(jobParameters ...any) (string, error) // results, error
 
 // createCronJobInstance creates a new cron job instance.
 // Parameters:
@@ -115,11 +118,13 @@ type SchedulerTaskFunc func(resultsCollector ResultsCollectorFunc, jobName strin
 //   - error: Error if job creation fails.
 func (s *Scheduler) createCronJobInstance(frequency gocron.JobDefinition, jobDefinition *SchedulerJobDefinition, taskFunction SchedulerTaskFunc, taskParameters ...any) (gocron.Job, error) {
 
-	// resultsCollector is a callback function that collects the results of the job
-	// and stores them in the TaskManager. It is passed to the taskFunction so that
-	// the task can call it to store its results after execution.
-	resultsCollector := func(jobName string, results string) {
+	resultsCollector := func(jobName string, parameters ...any) error {
+		results, err := taskFunction(parameters...)
+
+		s.Logger.Info().Str("JobName", jobName).Str("Results", results).Msg("Running results collector for")
 		s.TaskManager.Set(jobName, results)
+
+		return err
 	}
 
 	// updatedParameters is a slice that combines the required parameters for the taskFunction:
@@ -128,7 +133,7 @@ func (s *Scheduler) createCronJobInstance(frequency gocron.JobDefinition, jobDef
 	// 3. Any additional parameters (taskParameters) provided by the caller.
 	//
 	// This ensures that the taskFunction receives all the parameters it needs in the correct order.
-	updatedParameters := []any{resultsCollector, jobDefinition.Name}
+	updatedParameters := []any{jobDefinition.Name}
 	if len(taskParameters) > 0 {
 		updatedParameters = append(updatedParameters, taskParameters...)
 	}
@@ -141,7 +146,7 @@ func (s *Scheduler) createCronJobInstance(frequency gocron.JobDefinition, jobDef
 	return s.Cron.NewJob(
 		frequency,
 		gocron.NewTask(
-			taskFunction,
+			resultsCollector,
 			updatedParameters...,
 		),
 		gocron.WithEventListeners(
@@ -166,6 +171,9 @@ func (s *Scheduler) createCronJobInstance(frequency gocron.JobDefinition, jobDef
 //   - func(jobID uuid.UUID, jobName string): Function to execute before the job runs.
 func (s *Scheduler) Before(jobDefinition *SchedulerJobDefinition) func(jobID uuid.UUID, jobName string) {
 	return func(jobID uuid.UUID, jobName string) {
+
+		s.Logger.Info().Interface("JobDefinition", jobDefinition).Msg("Starting task job")
+
 		task := SchedulerTask{
 			SystemData: &models.SystemData{
 				CreatedByID: s.User.ID,
@@ -201,6 +209,9 @@ func (s *Scheduler) Before(jobDefinition *SchedulerJobDefinition) func(jobID uui
 //   - func(jobID uuid.UUID, jobName string, jobError error): Function to execute if the job fails.
 func (s *Scheduler) WithErrors(jobDefinition *SchedulerJobDefinition) func(jobID uuid.UUID, jobName string, jobError error) {
 	return func(jobID uuid.UUID, jobName string, jobError error) {
+
+		s.Logger.Error().Err(jobError).Msgf("Task Job %s failed", jobDefinition.Name)
+
 		// Collect the results
 		results, ok := s.TaskManager.Get(jobDefinition.Name)
 		if !ok {
@@ -228,6 +239,9 @@ func (s *Scheduler) WithErrors(jobDefinition *SchedulerJobDefinition) func(jobID
 //   - func(jobID uuid.UUID, jobName string): Function to execute after the job completes.
 func (s *Scheduler) After(jobDefinition *SchedulerJobDefinition) func(jobID uuid.UUID, jobName string) {
 	return func(jobID uuid.UUID, jobName string) {
+
+		s.Logger.Info().Interface("JobDefinition", jobDefinition).Msg("Task Job Succeded")
+
 		// Collect the results
 		results, ok := s.TaskManager.Get(jobDefinition.Name)
 		if !ok {

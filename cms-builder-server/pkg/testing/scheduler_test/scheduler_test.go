@@ -37,34 +37,29 @@ func RegisterTestTask(s *pkg.Scheduler, log *logger.Logger, store store.Store, d
 		FrequencyType: pkg.JobFrequencyTypeImmediate,
 	}
 
-	testFunc := func(resultsCollector pkg.ResultsCollectorFunc, jobName string, fail bool) error {
+	testFunc := func(fail bool) (string, error) {
 		log.Info().Msg("Test func is running")
-
-		defer func() {
-			log.Info().Msg("Running result collector")
-			resultsCollector(jobName, "Test func has been ran")
-		}()
 
 		if fail {
 			log.Error().Msg("Test func has failed")
-			return fmt.Errorf("Test func has failed")
+			return "Failed Results", fmt.Errorf("Test func has failed")
 		}
 
 		log.Info().Msg("Test func has completed")
-		return nil
+		return "Success results", nil
 	}
 
-	testTask := func(resultsCollector pkg.ResultsCollectorFunc, jobName string, parameters ...any) {
-		testFunc(resultsCollector, jobName, parameters[0].(bool))
+	wrappedTestFunc := func(jobParameters ...any) (string, error) {
+		return testFunc(jobParameters[0].(bool))
 	}
 
-	err := s.RegisterJob(jobDefinition, testTask)
+	err := s.RegisterJob(jobDefinition, wrappedTestFunc)
 	if err != nil {
 		log.Error().Err(err).Msg("Error registering job")
 		return pkg.SchedulerJobDefinition{}, nil
 	}
 
-	return jobDefinition, testTask
+	return jobDefinition, wrappedTestFunc
 }
 
 // TestRunJob tests the execution of a job with different scenarios.
@@ -74,18 +69,21 @@ func TestRunJob(t *testing.T) {
 		failTask       bool // Whether the task should fail
 		expectedStatus pkg.TaskStatus
 		expectedError  string
+		expectedResult string
 	}{
 		{
 			name:           "Happy Path - Task Succeeds",
 			failTask:       false,
 			expectedStatus: pkg.TaskStatusDone,
 			expectedError:  "",
+			expectedResult: "Success results",
 		},
 		{
 			name:           "Unhappy Path - Task Fails",
 			failTask:       true,
 			expectedStatus: pkg.TaskStatusFailed,
 			expectedError:  "Test func has failed",
+			expectedResult: "Failed Results",
 		},
 	}
 
@@ -96,10 +94,12 @@ func TestRunJob(t *testing.T) {
 			cron := MockCron{}
 			bed.Scheduler.Cron = cron
 
+			// Register the test task
 			jd, taskFunc := RegisterTestTask(bed.Scheduler, bed.Logger, bed.Store, bed.Db, bed.SchedulerUser)
 			assert.NotNil(t, jd)
 			assert.NotNil(t, taskFunc)
 
+			// Get the event listeners
 			beforeExec := bed.Scheduler.Before(&jd)
 			assert.NotNil(t, beforeExec)
 
@@ -109,6 +109,7 @@ func TestRunJob(t *testing.T) {
 			afterWithErrorsExec := bed.Scheduler.WithErrors(&jd)
 			assert.NotNil(t, afterWithErrorsExec)
 
+			// Generate a unique job ID and name
 			jobId := uuid.New()
 			jobName := jd.Name
 
@@ -120,21 +121,40 @@ func TestRunJob(t *testing.T) {
 			assert.NotNil(t, task)
 			assert.Equal(t, pkg.TaskStatusRunning, task.Status)
 
-			// Validate the taskManager has the task
+			// Validate the taskManager has the task (initial state)
 			results, ok := bed.Scheduler.TaskManager.Get(jd.Name)
 			assert.True(t, ok)
 			assert.Equal(t, "", results)
 
 			// Execute the task
-			resultsCollector := func(jobName string, results string) {
-				bed.Scheduler.TaskManager.Set(jobName, results)
+			// The scheduler will handle the resultsCollector logic internally
+			results, err := taskFunc(tt.failTask)
+			assert.Equal(t, tt.expectedResult, results)
+
+			if err != nil {
+				assert.Equal(t, tt.expectedError, err.Error())
 			}
-			taskFunc(resultsCollector, jd.Name, tt.failTask)
+			t.Log(tt.name, results, err)
+
+			// In this settup, the results collector has not been called as in the main flow
+			// we will just mimic that for the sake of the testing.
+			// Any changes in the logic will need to be made to the main flow as well.
+			//
+			// resultsCollector := func(jobName string, parameters ...any) error {
+			// 	results, err := taskFunction(parameters...)
+
+			// 	s.Logger.Info().Str("JobName", jobName).Str("Results", results).Msg("Running results collector for")
+			// 	s.TaskManager.Set(jobName, results)
+
+			// 	return err
+			// }
+
+			bed.Scheduler.TaskManager.Set(jd.Name, results)
 
 			// Validate the taskManager has the task results
 			results, ok = bed.Scheduler.TaskManager.Get(jd.Name)
 			assert.True(t, ok)
-			assert.Equal(t, "Test func has been ran", results)
+			assert.Equal(t, tt.expectedResult, results)
 
 			// Execute the appropriate "After" hook based on the test case
 			if tt.failTask {
@@ -152,7 +172,7 @@ func TestRunJob(t *testing.T) {
 			task = pkg.GetSchedulerTask(bed.Db, jobId.String())
 			assert.NotNil(t, task)
 			assert.Equal(t, tt.expectedStatus, task.Status)
-			assert.Equal(t, "Test func has been ran", task.Results)
+			assert.Equal(t, tt.expectedResult, task.Results)
 			assert.Equal(t, tt.expectedError, task.Error)
 		})
 	}
