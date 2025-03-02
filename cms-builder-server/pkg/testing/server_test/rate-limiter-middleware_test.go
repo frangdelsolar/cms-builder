@@ -28,7 +28,7 @@ func TestRateLimitMiddleware(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	// Test within the rate limit
-	for i := 0; i < RequestsPerMinute; i++ {
+	for i := 0; i < MaxRequestsPerMinute; i++ {
 		wrappedHandler.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusOK, w.Code)
 		w = httptest.NewRecorder() // reset the recorder.
@@ -50,7 +50,7 @@ func TestRateLimitMiddleware(t *testing.T) {
 	req2.RemoteAddr = "192.168.1.2:1234"
 	w2 := httptest.NewRecorder()
 
-	for i := 0; i < RequestsPerMinute; i++ {
+	for i := 0; i < MaxRequestsPerMinute; i++ {
 		wrappedHandler.ServeHTTP(w2, req2)
 		assert.Equal(t, http.StatusOK, w2.Code)
 		w2 = httptest.NewRecorder()

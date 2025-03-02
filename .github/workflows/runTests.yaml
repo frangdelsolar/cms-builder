@@ -23,7 +23,7 @@ jobs:
       UPLOADER_MAX_SIZE: 5000
       UPLOADER_AUTHENTICATE: true
       UPLOADER_SUPPORTED_MIME_TYPES: "*"
-      UPLOADER_FOLDER: ${{ github.workspace }}media
+      UPLOADER_FOLDER: ${{ github.workspace }}/media
       STORE_TYPE: local
       AWS_BUCKET: ${{ secrets.AWS_BUCKET }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

@@ -43,6 +43,7 @@ var RunSchedulerTaskHandler = func(manager *mgr.ResourceManager, db *database.Da
 		// 4. Retrieve Instance ID and Fetch Instance
 		jobDefinitionName := r.URL.Query().Get("job_definition_name")
 		instance := a.GetOne()
+		//FIXME
 		query := "name = ?"
 
 		log.Debug().Str("path", r.URL.Path).Str("instance_id", jobDefinitionName).Str("q", query).Msg("Fetching Instance")
@@ -61,17 +62,26 @@ var RunSchedulerTaskHandler = func(manager *mgr.ResourceManager, db *database.Da
 
 		jd := instance.(*SchedulerJobDefinition)
 
-		results, err := s.RunJob(jd, requestId, user, log, db)
+		_, err = s.RunJob(jd, requestId, user, log, db)
 		if err != nil {
 			log.Error().Err(err).Msg("Error running task")
 			SendJsonResponse(w, http.StatusInternalServerError, nil, "Error running task")
 			return
 		}
 
+		log.Debug().Interface("job_definition", jd).Msg("Job definition found in database")
+
+		var task SchedulerTask
+		err = db.DB.Where("job_definition_name = ?", jd.Name).Order("created_at DESC").First(&task).Error
+		if err != nil {
+			log.Error().Err(err).Msg("Error finding task")
+			SendJsonResponse(w, http.StatusInternalServerError, nil, "Error finding task")
+			return
+		}
 		// 9. Generate Success Message
-		msg := a.ResourceNames.Singular + " has been created"
+		msg := jobDefinitionName + " has been triggered"
 
 		// 10. Send Success Response
-		SendJsonResponse(w, http.StatusCreated, results, msg)
+		SendJsonResponse(w, http.StatusCreated, task, msg)
 	}
 }
