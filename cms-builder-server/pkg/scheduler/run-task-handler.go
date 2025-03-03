@@ -45,7 +45,7 @@ var RunSchedulerTaskHandler = func(manager *mgr.ResourceManager, db *database.Da
 		instance := a.GetOne()
 
 		query := "name = ?"
-		res := queries.FindOne(db, instance, query, jobDefinitionName, user.StringID())
+		res := queries.FindOne(db, instance, query, jobDefinitionName)
 		if res.Error != nil {
 			if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 				SendJsonResponse(w, http.StatusNotFound, nil, "Instance not found")
