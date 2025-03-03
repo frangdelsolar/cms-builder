@@ -6,6 +6,7 @@ import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/clients"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
+	mgr "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing"
 	"github.com/joho/godotenv"
@@ -22,6 +23,16 @@ func SetupServerTestBed() TestUtils {
 	}
 
 	err = db.DB.AutoMigrate(database.DatabaseLog{})
+	if err != nil {
+		panic(err)
+	}
+
+	err = db.DB.AutoMigrate(models.RequestLog{})
+	if err != nil {
+		panic(err)
+	}
+
+	err = db.DB.AutoMigrate(MockStruct{})
 	if err != nil {
 		panic(err)
 	}
@@ -56,9 +67,20 @@ func SetupServerTestBed() TestUtils {
 		panic(err)
 	}
 
+	mgr := mgr.NewResourceManager(db, log)
+
+	srcConfig := SetupMockResource()
+	_, err = mgr.AddResource(srcConfig)
+	if err != nil {
+		panic(err)
+	}
+
 	return TestUtils{
-		Db:     db,
-		Logger: log,
-		Server: server,
+		Db:          db,
+		Logger:      log,
+		Server:      server,
+		Mgr:         mgr,
+		AdminUser:   CreateAdminUser(),
+		VisitorUser: CreateVisitorUser(),
 	}
 }

@@ -17,11 +17,11 @@ const (
 type StoreConfig struct {
 	MaxSize            int64
 	SupportedMimeTypes []string
-	Folder             string
+	MediaFolder        string // the folder where the files are stored i. e. media/easy-files/
 }
 
 type Store interface {
-	GetPath() string
+	GetPath(file *models.File) string
 	StoreFile(fileName string, file multipart.File, header *multipart.FileHeader, log *logger.Logger) (fileData *models.File, err error)
 	DeleteFile(file *models.File, log *logger.Logger) error
 	ListFiles(log *logger.Logger) ([]string, error)

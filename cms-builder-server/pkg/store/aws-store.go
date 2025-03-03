@@ -24,8 +24,8 @@ func (s *S3Store) GetConfig() *StoreConfig {
 	return s.Config
 }
 
-func (s *S3Store) GetPath() string {
-	return s.AwsConfig.Folder
+func (s *S3Store) GetPath(file *models.File) string {
+	return s.AwsConfig.Folder + "/" + file.Name
 }
 
 // StoreFile uploads the given file to an S3 bucket using the provided configuration.
@@ -43,6 +43,8 @@ func (s *S3Store) StoreFile(fileName string, file multipart.File, header *multip
 
 	// Detect the content type from the file content
 	contentType := http.DetectContentType(fileBytes)
+
+	log.Debug().Str("detected-content-type", contentType).Msg("Detected file content type")
 
 	// If the detected content type is "application/octet-stream",
 	// fall back to the file extension for a better guess
@@ -64,11 +66,11 @@ func (s *S3Store) StoreFile(fileName string, file multipart.File, header *multip
 		return fileData, fmt.Errorf("invalid content type: %s", contentType)
 	}
 
-	fileName = RandomizeFileName(fileName)
+	fileData.Name = RandomizeFileName(fileName)
 
 	// Create the uploads directory if it doesn't exist
-	uploadsDir := s.GetPath()
-	location, err := s.Client.UploadFile(uploadsDir, fileName, fileBytes, log)
+	path := s.GetPath(fileData)
+	location, err := s.Client.UploadFile(path, fileBytes, log)
 	if err != nil {
 		log.Error().Err(err).Msg("Error uploading file to S3")
 		return fileData, err
@@ -76,19 +78,10 @@ func (s *S3Store) StoreFile(fileName string, file multipart.File, header *multip
 
 	url := "https://" + s.AwsConfig.Bucket + "/" + location
 
-	fileData = &models.File{
-		Name: fileName,
-		Path: location,
-		Url:  url,
-	}
-
-	fileInfo, err := s.GetFileInfo(fileData, log)
-	if err != nil {
-		return fileData, err
-	}
-
-	fileData.Size = fileInfo.Size
-	fileData.MimeType = fileInfo.ContentType
+	fileData.Path = location
+	fileData.Url = url
+	fileData.Size = int64(len(fileBytes))
+	fileData.MimeType = contentType
 
 	log.Info().
 		Str("name", fileData.Name).
@@ -120,15 +113,17 @@ func (s *S3Store) ListFiles(log *logger.Logger) ([]string, error) {
 }
 
 func (s *S3Store) ReadFile(file *models.File, log *logger.Logger) ([]byte, error) {
-	return s.Client.DownloadFile(file.Url, log)
+	return s.Client.DownloadFile(file.Path, log)
 }
 
 func (s *S3Store) GetFileInfo(file *models.File, log *logger.Logger) (*models.FileInfo, error) {
-	info, err := s.Client.GetFileInfo(file.Path, log)
+	info := &models.FileInfo{
+		Name:        file.Name,
+		Size:        file.Size,
+		ContentType: file.MimeType,
+	}
 
-	info.ContentType = file.MimeType
-
-	return info, err
+	return info, nil
 }
 
 // getFileBytes reads the contents of a multipart.models.File into a byte array.
@@ -186,7 +181,7 @@ func NewS3Store(config *StoreConfig, awsConfig *S3Config) (*S3Store, error) {
 		return nil, fmt.Errorf("config is nil")
 	}
 
-	if config.Folder == "" {
+	if config.MediaFolder == "" {
 		return nil, fmt.Errorf("uploader folder is empty")
 	}
 

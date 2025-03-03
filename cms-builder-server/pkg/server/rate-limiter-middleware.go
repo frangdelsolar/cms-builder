@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-const RequestsPerMinute = 100
+const MaxRequestsPerMinute = 100
 const WaitingSeconds = 15
 
 type RateLimiter struct {
@@ -68,7 +68,7 @@ func (rl *RateLimiter) Allow(clientIdentifier string) bool {
 // The middleware is thread-safe.
 func RateLimitMiddleware() func(http.Handler) http.Handler {
 
-	rateLimiter := NewRateLimiter(RequestsPerMinute, WaitingSeconds*time.Second)
+	rateLimiter := NewRateLimiter(MaxRequestsPerMinute, WaitingSeconds*time.Second)
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

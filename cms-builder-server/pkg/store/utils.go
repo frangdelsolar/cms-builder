@@ -72,6 +72,9 @@ func GetContentTypeFromExtension(fileName string) string {
 }
 
 func ValidateContentType(contentType string, supportedMimeTypes []string) (bool, error) {
+
+	contentType = strings.Split(contentType, ";")[0]
+
 	for _, supportedType := range supportedMimeTypes {
 		if supportedType == "*" || supportedType == "*/*" {
 			return true, nil

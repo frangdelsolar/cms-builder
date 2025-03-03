@@ -18,7 +18,7 @@ import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store"
 )
 
-const orchestratorVersion = "1.6.0"
+const orchestratorVersion = "1.6.3"
 
 type OrchestratorUsers struct {
 	God       *models.User
@@ -174,7 +174,7 @@ func (o *Orchestrator) InitFiles() error {
 	storeConfig := o.Store.GetConfig()
 	o.Logger.Info().Interface("storeConfig", storeConfig).Msg("Initializing store")
 
-	fileConfig := file.SetupFileResource(o.ResourceManager, o.DB, o.Store, o.Logger)
+	fileConfig := file.SetupFileResource(o.ResourceManager, o.DB, o.Store, o.Logger, o.Config.GetString(EnvKeys.BaseUrl))
 	_, err := o.ResourceManager.AddResource(fileConfig)
 	return err
 }
@@ -211,13 +211,13 @@ func (o *Orchestrator) InitServer() error {
 
 func (o *Orchestrator) InitStore() error {
 	storeType := o.Config.GetString(EnvKeys.StoreType)
-	folder := o.Config.GetString(EnvKeys.UploaderFolder)
+	folder := "media/" + o.Config.GetString(EnvKeys.AppName)
 	baseUrl := o.Config.GetString(EnvKeys.BaseUrl)
 
 	storeConfig := &store.StoreConfig{
-		MaxSize:            o.Config.GetInt64(EnvKeys.UploaderMaxSize),
-		SupportedMimeTypes: o.Config.GetStringSlice(EnvKeys.UploaderSupportedMime),
-		Folder:             folder,
+		MaxSize:            o.Config.GetInt64(EnvKeys.StoreMaxSize),
+		SupportedMimeTypes: o.Config.GetStringSlice(EnvKeys.StoreSupportedMime),
+		MediaFolder:        folder,
 	}
 
 	o.Logger.Info().Interface("storeConfig", storeConfig).Msg("Initializing store")
