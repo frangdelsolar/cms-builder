@@ -35,7 +35,7 @@ func SetupFileTestBed() TestUtils {
 	storeConfig := StoreConfig{
 		MaxSize:            1024 * 1024 * 1024,
 		SupportedMimeTypes: []string{"image/png", "image/jpeg", "image/jpg"},
-		Folder:             "test-files",
+		MediaFolder:        "media/test-files",
 	}
 
 	localStore, err := NewLocalStore(&storeConfig, "test-files", "http://localhost:8080")

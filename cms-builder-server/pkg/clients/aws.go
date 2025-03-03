@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"path/filepath"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
@@ -72,29 +71,25 @@ func AllowWrite(file string) bool {
 // UploadFile uploads the given file to the given bucket with the given key.
 // It uploads the file with public-read permissions. If there is an error
 // uploading the file, it logs an error and returns the error.
-func (a *AwsManager) UploadFile(directory string, fileName string, file []byte, log *logger.Logger) (string, error) {
-	log.Debug().Str("fileName", fileName).Msg("Uploading file to S3.")
+func (a *AwsManager) UploadFile(filePath string, file []byte, log *logger.Logger) (string, error) {
+	log.Debug().Str("fileName", filePath).Msg("Uploading file to S3.")
 
-	if fileName == "" {
+	if filePath == "" {
 		return "", fmt.Errorf("file name is required")
 	}
 
-	if !AllowWrite(fileName) {
-		log.Warn().Str("fileName", fileName).Msg("File cannot be overriden")
+	if !AllowWrite(filePath) {
+		log.Warn().Str("fileName", filePath).Msg("File cannot be overriden")
 		return "", nil
 	}
 
 	ctx := context.Background()
-	objectKey := aws.String(fileName)
+	objectKey := aws.String(filePath)
 
 	client, err := a.GetClient()
 	if err != nil {
 		log.Error().Err(err).Msg("Error getting client")
 		return "", err
-	}
-
-	if directory != "" {
-		objectKey = aws.String(filepath.Join(directory, fileName))
 	}
 
 	_, err = client.PutObject(ctx, &s3.PutObjectInput{

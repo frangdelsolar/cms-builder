@@ -14,62 +14,56 @@ import (
 )
 
 type LocalStore struct {
-	Path    string
-	BaseUrl string
-	Config  *StoreConfig
+	MediaFolderAbsolutePath string // i. e. /Users/user/.../media/project-name
+	BaseUrl                 string // baseUrl where files will be served
+	Config                  *StoreConfig
 }
 
-func (s *LocalStore) GetConfig() *StoreConfig {
+func (s LocalStore) GetConfig() *StoreConfig {
 	return s.Config
 }
 
-func NewLocalStore(config *StoreConfig, folder string, baseUrl string) (*LocalStore, error) {
+func NewLocalStore(config *StoreConfig, folder string, baseUrl string) (LocalStore, error) {
 	if config == nil {
-		return nil, fmt.Errorf("config is nil")
+		return LocalStore{}, fmt.Errorf("config is nil")
 	}
 
-	if config.Folder == "" {
-		return nil, fmt.Errorf("uploader folder is empty")
+	if config.MediaFolder == "" {
+		return LocalStore{}, fmt.Errorf("uploader folder is empty")
 	}
 
 	if config.MaxSize <= 0 {
-		return nil, fmt.Errorf("invalid max size: %d", config.MaxSize)
+		return LocalStore{}, fmt.Errorf("invalid max size: %d", config.MaxSize)
 	}
 
 	if len(config.SupportedMimeTypes) == 0 {
-		return nil, fmt.Errorf("supported mime types is empty")
+		return LocalStore{}, fmt.Errorf("supported mime types is empty")
 	}
 
-	dir := "./" + folder
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		err = os.Mkdir(dir, os.ModePerm)
+	if _, err := os.Stat(folder); os.IsNotExist(err) {
+		err = os.MkdirAll(folder, os.ModePerm)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create directory: %v", err)
+			return LocalStore{}, fmt.Errorf("failed to create directory: %v", err)
 		}
 	}
 
-	absPath, err := filepath.Abs(dir)
+	absPath, err := filepath.Abs(folder)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get absolute path: %v", err)
+		return LocalStore{}, fmt.Errorf("failed to get absolute path: %v", err)
 	}
 
-	// trim start slash
-	if absPath[0] == '/' {
-		absPath = absPath[1:]
-	}
-
-	return &LocalStore{
-		Config:  config,
-		Path:    absPath,
-		BaseUrl: baseUrl,
+	return LocalStore{
+		Config:                  config,
+		MediaFolderAbsolutePath: absPath,
+		BaseUrl:                 baseUrl,
 	}, nil
 }
 
-func (s *LocalStore) GetPath() string {
-	return s.Path
+func (s LocalStore) GetPath(file *models.File) string {
+	return s.MediaFolderAbsolutePath + "/" + file.Name
 }
 
-func (s *LocalStore) StoreFile(fileName string, file multipart.File, header *multipart.FileHeader, log *logger.Logger) (fileData *models.File, err error) {
+func (s LocalStore) StoreFile(fileName string, file multipart.File, header *multipart.FileHeader, log *logger.Logger) (fileData *models.File, err error) {
 	fileData = &models.File{}
 
 	// Read the first 512 bytes of the file to detect its MIME type
@@ -91,8 +85,6 @@ func (s *LocalStore) StoreFile(fileName string, file multipart.File, header *mul
 		}
 	}
 
-	log.Debug().Str("detected-content-type", contentType).Msg("Detected file content type")
-
 	// Validate the detected content type
 	valid, err := ValidateContentType(contentType, s.Config.SupportedMimeTypes)
 	if err != nil {
@@ -104,10 +96,10 @@ func (s *LocalStore) StoreFile(fileName string, file multipart.File, header *mul
 
 	// Create the file path
 	fileData.Name = RandomizeFileName(fileName)
-	fileData.Path = filepath.Join(s.Path, fileData.Name)
+	path := s.GetPath(fileData)
 
 	// Save the file to disk
-	dst, err := os.Create(fileData.Path)
+	dst, err := os.Create(path)
 	if err != nil {
 		return fileData, fmt.Errorf("failed to create file: %v", err)
 	}
@@ -125,9 +117,6 @@ func (s *LocalStore) StoreFile(fileName string, file multipart.File, header *mul
 		return fileData, fmt.Errorf("failed to copy file content: %v", err)
 	}
 
-	// Set the file URL
-	fileData.Url = s.BaseUrl + "/static/" + fileData.Name
-
 	// Get file info (size and MIME type)
 	fileInfo, err := s.GetFileInfo(fileData, log)
 	if err != nil {
@@ -140,8 +129,6 @@ func (s *LocalStore) StoreFile(fileName string, file multipart.File, header *mul
 	// Log the successful file upload
 	log.Info().
 		Str("name", fileData.Name).
-		Str("path", fileData.Path).
-		Str("url", fileData.Url).
 		Int64("size", fileData.Size).
 		Str("mime-type", fileData.MimeType).
 		Msg("File stored successfully")
@@ -151,12 +138,11 @@ func (s *LocalStore) StoreFile(fileName string, file multipart.File, header *mul
 
 // DeleteFile takes a file path and deletes the file from disk.
 // It returns an error if the file cannot be deleted.
-func (s *LocalStore) DeleteFile(file *models.File, log *logger.Logger) error {
-
-	log.Info().Str("path", file.Path).Msg("Deleting file")
+func (s LocalStore) DeleteFile(file *models.File, log *logger.Logger) error {
+	path := s.GetPath(file)
 
 	// Attempt to delete the file
-	if err := os.Remove(file.Path); err != nil {
+	if err := os.Remove(path); err != nil {
 		return err
 	}
 
@@ -164,16 +150,16 @@ func (s *LocalStore) DeleteFile(file *models.File, log *logger.Logger) error {
 	return nil
 }
 
-func (s *LocalStore) ListFiles(log *logger.Logger) ([]string, error) {
+func (s LocalStore) ListFiles(log *logger.Logger) ([]string, error) {
 	output := []string{}
 
-	err := filepath.Walk(s.Path, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(s.MediaFolderAbsolutePath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err // Return the error to stop walking if needed
 		}
 
 		// Get the relative path from the store's path
-		relPath, err := filepath.Rel(s.Path, path)
+		relPath, err := filepath.Rel(s.MediaFolderAbsolutePath, path)
 		if err != nil {
 			return err
 		}
@@ -182,7 +168,7 @@ func (s *LocalStore) ListFiles(log *logger.Logger) ([]string, error) {
 		if relPath == "." {
 			return nil // Continue walking
 		}
-		relPath = s.Path + "/" + relPath
+		relPath = s.MediaFolderAbsolutePath + "/" + relPath
 
 		output = append(output, relPath)
 		return nil
@@ -195,12 +181,14 @@ func (s *LocalStore) ListFiles(log *logger.Logger) ([]string, error) {
 	return output, nil
 }
 
-func (s *LocalStore) ReadFile(file *models.File, log *logger.Logger) ([]byte, error) {
-	return os.ReadFile(file.Path)
+func (s LocalStore) ReadFile(file *models.File, log *logger.Logger) ([]byte, error) {
+	path := s.GetPath(file)
+	return os.ReadFile(path)
 }
 
-func (s *LocalStore) GetFileInfo(file *models.File, log *logger.Logger) (*models.FileInfo, error) {
-	stats, err := os.Stat(file.Path)
+func (s LocalStore) GetFileInfo(file *models.File, log *logger.Logger) (*models.FileInfo, error) {
+	path := s.GetPath(file)
+	stats, err := os.Stat(path)
 	if err != nil {
 		return nil, err
 	}
@@ -210,7 +198,7 @@ func (s *LocalStore) GetFileInfo(file *models.File, log *logger.Logger) (*models
 	}
 
 	// Detect the content type using the utility function
-	contentType, err := DetectContentTypeFromFile(file.Path)
+	contentType, err := DetectContentTypeFromFile(path)
 	if err != nil {
 		return nil, err
 	}

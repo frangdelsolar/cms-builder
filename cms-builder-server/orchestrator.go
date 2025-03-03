@@ -211,13 +211,13 @@ func (o *Orchestrator) InitServer() error {
 
 func (o *Orchestrator) InitStore() error {
 	storeType := o.Config.GetString(EnvKeys.StoreType)
-	folder := o.Config.GetString(EnvKeys.UploaderFolder)
+	folder := "media/" + o.Config.GetString(EnvKeys.AppName)
 	baseUrl := o.Config.GetString(EnvKeys.BaseUrl)
 
 	storeConfig := &store.StoreConfig{
-		MaxSize:            o.Config.GetInt64(EnvKeys.UploaderMaxSize),
-		SupportedMimeTypes: o.Config.GetStringSlice(EnvKeys.UploaderSupportedMime),
-		Folder:             folder,
+		MaxSize:            o.Config.GetInt64(EnvKeys.StoreMaxSize),
+		SupportedMimeTypes: o.Config.GetStringSlice(EnvKeys.StoreSupportedMime),
+		MediaFolder:        folder,
 	}
 
 	o.Logger.Info().Interface("storeConfig", storeConfig).Msg("Initializing store")
