@@ -43,11 +43,8 @@ var RunSchedulerTaskHandler = func(manager *mgr.ResourceManager, db *database.Da
 		// 4. Retrieve Instance ID and Fetch Instance
 		jobDefinitionName := r.URL.Query().Get("job_definition_name")
 		instance := a.GetOne()
-		//FIXME
+
 		query := "name = ?"
-
-		log.Debug().Str("path", r.URL.Path).Str("instance_id", jobDefinitionName).Str("q", query).Msg("Fetching Instance")
-
 		res := queries.FindOne(db, instance, query, jobDefinitionName, user.StringID())
 		if res.Error != nil {
 			if errors.Is(res.Error, gorm.ErrRecordNotFound) {

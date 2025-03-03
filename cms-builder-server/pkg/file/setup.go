@@ -11,7 +11,7 @@ import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store"
 )
 
-func SetupFileResource(resourceManager *manager.ResourceManager, db *database.Database, st store.Store, log *logger.Logger) *manager.ResourceConfig {
+func SetupFileResource(resourceManager *manager.ResourceManager, db *database.Database, st store.Store, log *logger.Logger, apiBaseUrl string) *manager.ResourceConfig {
 
 	log.Info().Msg("Initializing File resource")
 
@@ -24,12 +24,10 @@ func SetupFileResource(resourceManager *manager.ResourceManager, db *database.Da
 
 	validators := manager.ValidatorsMap{
 		"Name": manager.ValidatorsList{manager.RequiredValidator},
-		"Path": manager.ValidatorsList{manager.RequiredValidator},
-		"Url":  manager.ValidatorsList{manager.RequiredValidator},
 	}
 
 	handlers := &manager.ApiHandlers{
-		Create: CreateStoredFilesHandler(db, st),
+		Create: CreateStoredFilesHandler(db, st, apiBaseUrl),
 		Delete: DeleteStoredFilesHandler(db, st),
 		Update: UpdateStoredFilesHandler,
 	}

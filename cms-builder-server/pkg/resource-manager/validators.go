@@ -42,7 +42,7 @@ func RequiredValidator(fieldName string, instance EntityData, output *Validation
 func EmailValidator(fieldName string, instance EntityData, output *ValidationError) *ValidationError {
 	email := fmt.Sprint(instance[fieldName])
 	if email == "" {
-		return nil
+		return output
 	}
 	emailRegex := `^[a-zA-Z0-9.!#$%&'*+/=?^_` + `{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$`
 

@@ -180,6 +180,10 @@ func (r *Resource) Validate(instance interface{}, log *logger.Logger) Validation
 			continue
 		}
 
+		if !r.HasField(fieldName) {
+			continue // Field not found in model
+		}
+
 		validators, ok := r.Validators[fieldName]
 		if !ok {
 			continue // No validators for this field
@@ -195,7 +199,9 @@ func (r *Resource) Validate(instance interface{}, log *logger.Logger) Validation
 	}
 
 	if len(errors.Errors) == 0 {
-		return ValidationResult{}
+		return ValidationResult{
+			Errors: make([]ValidationError, 0),
+		}
 	}
 	return errors
 }

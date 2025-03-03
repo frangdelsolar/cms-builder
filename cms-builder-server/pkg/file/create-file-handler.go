@@ -10,9 +10,10 @@ import (
 	manager "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
 )
 
-func CreateStoredFilesHandler(db *database.Database, st store.Store) manager.ApiFunction {
+func CreateStoredFilesHandler(db *database.Database, st store.Store, apiBaseUrl string) manager.ApiFunction {
 
 	return func(a *manager.Resource, db *database.Database) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
@@ -72,6 +73,18 @@ func CreateStoredFilesHandler(db *database.Database, st store.Store) manager.Api
 			}
 
 			res := queries.Create(db, fileData, user, requestId)
+			if res.Error != nil {
+				SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
+				return
+			}
+
+			// Generate url and update
+			fdCopy := fileData
+			differences := utils.CompareInterfaces(&fdCopy, fileData)
+
+			fileData.Url = apiBaseUrl + "/private/api/files/" + fileData.StringID() + "/download"
+
+			res = queries.Update(db, fileData, user, differences, requestId)
 			if res.Error != nil {
 				SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
 				return

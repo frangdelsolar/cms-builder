@@ -89,5 +89,5 @@ func TestEmailValidator_Success_EmptyEmail(t *testing.T) {
 	result := mgr.EmailValidator("email", entity, &output)
 
 	// Assertions
-	assert.Nil(t, result) // Empty email is considered valid (if not required)
+	assert.Equal(t, result.Error, "")
 }

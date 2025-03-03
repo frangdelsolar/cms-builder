@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/rs/zerolog/log"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 )
 
 const TimeoutSeconds = 15
@@ -16,6 +16,8 @@ func TimeoutMiddleware(next http.Handler) http.Handler {
 
 		ctx, cancel := context.WithTimeout(r.Context(), TimeoutSeconds*time.Second)
 		defer cancel()
+
+		log := logger.Default
 
 		r = r.WithContext(ctx)
 

@@ -125,6 +125,8 @@ func (s LocalStore) StoreFile(fileName string, file multipart.File, header *mult
 
 	fileData.Size = fileInfo.Size
 	fileData.MimeType = fileInfo.ContentType
+	fileData.Path = s.Config.MediaFolder + "/" + fileData.Name
+	fileData.Url = "" // /private/api/files/{id}/download
 
 	// Log the successful file upload
 	log.Info().

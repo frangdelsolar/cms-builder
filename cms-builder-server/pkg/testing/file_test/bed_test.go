@@ -64,7 +64,7 @@ func SetupFileTestBed() TestUtils {
 
 	manager := mgr.NewResourceManager(db, log)
 
-	fileSetup := SetupFileResource(manager, db, localStore, log)
+	fileSetup := SetupFileResource(manager, db, localStore, log, "http://localhost:8080")
 	fileResource, err := manager.AddResource(fileSetup)
 	if err != nil {
 		panic(err)

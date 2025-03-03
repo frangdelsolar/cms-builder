@@ -225,6 +225,10 @@ func UserIsAllowed(appPermissions RolePermissionMap, userRoles []models.Role, ac
 	return false
 }
 
+func GetQueryParam(r *http.Request, param string) string {
+	return r.URL.Query().Get(param)
+}
+
 func ReadRequestBody(r *http.Request) ([]byte, error) {
 	if r.Body == nil {
 		return []byte{}, nil

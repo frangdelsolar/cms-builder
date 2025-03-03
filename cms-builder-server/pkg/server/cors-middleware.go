@@ -28,7 +28,7 @@ func CorsMiddleware(allowedOrigins []string) func(next http.Handler) http.Handle
 			log := GetRequestLogger(r)
 
 			// If the Origin header is missing, block the request
-			if origin == "" {
+			if origin == "" && allowedOrigins[0] != "*" {
 				err := fmt.Errorf("missing Origin header")
 				log.Warn().Interface("headers", r.Header).Interface("allowedOrigins", allowedOrigins).Msg("CORS: Missing Origin header")
 				SendJsonResponse(w, http.StatusForbidden, nil, err.Error())
