@@ -1,7 +1,6 @@
 package requestlogger
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
@@ -9,7 +8,6 @@ import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	manager "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
-	"gorm.io/gorm"
 )
 
 func RequestLogHandler(mgr *manager.ResourceManager, db *database.Database) http.HandlerFunc {
@@ -44,15 +42,14 @@ func RequestLogHandler(mgr *manager.ResourceManager, db *database.Database) http
 		itemId := GetUrlParam("id", r)
 		instance := models.RequestLog{}
 
-		q := "trace_id = ?" // Use parameterized query
-		res := queries.FindOne(db, &instance, q, itemId)
-		if res.Error != nil {
-			if !errors.Is(res.Error, gorm.ErrRecordNotFound) {
-				SendJsonResponse(w, http.StatusNotFound, nil, "Instance not found")
-				return
-			}
-			log.Error().Err(res.Error).Msgf("Error finding instance")
-			SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
+		filters := map[string]interface{}{
+			"trace_id": itemId,
+		}
+
+		err = queries.FindOne(r.Context(), log, db, &instance, filters)
+		if err != nil {
+			log.Error().Err(err).Msgf("Instance not found")
+			SendJsonResponse(w, http.StatusInternalServerError, nil, "Instance not found")
 			return
 		}
 
@@ -71,14 +68,13 @@ func RequestLogHandler(mgr *manager.ResourceManager, db *database.Database) http
 		// Create slice to store HistoryEntries
 		var databaseLogs []database.DatabaseLog
 
-		// Join HistoryEntries with RequestLog
-		joinQuery := "database_logs.trace_id = ?" // Use parameterized query
+		filters = map[string]interface{}{
+			"database_logs.trace_id": itemId, // join condition
+		}
 
-		res = queries.FindMany(db, &databaseLogs, nil, "", joinQuery, itemId)
-		if res.Error != nil {
-			if !errors.Is(res.Error, gorm.ErrRecordNotFound) {
-				log.Error().Err(res.Error).Msgf("Error finding instance")
-			}
+		err = queries.FindMany(r.Context(), log, db, &databaseLogs, nil, "", filters)
+		if err != nil {
+			log.Warn().Err(err).Msgf("Error finding instance")
 		}
 
 		// Create a map to hold both RequestLog and HistoryEntries

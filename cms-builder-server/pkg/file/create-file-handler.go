@@ -72,9 +72,9 @@ func CreateStoredFilesHandler(db *database.Database, st store.Store, apiBaseUrl 
 				return
 			}
 
-			res := queries.Create(db, fileData, user, requestId)
-			if res.Error != nil {
-				SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
+			err = queries.Create(r.Context(), log, db, fileData, user, requestId)
+			if err != nil {
+				SendJsonResponse(w, http.StatusInternalServerError, nil, "Error creating "+a.ResourceNames.Singular)
 				return
 			}
 
@@ -84,9 +84,9 @@ func CreateStoredFilesHandler(db *database.Database, st store.Store, apiBaseUrl 
 
 			fileData.Url = apiBaseUrl + "/private/api/files/" + fileData.StringID() + "/download"
 
-			res = queries.Update(db, fileData, user, differences, requestId)
-			if res.Error != nil {
-				SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
+			err = queries.Update(r.Context(), log, db, fileData, user, differences, requestId)
+			if err != nil {
+				SendJsonResponse(w, http.StatusInternalServerError, nil, "Error updating "+a.ResourceNames.Singular)
 				return
 			}
 

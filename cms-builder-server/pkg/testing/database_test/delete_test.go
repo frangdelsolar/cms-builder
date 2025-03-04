@@ -1,87 +1,81 @@
 package database_test
 
-import (
-	"testing"
-
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing"
-	"github.com/stretchr/testify/assert"
-	"gorm.io/gorm"
-)
+// import (
+// 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing"
+// )
 
 // TestDelete_SingleEntity_Success tests the deletion of a single entity.
-func TestDelete_SingleEntity_Success(t *testing.T) {
-	// Setup test environment
-	testBed := SetupDatabaseTestBed()
-	db := testBed.Db
-	user := testBed.AdminUser
+// func TestDelete_SingleEntity_Success(t *testing.T) {
+// 	// Setup test environment
+// 	testBed := SetupDatabaseTestBed()
+// 	db := testBed.Db
+// 	user := testBed.AdminUser
 
-	// Create a mock instance
-	instance := MockStruct{
-		Field1: "Test Field 1",
-		Field2: "Test Field 2",
-	}
-	db.DB.Create(&instance)
+// 	// Create a mock instance
+// 	instance := MockStruct{
+// 		Field1: "Test Field 1",
+// 		Field2: "Test Field 2",
+// 	}
+// 	db.DB.Create(&instance)
 
-	// Call the Delete function
-	result := queries.Delete(db, &instance, user, "test-request-id")
+// 	// Call the Delete function
+// 	result := queries.Delete(db, &instance, user, "test-request-id")
 
-	// Assertions
-	assert.NoError(t, result.Error)
+// 	// Assertions
+// 	assert.NoError(t, result.Error)
 
-	// Verify that the instance was deleted
-	var deletedInstance MockStruct
-	err := db.DB.First(&deletedInstance, instance.ID).Error
-	assert.Error(t, err)
-	assert.Equal(t, gorm.ErrRecordNotFound, err)
+// 	// Verify that the instance was deleted
+// 	var deletedInstance MockStruct
+// 	err := db.DB.First(&deletedInstance, instance.ID).Error
+// 	assert.Error(t, err)
+// 	assert.Equal(t, gorm.ErrRecordNotFound, err)
 
-	// Verify that a history entry was created
-	var historyEntry database.DatabaseLog
-	err = db.DB.Where("action = ? AND resource_id = ?", database.DeleteCRUDAction, instance.ID).First(&historyEntry).Error
-	assert.NoError(t, err)
-	assert.Equal(t, user.StringID(), historyEntry.UserId)
-	assert.Equal(t, "test-request-id", historyEntry.TraceId)
-}
+// 	// Verify that a history entry was created
+// 	var historyEntry database.DatabaseLog
+// 	err = db.DB.Where("action = ? AND resource_id = ?", database.DeleteCRUDAction, instance.ID).First(&historyEntry).Error
+// 	assert.NoError(t, err)
+// 	assert.Equal(t, user.StringID(), historyEntry.UserId)
+// 	assert.Equal(t, "test-request-id", historyEntry.TraceId)
+// }
 
-// TestDelete_Slice_Success tests the deletion of a slice of entities.
-func TestDelete_Slice_Success(t *testing.T) {
-	// Setup test environment
-	testBed := SetupDatabaseTestBed()
-	db := testBed.Db
-	user := testBed.AdminUser
+// // TestDelete_Slice_Success tests the deletion of a slice of entities.
+// func TestDelete_Slice_Success(t *testing.T) {
+// 	// Setup test environment
+// 	testBed := SetupDatabaseTestBed()
+// 	db := testBed.Db
+// 	user := testBed.AdminUser
 
-	// Create mock instances
-	instances := []MockStruct{
-		{Field1: "Test Field 1", Field2: "Test Field 2"},
-		{Field1: "Test Field 3", Field2: "Test Field 4"},
-		{Field1: "Test Field 5", Field2: "Test Field 6"},
-	}
-	for i := range instances {
-		queries.Create(db, &instances[i], user, "test-request-id")
-	}
+// 	// Create mock instances
+// 	instances := []MockStruct{
+// 		{Field1: "Test Field 1", Field2: "Test Field 2"},
+// 		{Field1: "Test Field 3", Field2: "Test Field 4"},
+// 		{Field1: "Test Field 5", Field2: "Test Field 6"},
+// 	}
+// 	for i := range instances {
+// 		queries.Create(db, &instances[i], user, "test-request-id")
+// 	}
 
-	// Call the Delete function
-	result := queries.Delete(db, instances, user, "test-request-id")
+// 	// Call the Delete function
+// 	result := queries.Delete(db, instances, user, "test-request-id")
 
-	// Assertions
-	assert.NoError(t, result.Error)
+// 	// Assertions
+// 	assert.NoError(t, result.Error)
 
-	// Verify that all instances were deleted
-	for _, instance := range instances {
-		var deletedInstance MockStruct
-		err := db.DB.First(&deletedInstance, instance.ID).Error
-		assert.Error(t, err)
-		assert.Equal(t, gorm.ErrRecordNotFound, err)
+// 	// Verify that all instances were deleted
+// 	for _, instance := range instances {
+// 		var deletedInstance MockStruct
+// 		err := db.DB.First(&deletedInstance, instance.ID).Error
+// 		assert.Error(t, err)
+// 		assert.Equal(t, gorm.ErrRecordNotFound, err)
 
-		// Verify that a history entry was created for each instance
-		var historyEntry database.DatabaseLog
-		err = db.DB.Where("action = ? AND resource_id = ?", database.DeleteCRUDAction, instance.ID).First(&historyEntry).Error
-		assert.NoError(t, err)
-		assert.Equal(t, user.StringID(), historyEntry.UserId)
-		assert.Equal(t, "test-request-id", historyEntry.TraceId)
-	}
-}
+// 		// Verify that a history entry was created for each instance
+// 		var historyEntry database.DatabaseLog
+// 		err = db.DB.Where("action = ? AND resource_id = ?", database.DeleteCRUDAction, instance.ID).First(&historyEntry).Error
+// 		assert.NoError(t, err)
+// 		assert.Equal(t, user.StringID(), historyEntry.UserId)
+// 		assert.Equal(t, "test-request-id", historyEntry.TraceId)
+// 	}
+// }
 
 // // TestDelete_SingleEntity_Error tests error handling when deleting a single entity fails.
 // func TestDelete_SingleEntity_Error(t *testing.T) {

@@ -1,14 +1,12 @@
 package scheduler
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	mgr "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
-	"gorm.io/gorm"
 )
 
 // DefaultCreateHandler handles the creation of a new resource.
@@ -44,16 +42,13 @@ var RunSchedulerTaskHandler = func(manager *mgr.ResourceManager, db *database.Da
 		jobDefinitionName := r.URL.Query().Get("job_definition_name")
 		instance := a.GetOne()
 
-		query := "name = ?"
-		res := queries.FindOne(db, instance, query, jobDefinitionName)
-		if res.Error != nil {
-			if errors.Is(res.Error, gorm.ErrRecordNotFound) {
-				SendJsonResponse(w, http.StatusNotFound, nil, "Instance not found")
-				return
-			}
+		filters := map[string]interface{}{
+			"name": jobDefinitionName,
+		}
 
-			log.Error().Err(res.Error).Msgf("Error finding instance")
-			SendJsonResponse(w, http.StatusInternalServerError, nil, "Error finding resource")
+		err = queries.FindOne(r.Context(), log, db, instance, filters)
+		if err != nil {
+			SendJsonResponse(w, http.StatusNotFound, nil, "Instance not found")
 			return
 		}
 
@@ -65,8 +60,6 @@ var RunSchedulerTaskHandler = func(manager *mgr.ResourceManager, db *database.Da
 			SendJsonResponse(w, http.StatusInternalServerError, nil, "Error running task")
 			return
 		}
-
-		log.Debug().Interface("job_definition", jd).Msg("Job definition found in database")
 
 		var task SchedulerTask
 		err = db.DB.Where("job_definition_name = ?", jd.Name).Order("created_at DESC").First(&task).Error

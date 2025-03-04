@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
@@ -93,7 +94,7 @@ func (s *Scheduler) RegisterJob(jdInput SchedulerJobDefinition, jobFunction Sche
 
 	s.Logger.Info().Interface("JobDefinition", jdInput).Msg("Registering job")
 
-	jobDefinition, err := getOrCreateJobDefinition(s.DB, s.User, jdInput)
+	jobDefinition, err := getOrCreateJobDefinition(s.DB, s.Logger, s.User, jdInput)
 	if err != nil {
 		s.Logger.Error().Err(err).Msg("Error creating job")
 		return err
@@ -200,7 +201,7 @@ func (s *Scheduler) Before(jobDefinition *SchedulerJobDefinition) func(jobID uui
 		}
 
 		requestId := getRequestIdForCronJob(jobID)
-		err := queries.Update(s.DB, &task, s.User, nil, requestId).Error
+		err := queries.Update(context.Background(), s.Logger, s.DB, &task, s.User, nil, requestId)
 		if err != nil {
 			s.Logger.Error().Err(err).Msg("Error saving task")
 		}
@@ -236,7 +237,7 @@ func (s *Scheduler) WithErrors(jobDefinition *SchedulerJobDefinition) func(jobID
 
 		requestId := getRequestIdForCronJob(jobID)
 
-		err := updateTaskStatus(s.DB, s.User, jobID.String(), TaskStatusFailed, jobError.Error(), requestId, results)
+		err := updateTaskStatus(s.Logger, s.DB, s.User, jobID.String(), TaskStatusFailed, jobError.Error(), requestId, results)
 		if err != nil {
 			s.Logger.Error().Err(err).Msg("Error updating task status")
 		}
@@ -266,7 +267,7 @@ func (s *Scheduler) After(jobDefinition *SchedulerJobDefinition) func(jobID uuid
 
 		requestId := getRequestIdForCronJob(jobID)
 
-		err := updateTaskStatus(s.DB, s.User, jobID.String(), TaskStatusDone, "", requestId, results)
+		err := updateTaskStatus(s.Logger, s.DB, s.User, jobID.String(), TaskStatusDone, "", requestId, results)
 		if err != nil {
 			s.Logger.Error().Err(err).Msg("Error updating task status")
 		}

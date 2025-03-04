@@ -1,7 +1,6 @@
 package file
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,7 +12,6 @@ import (
 	manager "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store"
-	"gorm.io/gorm"
 )
 
 func DownloadStoredFileHandler(mgr *manager.ResourceManager, db *database.Database, st store.Store) http.HandlerFunc {
@@ -49,22 +47,19 @@ func DownloadStoredFileHandler(mgr *manager.ResourceManager, db *database.Databa
 			return
 		}
 
-		query := "id = ?"
-		if !(a.SkipUserBinding || isAdmin) {
-			query += " AND created_by_id = ?"
+		filters := map[string]interface{}{
+			"id": GetUrlParam("id", r),
 		}
 
-		instanceId := GetUrlParam("id", r)
-		instance := models.File{}
+		if !(a.SkipUserBinding || isAdmin) {
+			filters["created_by_id"] = user.ID
+		}
 
-		res := queries.FindOne(db, &instance, instanceId, query, user.StringID())
-		if res.Error != nil {
-			if errors.Is(res.Error, gorm.ErrRecordNotFound) {
-				SendJsonResponse(w, http.StatusNotFound, nil, "Instance not found")
-				return
-			}
-			log.Error().Err(res.Error).Msgf("Error finding instance")
-			SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
+		instance := models.File{}
+		err = queries.FindOne(r.Context(), log, db, &instance, filters)
+		if err != nil {
+			log.Error().Err(err).Msgf("Instance not found")
+			SendJsonResponse(w, http.StatusInternalServerError, nil, "Instance not found")
 			return
 		}
 

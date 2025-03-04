@@ -1,28 +1,35 @@
 package scheduler
 
 import (
-	"errors"
+	"context"
 	"fmt"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
 	"github.com/google/uuid"
-	"gorm.io/gorm"
 )
 
-func getOrCreateJobDefinition(db *database.Database, schedulerUser *models.User, jdInput SchedulerJobDefinition) (*SchedulerJobDefinition, error) {
+func getOrCreateJobDefinition(db *database.Database, log *logger.Logger, schedulerUser *models.User, jdInput SchedulerJobDefinition) (*SchedulerJobDefinition, error) {
 
 	// If there is a job definition with the same name, return it
 	// Name must be unique
 	var instance SchedulerJobDefinition
-	q := "name = ? AND frequency_type = ? AND at_time = ? AND cron_expr = ? AND with_seconds = ? AND at_time = ?"
-	res := queries.FindOne(db, &instance, q, jdInput.Name, jdInput.FrequencyType, jdInput.AtTime, jdInput.CronExpr, jdInput.WithSeconds, jdInput.AtTime)
-	if res.Error != nil {
-		if !errors.Is(res.Error, gorm.ErrRecordNotFound) {
-			return nil, res.Error
-		}
+
+	filters := map[string]interface{}{
+		"name":           jdInput.Name,
+		"frequency_type": jdInput.FrequencyType,
+		"at_time":        jdInput.AtTime,
+		"cron_expr":      jdInput.CronExpr,
+		"with_seconds":   jdInput.WithSeconds,
+	}
+
+	err := queries.FindOne(context.Background(), log, db, &instance, filters)
+	if err != nil {
+		log.Error().Err(err).Interface("filters", filters).Msg("Failed to find job definition")
+		// return nil, err
 	}
 
 	if instance.Name != "" {
@@ -45,35 +52,38 @@ func getOrCreateJobDefinition(db *database.Database, schedulerUser *models.User,
 	id := uuid.New()
 	requestId := fmt.Sprintf("scheduler-worker::%s", id.String())
 
-	res = queries.Create(db, &instance, schedulerUser, requestId)
-	if res.Error != nil {
-		return nil, res.Error
+	err = queries.Create(context.Background(), log, db, &instance, schedulerUser, requestId)
+	if err != nil {
+		return nil, err
 	}
 
 	return &instance, nil
 }
 
-func updateTaskStatus(db *database.Database, schedulerUser *models.User, cronJobId string, status TaskStatus, errMsg string, requestId string, results string) error {
-	task := GetSchedulerTask(db, cronJobId)
+func updateTaskStatus(log *logger.Logger, db *database.Database, schedulerUser *models.User, cronJobId string, status TaskStatus, errMsg string, requestId string, results string) error {
+	task := GetSchedulerTask(log, db, cronJobId)
 	task.SystemData.UpdatedByID = schedulerUser.ID
 	task.Status = status
 	task.Error = errMsg
 	task.Results = results
 
-	previousState := GetSchedulerTask(db, cronJobId)
+	previousState := GetSchedulerTask(log, db, cronJobId)
 	differences := utils.CompareInterfaces(previousState, task)
 
-	return queries.Update(db, &task, schedulerUser, differences, requestId).Error
+	return queries.Update(context.Background(), log, db, &task, schedulerUser, differences, requestId)
 }
 
-func GetSchedulerTask(db *database.Database, cronJobId string) *SchedulerTask {
+func GetSchedulerTask(log *logger.Logger, db *database.Database, cronJobId string) *SchedulerTask {
 	var task SchedulerTask
 
-	q := "cron_job_id = ?"
-
-	err := queries.FindOne(db, &task, q, cronJobId).Error
-	if err != nil {
-		// ignore
+	filters := map[string]interface{}{
+		"cron_job_id": cronJobId,
 	}
+
+	err := queries.FindOne(context.Background(), log, db, &task, filters)
+	if err != nil {
+		return nil
+	}
+
 	return &task
 }

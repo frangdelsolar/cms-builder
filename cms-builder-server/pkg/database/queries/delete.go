@@ -1,44 +1,67 @@
 package queries
 
 import (
+	"context"
 	"reflect"
 
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
-	"gorm.io/gorm"
 )
 
-func Delete(db *Database, entity interface{}, user *models.User, requestId string) *gorm.DB {
+func Delete(ctx context.Context, log *logger.Logger, db *database.Database, entity interface{}, user *models.User, requestId string) error {
 	// Use reflection to determine if the entity is a slice or array
 	val := reflect.ValueOf(entity)
 	isSlice := val.Kind() == reflect.Slice || val.Kind() == reflect.Array
 
 	// Delete the entity or slice of entities
-	result := db.DB.Delete(entity)
+	result := db.DB.WithContext(ctx).Delete(entity)
 	if result.Error != nil {
-		return result
+		log.Error().
+			Err(result.Error).
+			Str("requestId", requestId).
+			Msg("Failed to delete entity")
+		return result.Error
 	}
 
+	// Log the deletion action
 	if isSlice {
-		// Handle slice of entities
 		for i := 0; i < val.Len(); i++ {
 			element := val.Index(i).Interface()
-
-			// Log the deletion action for each element
 			historyEntry, err := NewDatabaseLogEntry(DeleteCRUDAction, user, element, "", requestId)
 			if err != nil {
-				return nil
+				log.Error().
+					Err(err).
+					Str("requestId", requestId).
+					Msg("Failed to create database log entry")
+				return err
 			}
-			_ = db.DB.Create(historyEntry)
+			if err := db.DB.WithContext(ctx).Create(historyEntry).Error; err != nil {
+				log.Error().
+					Err(err).
+					Str("requestId", requestId).
+					Msg("Failed to save database log entry")
+				return err
+			}
 		}
 	} else {
-		// Handle single entity
 		historyEntry, err := NewDatabaseLogEntry(DeleteCRUDAction, user, entity, "", requestId)
 		if err != nil {
-			return nil
+			log.Error().
+				Err(err).
+				Str("requestId", requestId).
+				Msg("Failed to create database log entry")
+			return err
 		}
-		_ = db.DB.Create(historyEntry)
+		if err := db.DB.WithContext(ctx).Create(historyEntry).Error; err != nil {
+			log.Error().
+				Err(err).
+				Str("requestId", requestId).
+				Msg("Failed to save database log entry")
+			return err
+		}
 	}
 
-	return result
+	return nil
 }

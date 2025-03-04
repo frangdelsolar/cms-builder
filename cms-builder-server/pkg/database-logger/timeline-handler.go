@@ -1,14 +1,12 @@
 package databaselogger
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	manager "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
-	"gorm.io/gorm"
 )
 
 func TimelineHandler(m *manager.ResourceManager, db *database.Database) http.HandlerFunc {
@@ -75,16 +73,14 @@ func TimelineHandler(m *manager.ResourceManager, db *database.Database) http.Han
 			Page:  queryParams.Page,
 			Limit: queryParams.Limit,
 		}
-		query := "resource_id = ? AND resource_name = ?"
+		filters := map[string]interface{}{
+			"resource_id":   resourceId,
+			"resource_name": resourceName,
+		}
 
-		res := queries.FindMany(db, instances, pagination, queryParams.Order, query, resourceId, resourceName)
-		if res.Error != nil {
-			if errors.Is(res.Error, gorm.ErrRecordNotFound) {
-				SendJsonResponse(w, http.StatusNotFound, nil, "Instance not found")
-				return
-			}
-			log.Error().Err(res.Error).Msgf("Error finding instance")
-			SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
+		err = queries.FindMany(r.Context(), log, db, instances, pagination, queryParams.Order, filters)
+		if err != nil {
+			SendJsonResponse(w, http.StatusNotFound, nil, "Instance not found")
 			return
 		}
 

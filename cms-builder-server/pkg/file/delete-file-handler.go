@@ -1,7 +1,6 @@
 package file
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
@@ -10,7 +9,6 @@ import (
 	manager "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store"
-	"gorm.io/gorm"
 )
 
 func DeleteStoredFilesHandler(db *database.Database, st store.Store) manager.ApiFunction {
@@ -40,34 +38,30 @@ func DeleteStoredFilesHandler(db *database.Database, st store.Store) manager.Api
 				return
 			}
 
-			query := "id = ?"
-			if !(a.SkipUserBinding || isAdmin) {
-				query += " AND created_by_id = ?"
+			filters := map[string]interface{}{
+				"id": GetUrlParam("id", r),
 			}
 
-			instanceId := GetUrlParam("id", r)
-			instance := models.File{}
+			if !(a.SkipUserBinding || isAdmin) {
+				filters["created_by_id"] = user.ID
+			}
 
-			res := queries.FindOne(db, &instance, instanceId, query, user.StringID())
-			if res.Error != nil {
-				if errors.Is(res.Error, gorm.ErrRecordNotFound) {
-					SendJsonResponse(w, http.StatusNotFound, nil, "Instance not found")
-					return
-				}
-				log.Error().Err(res.Error).Msgf("Error finding instance")
-				SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
+			instance := models.File{}
+			err = queries.FindOne(r.Context(), log, db, &instance, filters)
+			if err != nil {
+				log.Error().Err(err).Msgf("Instance not found")
+				SendJsonResponse(w, http.StatusInternalServerError, nil, "Instance not found")
 				return
 			}
 
 			err = st.DeleteFile(&instance, log)
 			if err != nil {
-				SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
-				return
+				log.Warn().Err(err).Msg("Error deleting file. Path may not exist")
 			}
 
-			res = queries.Delete(db, &instance, user, requestId)
-			if res.Error != nil {
-				SendJsonResponse(w, http.StatusInternalServerError, nil, res.Error.Error())
+			err = queries.Delete(r.Context(), log, db, &instance, user, requestId)
+			if err != nil {
+				SendJsonResponse(w, http.StatusInternalServerError, nil, "Error deleting file")
 				return
 			}
 

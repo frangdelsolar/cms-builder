@@ -117,7 +117,7 @@ func TestRunJob(t *testing.T) {
 			beforeExec(jobId, jobName)
 
 			// Validate task was created in db and has status of running
-			task := pkg.GetSchedulerTask(bed.Db, jobId.String())
+			task := pkg.GetSchedulerTask(bed.Logger, bed.Db, jobId.String())
 			assert.NotNil(t, task)
 			assert.Equal(t, pkg.TaskStatusRunning, task.Status)
 
@@ -169,7 +169,7 @@ func TestRunJob(t *testing.T) {
 			assert.Equal(t, "", results)
 
 			// Validate the task status and results in the database
-			task = pkg.GetSchedulerTask(bed.Db, jobId.String())
+			task = pkg.GetSchedulerTask(bed.Logger, bed.Db, jobId.String())
 			assert.NotNil(t, task)
 			assert.Equal(t, tt.expectedStatus, task.Status)
 			assert.Equal(t, tt.expectedResult, task.Results)

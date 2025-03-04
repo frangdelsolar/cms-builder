@@ -1,8 +1,10 @@
 package queries
 
 import (
+	"context"
+
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	"gorm.io/gorm"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 )
 
 type Pagination struct {
@@ -11,25 +13,44 @@ type Pagination struct {
 	Limit int   `json:"limit"`
 }
 
-func FindMany(db *database.Database, entitySlice interface{}, pagination *Pagination, order string, query string, args ...interface{}) *gorm.DB {
+func FindMany(ctx context.Context, log *logger.Logger, db *database.Database, entitySlice interface{}, pagination *Pagination, order string, filters map[string]interface{}) error {
 	if order == "" {
 		order = "id desc"
 	}
 
-	if pagination == nil {
-		return db.DB.Order(order).Where(query, args...).Find(entitySlice)
+	// Build the query
+	query := db.DB.Model(entitySlice).WithContext(ctx)
+	for key, value := range filters {
+		query = query.Where(key, value)
 	}
 
 	// Retrieve total number of records
-	res := db.DB.Model(entitySlice).Where(query, args...).Count(&pagination.Total)
-	if res.Error != nil {
-		return res
+	if pagination != nil {
+		if err := query.Count(&pagination.Total).Error; err != nil {
+			log.Error().
+				Err(err).
+				Interface("filters", filters).
+				Msg("Failed to count records")
+			return err
+		}
 	}
 
-	// Apply pagination
-	filtered := db.DB.Where(query, args...).Order(order)
-	limit := pagination.Limit
-	offset := (pagination.Page - 1) * pagination.Limit
+	// Apply pagination and ordering
+	if pagination != nil {
+		limit := pagination.Limit
+		offset := (pagination.Page - 1) * pagination.Limit
+		query = query.Limit(limit).Offset(offset)
+	}
+	query = query.Order(order)
 
-	return filtered.Limit(limit).Offset(offset).Find(entitySlice)
+	// Execute the query
+	if err := query.Debug().Find(entitySlice).Error; err != nil {
+		log.Error().
+			Err(err).
+			Interface("filters", filters).
+			Msg("Failed to find records")
+		return err
+	}
+
+	return nil
 }

@@ -30,16 +30,19 @@ func VerifyUser(userIdToken string, firebase *clients.FirebaseManager, db *datab
 	}
 
 	localUser := models.User{}
+	filters := map[string]interface{}{
+		"firebase_id": accessToken.UID,
+	}
 
-	q := queries.FindOne(db, &localUser, "firebase_id = ?", accessToken.UID).Debug()
-	if q.Error != nil {
-		if !errors.Is(q.Error, gorm.ErrRecordNotFound) {
+	err = queries.FindOne(context.Background(), log, db, &localUser, filters)
+	if err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			// Need
 			log.Warn().Msg("User is firebase user but not in database")
 			return RegisterFirebaseUserInDatabase(accessToken, firebase, db, systemUser, requestId, log)
 		} else {
-			log.Error().Err(q.Error).Msg("Error finding user in database")
-			return nil, q.Error
+			log.Error().Err(err).Msg("Error finding user in database")
+			return nil, err
 		}
 	}
 
@@ -71,9 +74,8 @@ func RegisterFirebaseUserInDatabase(accessToken *firebaseAuth.Token, firebase *c
 	}
 
 	// Save the user to the database
-	res := queries.Create(db, localUser, systemUser, requestId)
-	if res.Error != nil {
-		err := fmt.Errorf("error creating user in database: %v", res.Error)
+	err := queries.Create(context.Background(), log, db, localUser, systemUser, requestId)
+	if err != nil {
 		log.Error().Err(err).Msg("Failed to create user")
 		return nil, err
 	}
@@ -184,9 +186,7 @@ func CreateUserWithRole(input models.RegisterUserInput, firebase *clients.Fireba
 		Roles:      roles,
 	}
 
-	log.Info().Interface("user", newUser).Msg("Creating user in database")
-
-	if err := queries.Create(db, &newUser, systemUser, requestId).Error; err != nil {
+	if err := queries.Create(context.Background(), log, db, &newUser, systemUser, requestId); err != nil {
 		log.Error().Err(err).Msg("Failed to create user in database")
 		return nil, fmt.Errorf("failed to create user in database: %w", err)
 	}
@@ -221,8 +221,6 @@ func registerOrGetFirebaseUser(ctx context.Context, firebase *clients.FirebaseMa
 
 // Helper function to find a user by email
 func findUserByEmail(db *database.Database, email string, log *logger.Logger) (*models.User, error) {
-	log.Debug().Str("email", email).Msg("Checking if user exists in database")
-
 	var user models.User
 	if err := db.DB.Where("email = ?", email).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -232,7 +230,6 @@ func findUserByEmail(db *database.Database, email string, log *logger.Logger) (*
 		return nil, fmt.Errorf("failed to query user from database: %w", err)
 	}
 
-	log.Info().Interface("user", user).Msg("User found in database")
 	return &user, nil
 }
 
@@ -245,14 +242,12 @@ func handleExistingUser(existingUser *models.User, fbUserId string, db *database
 		return existingUser, nil
 	}
 
-	log.Warn().Msg("User already exists in database. Updating Firebase ID")
-
 	previousState := *existingUser
 	differences := utils.CompareInterfaces(previousState, existingUser)
 
 	existingUser.FirebaseId = fbUserId
 
-	if err := queries.Update(db, existingUser, systemUser, differences, requestId).Error; err != nil {
+	if err := queries.Update(context.Background(), log, db, existingUser, systemUser, differences, requestId); err != nil {
 		log.Error().Err(err).Msg("Failed to update user in database")
 		return nil, fmt.Errorf("failed to update user in database: %w", err)
 	}
