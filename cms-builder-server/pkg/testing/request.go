@@ -23,8 +23,12 @@ func CreateTestRequest(t *testing.T, method, path, body string, isAuth bool, use
 	req.Header.Set("Origin", "http://localhost:3000")
 
 	ctx := req.Context()
-	ctx = context.WithValue(ctx, server.CtxRequestIsAuth, isAuth)
-	ctx = context.WithValue(ctx, server.CtxRequestUser, user)
+
+	if user != (*models.User)(nil) {
+		ctx = context.WithValue(ctx, server.CtxRequestIsAuth, isAuth)
+		ctx = context.WithValue(ctx, server.CtxRequestUser, user)
+	}
+
 	ctx = context.WithValue(ctx, server.CtxRequestLogger, log)
 
 	return req.WithContext(ctx)

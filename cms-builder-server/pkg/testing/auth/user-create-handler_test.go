@@ -1,4 +1,4 @@
-package resourcemanager_test
+package auth_test
 
 import (
 	"encoding/json"
@@ -6,17 +6,16 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing"
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing/resource-manager_test"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestDefaultCreateHandler(t *testing.T) {
-	bed := SetupHandlerTestBed()
+func TestUserCreateHandler(t *testing.T) {
+	bed := SetupAuthTestBed()
 
 	tests := []struct {
 		name           string
@@ -31,8 +30,8 @@ func TestDefaultCreateHandler(t *testing.T) {
 		{
 			name:           "Success",
 			method:         http.MethodPost,
-			path:           "/mock-struct/new",
-			requestBody:    `{"field1": "` + RandomString(10) + `", "field2": "` + RandomEmail() + `"}`,
+			path:           "/user/new",
+			requestBody:    `{"name": "` + RandomString(10) + `", "email": "` + RandomEmail() + `"}`,
 			user:           bed.AdminUser,
 			expectedStatus: http.StatusCreated,
 			expectedBody:   "has been created",
@@ -40,8 +39,8 @@ func TestDefaultCreateHandler(t *testing.T) {
 		{
 			name:           "Invalid Method",
 			method:         http.MethodGet,
-			path:           "/mock-struct/new",
-			requestBody:    `{"field1": "` + RandomString(10) + `", "field2": "` + RandomString(10) + `"}`,
+			path:           "/user/new",
+			requestBody:    `{"name": "` + RandomString(10) + `", "email": "` + RandomEmail() + `"}`,
 			user:           bed.AdminUser,
 			expectedStatus: http.StatusMethodNotAllowed,
 			expectedBody:   "Method not allowed",
@@ -58,17 +57,17 @@ func TestDefaultCreateHandler(t *testing.T) {
 		{
 			name:           "Unauthorized User",
 			method:         http.MethodPost,
-			path:           "/mock-struct/new",
-			requestBody:    `{"field1": "` + RandomString(10) + `", "field2": "` + RandomString(10) + `"}`,
-			user:           bed.NoRoleUser,
+			path:           "/user/new",
+			requestBody:    `{"name": "` + RandomString(10) + `", "email": "` + RandomEmail() + `"}`,
+			user:           bed.VisitorUser,
 			expectedStatus: http.StatusForbidden,
 			expectedBody:   "User is not allowed to create this resource",
 		},
 		{
 			name:           "Invalid Request Body",
 			method:         http.MethodPost,
-			path:           "/mock-struct/new",
-			requestBody:    `{"field1": "` + RandomString(10) + `", "field2": "` + RandomString(10) + `"`,
+			path:           "/user/new",
+			requestBody:    `{"name": "` + RandomString(10) + `", "email": "` + RandomEmail() + `"`,
 			user:           bed.AdminUser,
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   "Invalid request body",
@@ -77,8 +76,8 @@ func TestDefaultCreateHandler(t *testing.T) {
 		{
 			name:           "Validation Errors",
 			method:         http.MethodPost,
-			path:           "/mock-struct/new",
-			requestBody:    `{"field2": "` + RandomString(10) + `"}`,
+			path:           "/user/new",
+			requestBody:    `{"name": "` + RandomString(10) + `"}`,
 			user:           bed.AdminUser,
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   "Validation failed",
@@ -92,7 +91,7 @@ func TestDefaultCreateHandler(t *testing.T) {
 			}
 
 			req := CreateTestRequest(t, tt.method, tt.path, tt.requestBody, true, tt.user, bed.Logger)
-			rr := ExecuteHandler(t, DefaultCreateHandler(bed.Src, bed.Db), req)
+			rr := ExecuteHandler(t, auth.UserCreateHandler(bed.Src, bed.Db), req)
 
 			assert.Equal(t, tt.expectedStatus, rr.Code)
 			assert.Contains(t, rr.Body.String(), tt.expectedBody)
@@ -101,12 +100,12 @@ func TestDefaultCreateHandler(t *testing.T) {
 }
 
 func TestUserCannotCreateRestrictedFields(t *testing.T) {
-	bed := SetupHandlerTestBed()
+	bed := SetupAuthTestBed()
 
 	// Create a Gorilla Mux router
 	router := mux.NewRouter()
-	path := "/mock-struct/new"
-	router.HandleFunc(path, DefaultCreateHandler(bed.Src, bed.Db))
+	path := "/user/new"
+	router.HandleFunc(path, auth.UserCreateHandler(bed.Src, bed.Db))
 
 	rand := RandomUint()
 
@@ -115,24 +114,11 @@ func TestUserCannotCreateRestrictedFields(t *testing.T) {
 		body map[string]interface{}
 	}{
 		{
-			name: "UpdatedByID",
-			body: map[string]interface{}{
-				"UpdatedByID": rand,
-				"field1":      "First Update",
-			},
-		},
-		{
-			name: "CreatedByID",
-			body: map[string]interface{}{
-				"CreatedByID": rand,
-				"field1":      "Second Update",
-			},
-		},
-		{
 			name: "ID",
 			body: map[string]interface{}{
-				"ID":     rand,
-				"field1": "Third Update",
+				"ID":    rand,
+				"name":  RandomName(),
+				"email": RandomEmail(),
 			},
 		},
 	}
@@ -161,13 +147,7 @@ func TestUserCannotCreateRestrictedFields(t *testing.T) {
 			assert.NoError(t, err)
 
 			// Check that the instance was not updated
-			assert.NotEqual(t, rand, response.Data.(map[string]interface{})["UpdatedByID"])
-			assert.NotEqual(t, rand, response.Data.(map[string]interface{})["CreatedByID"])
 			assert.NotEqual(t, rand, response.Data.(map[string]interface{})["ID"])
-
-			assert.NotEqual(t, bed.AdminUser.ID, response.Data.(map[string]interface{})["UpdatedByID"])
-			assert.NotEqual(t, bed.AdminUser.ID, response.Data.(map[string]interface{})["CreatedByID"])
-
 		})
 	}
 }

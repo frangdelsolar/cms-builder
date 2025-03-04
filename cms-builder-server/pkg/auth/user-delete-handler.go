@@ -37,17 +37,22 @@ var UserDeleteHandler mgr.ApiFunction = func(a *mgr.Resource, db *database.Datab
 			return
 		}
 
-		filters := map[string]interface{}{}
-
 		if !isAdmin {
-			filters["id"] = user.ID
+			if user.StringID() != GetUrlParam("id", r) {
+				SendJsonResponse(w, http.StatusNotFound, nil, "Instance not found")
+				return
+			}
+		}
+
+		filters := map[string]interface{}{
+			"id": GetUrlParam("id", r),
 		}
 
 		instance := a.GetOne()
 		err = queries.FindOne(r.Context(), log, db, &instance, filters)
 		if err != nil {
 			log.Error().Err(err).Msgf("Instance not found")
-			SendJsonResponse(w, http.StatusInternalServerError, nil, "Instance not found")
+			SendJsonResponse(w, http.StatusNotFound, nil, "Instance not found")
 			return
 		}
 

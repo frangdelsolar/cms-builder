@@ -1,20 +1,19 @@
-package resourcemanager_test
+package auth_test
 
 import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing"
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing/resource-manager_test"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestDefaultDetailHandler(t *testing.T) {
-	bed := SetupHandlerTestBed()
+func TestUserDetailHandler(t *testing.T) {
+	bed := SetupAuthTestBed()
 
 	tests := []struct {
 		name           string
@@ -27,102 +26,93 @@ func TestDefaultDetailHandler(t *testing.T) {
 		expectedBody   string
 	}{
 		{
-			name:        "Success",
-			method:      http.MethodGet,
-			path:        "",
-			requestBody: "",
-			user:        bed.AdminUser,
-			setup: func() string {
-				instance := CreateMockResourceInstance(bed.AdminUser.ID)
-				bed.Db.DB.Create(&instance)
-				return "/mock-struct/" + instance.StringID()
-			},
-			expectedStatus: http.StatusOK,
-			expectedBody:   "Detail",
-		},
-		{
 			name:           "Invalid Method",
 			method:         http.MethodPost,
-			path:           "/mock-struct/123",
+			path:           "/user/123",
 			requestBody:    "",
 			user:           bed.AdminUser,
 			expectedStatus: http.StatusMethodNotAllowed,
 			expectedBody:   "Method not allowed",
 		},
 		{
-			name:           "Anonymous is not allowed",
-			method:         http.MethodGet,
-			path:           "/mock-struct/123",
-			requestBody:    "",
-			user:           &models.User{},
-			expectedStatus: http.StatusForbidden,
-			expectedBody:   "User is not allowed to access this resource",
-		},
-		{
-			name:           "Unauthorized User - Read Permission",
-			method:         http.MethodGet,
-			path:           "/mock-struct/123",
-			requestBody:    "",
-			user:           bed.NoRoleUser,
-			expectedStatus: http.StatusForbidden,
-			expectedBody:   "User is not allowed to access this resource",
-		},
-		{
 			name:           "Resource Not Found",
 			method:         http.MethodGet,
-			path:           "/mock-struct/99999",
+			path:           "/user/99999",
 			requestBody:    "",
 			user:           bed.AdminUser,
 			expectedStatus: http.StatusNotFound,
 			expectedBody:   "Instance not found",
 		},
 		{
-			name:        "Admin Bypass User Binding",
+			name:           "Unauthorized User - Read Permission",
+			method:         http.MethodGet,
+			path:           "/user/123",
+			requestBody:    "",
+			user:           bed.NoRoleUser,
+			expectedStatus: http.StatusForbidden,
+			expectedBody:   "User is not allowed to access this resource",
+		},
+		{
+			name:           "Anonymous is not allowed",
+			method:         http.MethodGet,
+			path:           "/user/123",
+			requestBody:    "",
+			user:           &models.User{},
+			expectedStatus: http.StatusForbidden,
+			expectedBody:   "User is not allowed to access this resource",
+		},
+		{
+			name:           "Admin can view himself",
+			method:         http.MethodGet,
+			path:           "/user/" + bed.AdminUser.StringID(),
+			requestBody:    "",
+			user:           bed.AdminUser,
+			expectedStatus: http.StatusOK,
+			expectedBody:   `"ID":` + bed.AdminUser.StringID(),
+		},
+		{
+			name:        "Admin can view others",
 			method:      http.MethodGet,
-			path:        "/mock-struct/123",
+			path:        "",
 			requestBody: "",
 			user:        bed.AdminUser,
 			setup: func() string {
-				instance := CreateMockResourceInstance(bed.VisitorUser.ID) // Resource owned by another user
+				instance := CreateNoRoleUser()
 				bed.Db.DB.Create(&instance)
-				return "/mock-struct/" + instance.StringID()
+				return "/user/" + instance.StringID()
 			},
 			expectedStatus: http.StatusOK,
-			expectedBody:   "Detail",
+			expectedBody:   `"ID":`,
 		},
 		{
-			name:        "User Cannot Access Resource They Did Not Create",
+			name:           "Visitor can view himself",
+			method:         http.MethodGet,
+			path:           "/user/" + bed.VisitorUser.StringID(),
+			requestBody:    "",
+			user:           bed.VisitorUser,
+			expectedStatus: http.StatusOK,
+			expectedBody:   `"ID":` + bed.VisitorUser.StringID(),
+		},
+		{
+			name:        "Visitor can not view others",
 			method:      http.MethodGet,
-			path:        "/mock-struct/123",
+			path:        "",
 			requestBody: "",
-			user:        CreateAllAllowedUser(),
+			user:        bed.VisitorUser,
 			setup: func() string {
-				instance := CreateMockResourceInstance(bed.AdminUser.ID) // Resource owned by another user
+				instance := CreateNoRoleUser()
 				bed.Db.DB.Create(&instance)
-				return "/mock-struct/" + instance.StringID()
+				return "/user/" + instance.StringID()
 			},
 			expectedStatus: http.StatusNotFound,
 			expectedBody:   "Instance not found",
 		},
-		// 		{
-		// 	name:        "Database Error",
-		// 	method:      http.MethodGet,
-		// 	path:        "/mock-struct/123",
-		// 	requestBody: "",
-		// 	user:        bed.AdminUser,
-		// 	setup: func() string {
-		// 		bed.Db.Close() // Simulate a database error
-		// 		return "/mock-struct/123"
-		// 	},
-		// 	expectedStatus: http.StatusInternalServerError,
-		// 	expectedBody:   "Error finding instance",
-		// },
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Reset the test bed for each test case
-			bed := SetupHandlerTestBed()
+			bed := SetupAuthTestBed()
 
 			path := tt.path
 
@@ -133,7 +123,7 @@ func TestDefaultDetailHandler(t *testing.T) {
 
 			// Create a Gorilla Mux router
 			router := mux.NewRouter()
-			router.HandleFunc("/mock-struct/{id}", DefaultDetailHandler(bed.Src, bed.Db))
+			router.HandleFunc("/user/{id}", auth.UserDetailHandler(bed.Src, bed.Db))
 
 			// Create and execute request
 			req := CreateTestRequest(t, tt.method, path, tt.requestBody, true, tt.user, bed.Logger)

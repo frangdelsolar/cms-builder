@@ -12,7 +12,10 @@ import (
 )
 
 var filterKeys = map[string]bool{
-	"ID": true,
+	"ID":        true,
+	"CreatedAt": true,
+	"UpdatedAt": true,
+	"DeletedAt": true,
 }
 
 // DefaultCreateHandler handles the creation of a new resource.
@@ -31,7 +34,7 @@ var UserCreateHandler mgr.ApiFunction = func(a *mgr.Resource, db *database.Datab
 		}
 
 		// 2. Check Permissions
-		if !UserIsAllowed(a.Permissions, user.GetRoles(), OperationCreate, a.ResourceNames.Singular, log) { // corrected to OperationCreate
+		if !UserIsAllowed(a.Permissions, user.GetRoles(), OperationCreate, a.ResourceNames.Singular, log) {
 			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to create this resource")
 			return
 		}

@@ -18,15 +18,13 @@ func SetupUserResource(firebase *clients.FirebaseManager, db *database.Database,
 	skipUserBinding := true // Users don't have a created_by field
 
 	permissions := server.RolePermissionMap{
-		models.AdminRole: server.AllAllowedAccess,
-		// models.VisitorRole: []server.CrudOperation{server.OperationRead},
-		models.VisitorRole: []server.CrudOperation{server.OperationRead, server.OperationUpdate},
+		models.AdminRole:   server.AllAllowedAccess,
+		models.VisitorRole: []server.CrudOperation{server.OperationRead},
 	}
 
 	validators := manager.ValidatorsMap{
 		"Email": manager.ValidatorsList{manager.RequiredValidator, manager.EmailValidator},
 		"Name":  manager.ValidatorsList{manager.RequiredValidator},
-		"Roles": manager.ValidatorsList{manager.RequiredValidator},
 	}
 
 	handlers := &manager.ApiHandlers{

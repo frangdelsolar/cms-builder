@@ -6,6 +6,10 @@ func CreateAllAllowedUser() *models.User {
 	return CreateUser("All Allowed User", AllAllowedRole.S())
 }
 
+func CreateSystemUser() *models.User {
+	return CreateUser("System User", "")
+}
+
 func CreateAdminUser() *models.User {
 	return CreateUser("Admin User", models.AdminRole.S())
 }
@@ -31,7 +35,7 @@ func CreateUser(name string, roles string) *models.User {
 	name += " - " + RandomString(4)
 
 	return &models.User{
-		ID:    RandomUint(),
+		ID:    RandomUint(), // assing a random ID if we don't actually write the user to the database
 		Name:  name,
 		Email: RandomEmail(),
 		Roles: roles,

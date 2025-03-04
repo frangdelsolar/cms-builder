@@ -44,7 +44,7 @@ func FindMany(ctx context.Context, log *logger.Logger, db *database.Database, en
 	query = query.Order(order)
 
 	// Execute the query
-	if err := query.Debug().Find(entitySlice).Error; err != nil {
+	if err := query.Find(entitySlice).Error; err != nil {
 		log.Error().
 			Err(err).
 			Interface("filters", filters).

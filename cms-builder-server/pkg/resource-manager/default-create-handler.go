@@ -12,6 +12,9 @@ import (
 // filterKeys defines the keys to be filtered out from the request body.
 var filterKeys = map[string]bool{
 	"ID":          true,
+	"CreatedAt":   true,
+	"UpdatedAt":   true,
+	"DeletedAt":   true,
 	"CreatedByID": true,
 	"UpdatedByID": true,
 }
