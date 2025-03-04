@@ -1,13 +1,17 @@
 package resourcemanager_test
 
 import (
+	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing/resource-manager_test"
+	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -70,35 +74,6 @@ func TestDefaultCreateHandler(t *testing.T) {
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   "Validation failed",
 		},
-		// TODO
-		// {
-		// 	name:           "User can not set created_by",
-		// 	method:         http.MethodPost,
-		// 	path:           "/mock-struct/new",
-		// 	requestBody:    `{"CreatedByID": 1, "field1": "` + RandomString(10) + `", "field2": "` + RandomString(10) + `"`,
-		// 	user:           bed.AdminUser,
-		// 	expectedStatus: http.StatusBadRequest,
-		// 	expectedBody:   "Invalid request body",
-		// },
-		// {
-		// 	name:           "Invalid Request Body - Extra Field",
-		// 	method:         http.MethodPost,
-		// 	path:           "/mock-struct/new",
-		// 	requestBody:    `{"field1": "` + RandomString(10) + `", "field2": "` + RandomString(10) + `", "extra": "` + RandomString(10) + `"}`,
-		// 	user:           bed.AdminUser,
-		// 	expectedStatus: http.StatusBadRequest,
-		// 	expectedBody:   "Invalid request body",
-		// },
-		// {
-		// 	name:           "Database Error",
-		// 	method:         http.MethodPost,
-		// 	path:           "/mock-struct/new",
-		// 	requestBody:    `{"field1": "` + RandomString(10) + `", "field2": "` + RandomString(10) + `"}`,
-		// 	user:           bed.AdminUser,
-		// 	expectedStatus: http.StatusInternalServerError,
-		// 	expectedBody:   "Error creating resource",
-		// 	setup:          func() { bed.Db.Close() },
-		// },
 	}
 
 	for _, tt := range tests {
@@ -112,6 +87,78 @@ func TestDefaultCreateHandler(t *testing.T) {
 
 			assert.Equal(t, tt.expectedStatus, rr.Code)
 			assert.Contains(t, rr.Body.String(), tt.expectedBody)
+		})
+	}
+}
+
+func TestUserCannotCreateRestrictedFields(t *testing.T) {
+	bed := SetupHandlerTestBed()
+
+	// Create a Gorilla Mux router
+	router := mux.NewRouter()
+	path := "/mock-struct/new"
+	router.HandleFunc(path, DefaultCreateHandler(bed.Src, bed.Db))
+
+	rand := RandomUint()
+
+	tests := []struct {
+		name string
+		body map[string]interface{}
+	}{
+		{
+			name: "UpdatedByID",
+			body: map[string]interface{}{
+				"UpdatedByID": rand,
+				"field1":      "First Update",
+			},
+		},
+		{
+			name: "CreatedByID",
+			body: map[string]interface{}{
+				"CreatedByID": rand,
+				"field1":      "Second Update",
+			},
+		},
+		{
+			name: "ID",
+			body: map[string]interface{}{
+				"ID":     rand,
+				"field1": "Third Update",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			stringBody, err := json.Marshal(tt.body)
+			assert.NoError(t, err)
+
+			// Create and execute request
+			req := CreateTestRequest(t, http.MethodPost, path, string(stringBody), true, bed.AdminUser, bed.Logger)
+			rr := httptest.NewRecorder()
+
+			// Serve the request using the router
+			router.ServeHTTP(rr, req)
+
+			// Assertions
+			assert.Equal(t, http.StatusCreated, rr.Code)
+
+			// Check that the instance was not updated
+			var response server.Response
+
+			// unmarshall body[data] into createdInstance
+			err = json.Unmarshal(rr.Body.Bytes(), &response)
+			assert.NoError(t, err)
+
+			// Check that the instance was not updated
+			assert.NotEqual(t, rand, response.Data.(map[string]interface{})["UpdatedByID"])
+			assert.NotEqual(t, rand, response.Data.(map[string]interface{})["CreatedByID"])
+			assert.NotEqual(t, rand, response.Data.(map[string]interface{})["ID"])
+
+			assert.NotEqual(t, bed.AdminUser.ID, response.Data.(map[string]interface{})["UpdatedByID"])
+			assert.NotEqual(t, bed.AdminUser.ID, response.Data.(map[string]interface{})["CreatedByID"])
+
 		})
 	}
 }

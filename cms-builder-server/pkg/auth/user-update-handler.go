@@ -1,4 +1,4 @@
-package resourcemanager
+package auth
 
 import (
 	"encoding/json"
@@ -8,11 +8,12 @@ import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
+	mgr "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
 )
 
-var DefaultUpdateHandler ApiFunction = func(a *Resource, db *database.Database) http.HandlerFunc {
+var UserUpdateHandler mgr.ApiFunction = func(a *mgr.Resource, db *database.Database) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		requestCtx := GetRequestContext(r)
 		log := requestCtx.Logger
@@ -39,19 +40,16 @@ var DefaultUpdateHandler ApiFunction = func(a *Resource, db *database.Database) 
 		}
 
 		// 3. Construct Query (User Binding)
-		filters := map[string]interface{}{
-			"id": GetUrlParam("id", r),
-		}
-
-		if !(a.SkipUserBinding || isAdmin) {
-			filters["created_by_id"] = user.ID
+		filters := map[string]interface{}{}
+		if !isAdmin {
+			filters["id"] = user.ID
 		}
 
 		instance := a.GetOne()
 		err = queries.FindOne(r.Context(), log, db, &instance, filters)
 		if err != nil {
 			log.Error().Err(err).Msgf("Instance not found")
-			SendJsonResponse(w, http.StatusNotFound, nil, "Instance not found")
+			SendJsonResponse(w, http.StatusInternalServerError, nil, "Instance not found")
 			return
 		}
 
@@ -67,9 +65,6 @@ var DefaultUpdateHandler ApiFunction = func(a *Resource, db *database.Database) 
 			return
 		}
 
-		// 6. Add User Information
-		body["UpdatedByID"] = user.ID
-
 		// 7. Marshal Body to JSON
 		bodyBytes, err := json.Marshal(body)
 		if err != nil {
@@ -83,6 +78,7 @@ var DefaultUpdateHandler ApiFunction = func(a *Resource, db *database.Database) 
 		err = json.Unmarshal(bodyBytes, &instance)
 		if err != nil {
 			fmt.Printf("Error unmarshalling request body: %v\n", err)
+			log.Error().Err(err).Msg("Error unmarshalling request body")
 			SendJsonResponse(w, http.StatusInternalServerError, nil, "Invalid request body")
 			return
 		}

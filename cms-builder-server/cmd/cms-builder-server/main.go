@@ -16,9 +16,23 @@ func main() {
 
 	environment := flag.String("env", "test", "environemnt")
 	runPostman := flag.Bool("postman", false, "Generate Postman files")
+	project := flag.String("project", "", "Generate Postman files")
+	resource := flag.String("resource", "", "Generate Postman files")
 	flag.Parse()
 
 	loadEnv(*environment)
+
+	if *project != "" {
+		fmt.Printf("Generating project %s\n", *project)
+		// generate project
+		os.Exit(0)
+	}
+
+	if *resource != "" {
+		fmt.Printf("Generating resource %s\n", *resource)
+		// generate resource
+		os.Exit(0)
+	}
 
 	if !*runPostman {
 		fmt.Print("Nothing to be done here...")

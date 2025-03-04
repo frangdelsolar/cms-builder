@@ -1,4 +1,4 @@
-package resourcemanager
+package auth
 
 import (
 	"net/http"
@@ -6,11 +6,12 @@ import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
+	mgr "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 )
 
 // DefaultListHandler handles the retrieval of a list of resources.
-var DefaultListHandler ApiFunction = func(a *Resource, db *database.Database) http.HandlerFunc {
+var UserListHandler mgr.ApiFunction = func(a *mgr.Resource, db *database.Database) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		requestCtx := GetRequestContext(r)
 		log := requestCtx.Logger
@@ -54,14 +55,14 @@ var DefaultListHandler ApiFunction = func(a *Resource, db *database.Database) ht
 		order := queryParams.Order
 
 		filters := map[string]interface{}{}
-
-		if !(a.SkipUserBinding || isAdmin) {
-			filters["created_by_id"] = user.FirebaseId
+		if !isAdmin {
+			filters["id"] = user.ID
 		}
+
 		err = queries.FindMany(r.Context(), log, db, instances, pagination, order, filters)
 		if err != nil {
 			log.Error().Err(err).Msgf("Error finding instances")
-			SendJsonResponse(w, http.StatusNotFound, nil, "Error finding instances")
+			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
 		}
 

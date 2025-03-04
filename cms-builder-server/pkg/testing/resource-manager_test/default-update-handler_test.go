@@ -1,6 +1,7 @@
 package resourcemanager_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -66,7 +67,7 @@ func TestDefaultUpdateHandler(t *testing.T) {
 			requestBody:    `{"field1": "Updated Name", "field2": "updated@example.com"}`,
 			user:           bed.VisitorUser,
 			expectedStatus: http.StatusForbidden,
-			expectedBody:   "User is not allowed to delete this resource",
+			expectedBody:   "User is not allowed to update this resource",
 		},
 		{
 			name:           "Resource Not Found",
@@ -77,7 +78,6 @@ func TestDefaultUpdateHandler(t *testing.T) {
 			expectedStatus: http.StatusNotFound,
 			expectedBody:   "Instance not found",
 		},
-
 		{
 			name:           "Invalid Request Body",
 			method:         http.MethodPut,
@@ -92,7 +92,6 @@ func TestDefaultUpdateHandler(t *testing.T) {
 				return instance
 			},
 		},
-
 		{
 			name:           "Validation Errors",
 			method:         http.MethodPut,
@@ -107,7 +106,6 @@ func TestDefaultUpdateHandler(t *testing.T) {
 				return instance
 			},
 		},
-
 		{
 			name:        "Admin Bypass User Binding",
 			method:      http.MethodPut,
@@ -134,7 +132,7 @@ func TestDefaultUpdateHandler(t *testing.T) {
 				return instance
 			},
 			expectedStatus: http.StatusForbidden,
-			expectedBody:   "User is not allowed to delete this resource",
+			expectedBody:   "User is not allowed to update this resource",
 		},
 		{
 			name:        "No Changes",
@@ -151,47 +149,15 @@ func TestDefaultUpdateHandler(t *testing.T) {
 			expectedBody:   "is up to date",
 			overrideBody:   true,
 		},
-		// TODO
-		// {
-		// 	name:           "User can not set updated_by",
-		// 	method:         http.MethodPost,
-		// 	path:           "/mock-struct/new",
-		// 	requestBody:    `{"CreatedByID": 1, "field1": "` + RandomString(10) + `", "field2": "` + RandomString(10) + `"`,
-		// 	user:           bed.AdminUser,
-		// 	expectedStatus: http.StatusBadRequest,
-		// 	expectedBody:   "Invalid request body",
-		// },
-		// {
-		// 	name:           "User can not set created_by",
-		// 	method:         http.MethodPost,
-		// 	path:           "/mock-struct/new",
-		// 	requestBody:    `{"CreatedByID": 1, "field1": "` + RandomString(10) + `", "field2": "` + RandomString(10) + `"`,
-		// 	user:           bed.AdminUser,
-		// 	expectedStatus: http.StatusBadRequest,
-		// 	expectedBody:   "Invalid request body",
-		// },
-		// {
-		// 	name:           "Invalid Request Body - Extra Field",
-		// 	method:         http.MethodPut,
-		// 	path:           "/mock-struct/123",
-		// 	requestBody:    `{"field1": "Updated Name", "field2": "updated@example.com", "extra": "field"}`, // Unexpected field
-		// 	user:           bed.AdminUser,
-		// 	expectedStatus: http.StatusBadRequest,
-		// 	expectedBody:   "Invalid request body",
-		// setup: func() *MockStruct {
-		// 	instance := CreateMockResourceInstance(bed.AdminUser.ID)
-		// 	bed.Db.DB.Create(&instance)
-		// 	return instance
-		// },
 		// {
 		// 	name:        "Database Error",
 		// 	method:      http.MethodPut,
 		// 	path:        "/mock-struct/123",
 		// 	requestBody: `{"field1": "Updated Name", "field2": "updated@example.com"}`,
 		// 	user:        bed.AdminUser,
-		// 	setup: func() string {
+		// 	setup: func() *MockStruct {
 		// 		bed.Db.Close() // Simulate a database error
-		// 		return "/mock-struct/123"
+		// 		return &MockStruct{}
 		// 	},
 		// 	expectedStatus: http.StatusInternalServerError,
 		// 	expectedBody:   "Error finding instance",
@@ -210,7 +176,6 @@ func TestDefaultUpdateHandler(t *testing.T) {
 
 			// Run setup if provided
 			if tt.setup != nil {
-
 				instance = tt.setup()
 				path = "/mock-struct/" + instance.StringID()
 				if tt.overrideBody {
@@ -232,6 +197,76 @@ func TestDefaultUpdateHandler(t *testing.T) {
 			// Assertions
 			assert.Equal(t, tt.expectedStatus, rr.Code)
 			assert.Contains(t, rr.Body.String(), tt.expectedBody)
+		})
+	}
+}
+
+func TestUserCannotUpdateRestrictedFields(t *testing.T) {
+	bed := SetupHandlerTestBed()
+
+	// Create a mock instance
+	instance := CreateMockResourceInstance(bed.AdminUser.ID)
+	bed.Db.DB.Create(&instance)
+
+	// Create a Gorilla Mux router
+	router := mux.NewRouter()
+	router.HandleFunc("/mock-struct/{id}", DefaultUpdateHandler(bed.Src, bed.Db))
+
+	path := "/mock-struct/" + instance.StringID()
+	tests := []struct {
+		name string
+		body map[string]interface{}
+	}{
+		{
+			name: "UpdatedByID",
+			body: map[string]interface{}{
+				"UpdatedByID": uint(1),
+				"field1":      "First Update",
+			},
+		},
+		{
+			name: "CreatedByID",
+			body: map[string]interface{}{
+				"CreatedByID": uint(1),
+				"field1":      "Second Update",
+			},
+		},
+		{
+			name: "ID",
+			body: map[string]interface{}{
+				"ID":     uint(1),
+				"field1": "Third Update",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			t.Log(tt.body)
+
+			stringBody, err := json.Marshal(tt.body)
+			assert.NoError(t, err)
+
+			// Create and execute request
+			req := CreateTestRequest(t, http.MethodPut, path, string(stringBody), true, bed.AdminUser, bed.Logger)
+			rr := httptest.NewRecorder()
+
+			// Serve the request using the router
+			router.ServeHTTP(rr, req)
+
+			t.Log(rr.Body)
+
+			// Assertions
+			assert.Equal(t, http.StatusOK, rr.Code)
+
+			// Check that the instance was not updated
+			var updatedInstance MockStruct
+			bed.Db.DB.First(&updatedInstance, instance.ID)
+			assert.Equal(t, instance.UpdatedByID, updatedInstance.UpdatedByID)
+			assert.Equal(t, instance.CreatedByID, updatedInstance.CreatedByID)
+			assert.Equal(t, instance.ID, updatedInstance.ID)
+			assert.NotEqual(t, instance.Field1, updatedInstance.Field1)
 		})
 	}
 }

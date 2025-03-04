@@ -1,4 +1,4 @@
-package resourcemanager
+package auth
 
 import (
 	"net/http"
@@ -6,10 +6,11 @@ import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
+	mgr "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 )
 
-var DefaultDetailHandler ApiFunction = func(a *Resource, db *database.Database) http.HandlerFunc {
+var UserDetailHandler mgr.ApiFunction = func(a *mgr.Resource, db *database.Database) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		requestCtx := GetRequestContext(r)
 		log := requestCtx.Logger
@@ -29,20 +30,16 @@ var DefaultDetailHandler ApiFunction = func(a *Resource, db *database.Database) 
 			return
 		}
 
-		// 3. Construct Query (User Binding)
-		filters := map[string]interface{}{
-			"id": GetUrlParam("id", r),
-		}
-
-		if !(a.SkipUserBinding || isAdmin) {
-			filters["created_by_id"] = user.ID
+		filters := map[string]interface{}{}
+		if !isAdmin {
+			filters["id"] = user.ID
 		}
 
 		instance := a.GetOne()
 		err = queries.FindOne(r.Context(), log, db, &instance, filters)
 		if err != nil {
 			log.Error().Err(err).Msgf("Instance not found")
-			SendJsonResponse(w, http.StatusNotFound, nil, "Instance not found")
+			SendJsonResponse(w, http.StatusInternalServerError, nil, "Instance not found")
 			return
 		}
 

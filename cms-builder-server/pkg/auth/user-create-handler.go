@@ -1,4 +1,4 @@
-package resourcemanager
+package auth
 
 import (
 	"encoding/json"
@@ -7,17 +7,16 @@ import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
+
+	mgr "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 )
 
-// filterKeys defines the keys to be filtered out from the request body.
 var filterKeys = map[string]bool{
-	"ID":          true,
-	"CreatedByID": true,
-	"UpdatedByID": true,
+	"ID": true,
 }
 
 // DefaultCreateHandler handles the creation of a new resource.
-var DefaultCreateHandler ApiFunction = func(a *Resource, db *database.Database) http.HandlerFunc {
+var UserCreateHandler mgr.ApiFunction = func(a *mgr.Resource, db *database.Database) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		requestCtx := GetRequestContext(r)
 		log := requestCtx.Logger
@@ -43,10 +42,6 @@ var DefaultCreateHandler ApiFunction = func(a *Resource, db *database.Database) 
 			SendJsonResponse(w, http.StatusBadRequest, nil, "Invalid request body")
 			return
 		}
-
-		// 4. Add User Information
-		body["CreatedByID"] = user.ID
-		body["UpdatedByID"] = user.ID
 
 		// 5. Marshal Body to JSON
 		bodyBytes, err := json.Marshal(body)
