@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	dbModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/models"
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
@@ -16,7 +16,7 @@ import (
 // The object is expected to be a struct with a JSON tag for the ID field named "ID".
 // The function returns an error if the object cannot be marshaled or unmarshaled to JSON.
 // The function uses the GetStructName function to get the name of the struct from the object passed in.
-func NewDatabaseLogEntry(action dbTypes.CRUDAction, user *models.User, object interface{}, difference interface{}, traceId string) (*DatabaseLog, error) {
+func NewDatabaseLogEntry(action dbTypes.CRUDAction, user *models.User, object interface{}, difference interface{}, traceId string) (*dbModels.DatabaseLog, error) {
 
 	name, err := utils.GetInterfaceName(object)
 	if err != nil {
@@ -52,7 +52,7 @@ func NewDatabaseLogEntry(action dbTypes.CRUDAction, user *models.User, object in
 		detail = string(differenceJSON)
 	}
 
-	historyEntry := &DatabaseLog{
+	historyEntry := &dbModels.DatabaseLog{
 		Action:       action,
 		UserId:       user.StringID(),
 		Username:     user.Email,

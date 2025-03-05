@@ -3,7 +3,7 @@ package requestlogger
 import (
 	"net/http"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	dbModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/models"
 	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
@@ -54,7 +54,7 @@ func RequestLogHandler(mgr *manager.ResourceManager, db *dbTypes.DatabaseConnect
 			return
 		}
 
-		a, err = mgr.GetResource(&database.DatabaseLog{})
+		a, err = mgr.GetResource(&dbModels.DatabaseLog{})
 		if err != nil {
 			log.Error().Err(err).Msgf("Error getting resource")
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
@@ -67,7 +67,7 @@ func RequestLogHandler(mgr *manager.ResourceManager, db *dbTypes.DatabaseConnect
 		}
 
 		// Create slice to store HistoryEntries
-		var databaseLogs []database.DatabaseLog
+		var databaseLogs []dbModels.DatabaseLog
 
 		filters = map[string]interface{}{
 			"database_logs.trace_id": itemId, // join condition

@@ -6,8 +6,9 @@ import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/clients"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/config"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	dbPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	dbLogger "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database-logger"
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/file"
 	loggerPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
@@ -30,7 +31,7 @@ type OrchestratorUsers struct {
 
 type Orchestrator struct {
 	Config          *config.ConfigReader
-	DB              *dbTypes.DatabaseConection
+	DB              *dbTypes.DatabaseConnection
 	FirebaseClient  *clients.FirebaseManager
 	Logger          *loggerTypes.Logger
 	LoggerConfig    *loggerTypes.LoggerConfig
@@ -111,13 +112,13 @@ func (o *Orchestrator) InitLogger() error {
 }
 
 func (o *Orchestrator) InitDatabase() error {
-	config := &database.DBConfig{
+	config := &dbTypes.DatabaseConfig{
 		URL:    o.Config.GetString(EnvKeys.DbUrl),
 		Path:   o.Config.GetString(EnvKeys.DbFile),
 		Driver: o.Config.GetString(EnvKeys.DbDriver),
 	}
 
-	db, err := database.NewDatabaseConnection(config, o.Logger)
+	db, err := dbPkg.NewDatabaseConnection(config, o.Logger)
 	if err != nil {
 		return fmt.Errorf("error initializing database: %w", err)
 	}

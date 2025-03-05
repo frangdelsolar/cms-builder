@@ -31,7 +31,7 @@ func TestCreate_Success(t *testing.T) {
 	assert.NotZero(t, instance.ID) // Ensure the instance has an ID after creation
 
 	// Verify that a history entry was created
-	// var historyEntry database.DatabaseLog
+	// var historyEntry dbModels.DatabaseLog
 	// err = db.DB.Where("action = ? AND resource_id = ?", database.dbTypes.CreateCRUDAction, instance.ID).First(&historyEntry).Error
 	// assert.NoError(t, err)
 	// assert.Equal(t, user.StringID(), historyEntry.UserId)
@@ -83,7 +83,7 @@ func TestCreate_Success(t *testing.T) {
 // 	assert.NotZero(t, instance.ID)  // Ensure the instance has an ID after creation
 
 // 	// Verify that no history entry was created
-// 	var historyEntry database.DatabaseLog
+// 	var historyEntry dbModels.DatabaseLog
 // 	err := db.DB.Where("action = ? AND resource_id = ?", database.dbTypes.CreateCRUDAction, instance.ID).First(&historyEntry).Error
 // 	assert.Error(t, err)
 // 	assert.Equal(t, gorm.ErrRecordNotFound, err)

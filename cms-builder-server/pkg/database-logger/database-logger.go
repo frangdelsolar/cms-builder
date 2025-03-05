@@ -3,7 +3,7 @@ package databaselogger
 import (
 	"net/http"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	dbModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/models"
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
@@ -34,7 +34,7 @@ func SetupDBLoggerResource(resourceManager *manager.ResourceManager, db *dbTypes
 	}
 
 	config := &manager.ResourceConfig{
-		Model:           database.DatabaseLog{},
+		Model:           dbModels.DatabaseLog{},
 		SkipUserBinding: skipUserBinding,
 		Validators:      validators,
 		Permissions:     permissions,

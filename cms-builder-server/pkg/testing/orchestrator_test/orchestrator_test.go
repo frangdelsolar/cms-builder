@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	dbModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/models"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 )
 
@@ -55,7 +55,7 @@ func TestNewOrchestrator(t *testing.T) {
 	assert.NotNil(t, userResource)
 
 	// Database Logger
-	dbResource, err := resourceManager.GetResource(database.DatabaseLog{})
+	dbResource, err := resourceManager.GetResource(dbModels.DatabaseLog{})
 	assert.NoError(t, err)
 	assert.NotNil(t, dbResource)
 

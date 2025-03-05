@@ -1,4 +1,4 @@
-package database
+package models
 
 import (
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"

@@ -31,7 +31,7 @@ package database_test
 // 	assert.Equal(t, gorm.ErrRecordNotFound, err)
 
 // 	// Verify that a history entry was created
-// 	var historyEntry database.DatabaseLog
+// 	var historyEntry dbModels.DatabaseLog
 // 	err = db.DB.Where("action = ? AND resource_id = ?", database.dbTypes.DeleteCRUDAction, instance.ID).First(&historyEntry).Error
 // 	assert.NoError(t, err)
 // 	assert.Equal(t, user.StringID(), historyEntry.UserId)
@@ -69,7 +69,7 @@ package database_test
 // 		assert.Equal(t, gorm.ErrRecordNotFound, err)
 
 // 		// Verify that a history entry was created for each instance
-// 		var historyEntry database.DatabaseLog
+// 		var historyEntry dbModels.DatabaseLog
 // 		err = db.DB.Where("action = ? AND resource_id = ?", database.dbTypes.DeleteCRUDAction, instance.ID).First(&historyEntry).Error
 // 		assert.NoError(t, err)
 // 		assert.Equal(t, user.StringID(), historyEntry.UserId)
@@ -107,7 +107,7 @@ package database_test
 // 	assert.Equal(t, instance.ID, deletedInstance.ID)
 
 // 	// Verify that no history entry was created
-// 	var historyEntry database.DatabaseLog
+// 	var historyEntry dbModels.DatabaseLog
 // 	err = db.DB.Where("action = ? AND resource_id = ?", database.dbTypes.DeleteCRUDAction, instance.ID).First(&historyEntry).Error
 // 	assert.Error(t, err)
 // 	assert.Equal(t, gorm.ErrRecordNotFound, err)
@@ -147,7 +147,7 @@ package database_test
 // 		assert.Equal(t, instance.ID, deletedInstance.ID)
 
 // 		// Verify that no history entry was created
-// 		var historyEntry database.DatabaseLog
+// 		var historyEntry dbModels.DatabaseLog
 // 		err = db.DB.Where("action = ? AND resource_id = ?", database.dbTypes.DeleteCRUDAction, instance.ID).First(&historyEntry).Error
 // 		assert.Error(t, err)
 // 		assert.Equal(t, gorm.ErrRecordNotFound, err)

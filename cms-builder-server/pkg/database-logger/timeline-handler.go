@@ -3,7 +3,7 @@ package databaselogger
 import (
 	"net/http"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	dbModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/models"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
@@ -26,7 +26,7 @@ func TimelineHandler(m *manager.ResourceManager, db *dbTypes.DatabaseConnection)
 		}
 
 		// 2. Get Resource
-		a, err := m.GetResource(&database.DatabaseLog{})
+		a, err := m.GetResource(&dbModels.DatabaseLog{})
 		if err != nil {
 			log.Error().Err(err).Msgf("Error getting resource")
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())

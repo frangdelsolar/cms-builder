@@ -34,7 +34,7 @@ package database_test
 // 	assert.Equal(t, "Updated Field 1", updatedInstance.Field1)
 
 // 	// Verify that a history entry was created
-// 	var historyEntry database.DatabaseLog
+// 	var historyEntry dbModels.DatabaseLog
 // 	err = db.DB.Where("action = ? AND resource_id = ?", database.dbTypes.UpdateCRUDAction, instance.ID).First(&historyEntry).Error
 // 	assert.NoError(t, err)
 // 	assert.Equal(t, user.StringID(), historyEntry.UserId)
