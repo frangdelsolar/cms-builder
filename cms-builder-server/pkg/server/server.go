@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/NYTimes/gziphandler"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/clients"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
@@ -91,6 +92,7 @@ func (s *Server) Run(getRoutes GetRoutesFunc, apiBaseUrl string) error {
 		CorsMiddleware(s.AllowedOrigins),
 		TimeoutMiddleware,
 		RateLimitMiddleware(),
+		gziphandler.GzipHandler,
 	)
 
 	routesSeen := map[string]bool{}
