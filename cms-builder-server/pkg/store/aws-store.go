@@ -41,6 +41,14 @@ func (s *S3Store) StoreFile(fileName string, file multipart.File, header *multip
 		return fileData, err
 	}
 
+	if len(fileBytes) == 0 {
+		return fileData, fmt.Errorf("file is empty")
+	}
+
+	if len(fileBytes) > int(s.GetConfig().MaxSize) {
+		return fileData, fmt.Errorf("file is too large")
+	}
+
 	// Detect the content type from the file content
 	contentType := http.DetectContentType(fileBytes)
 

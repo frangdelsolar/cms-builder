@@ -24,6 +24,9 @@ func Update(ctx context.Context, log *logger.Logger, db *database.Database, enti
 	historyEntry, err := NewDatabaseLogEntry(UpdateCRUDAction, user, entity, differences, requestId)
 	if err != nil {
 		log.Error().
+			Interface("differences", differences).
+			Interface("entity", entity).
+			Interface("user", user).
 			Err(err).
 			Str("requestId", requestId).
 			Msg("Failed to create database log entry")
@@ -31,6 +34,9 @@ func Update(ctx context.Context, log *logger.Logger, db *database.Database, enti
 	}
 	if err := db.DB.WithContext(ctx).Create(historyEntry).Error; err != nil {
 		log.Error().
+			Interface("differences", differences).
+			Interface("entity", entity).
+			Interface("user", user).
 			Err(err).
 			Str("requestId", requestId).
 			Msg("Failed to save database log entry")

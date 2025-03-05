@@ -135,23 +135,17 @@ type SchedulerTaskFunc func(jobParameters ...any) (string, error) // results, er
 //   - gocron.Job: Created job instance.
 //   - error: Error if job creation fails.
 func (s *Scheduler) createCronJobInstance(frequency gocron.JobDefinition, jobDefinition *SchedulerJobDefinition, taskFunction SchedulerTaskFunc, taskParameters ...any) (gocron.Job, error) {
-	s.Logger.Info().Int("parameters", len(taskParameters)).Interface("params", taskParameters).Msg("Running createCronJobInstance")
 
 	// wrappedTaskFunction wraps the original taskFunction to include logging and error handling.
 	wrappedTaskFunction := func() {
-		s.Logger.Debug().Msg("Running wrappedTaskFunction")
-
 		// Execute the original task function
 		results, err := taskFunction(taskParameters...)
-
 		// Store the results in the TaskManager
 		s.TaskManager.Set(jobDefinition.Name, results)
-
 		if err != nil {
 			s.Logger.Error().Err(err).Str("JobName", jobDefinition.Name).Msg("Task execution failed")
 			return
 		}
-
 		s.Logger.Info().Str("JobName", jobDefinition.Name).Str("Results", results).Msg("Task execution succeeded")
 	}
 
@@ -201,7 +195,7 @@ func (s *Scheduler) Before(jobDefinition *SchedulerJobDefinition) func(jobID uui
 		}
 
 		requestId := getRequestIdForCronJob(jobID)
-		err := queries.Update(context.Background(), s.Logger, s.DB, &task, s.User, nil, requestId)
+		err := queries.Create(context.Background(), s.Logger, s.DB, &task, s.User, requestId)
 		if err != nil {
 			s.Logger.Error().Err(err).Msg("Error saving task")
 		}

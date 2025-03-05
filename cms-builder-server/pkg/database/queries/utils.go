@@ -64,13 +64,3 @@ func NewDatabaseLogEntry(action CRUDAction, user *models.User, object interface{
 
 	return historyEntry, nil
 }
-
-func countCharRepetitions(s string, char rune) int {
-	count := 0
-	for _, c := range s {
-		if c == char {
-			count++
-		}
-	}
-	return count
-}

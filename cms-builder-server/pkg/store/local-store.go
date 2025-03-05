@@ -66,6 +66,15 @@ func (s LocalStore) GetPath(file *models.File) string {
 func (s LocalStore) StoreFile(fileName string, file multipart.File, header *multipart.FileHeader, log *logger.Logger) (fileData *models.File, err error) {
 	fileData = &models.File{}
 
+	// make sure files is not empty
+	if header.Size == 0 {
+		return fileData, fmt.Errorf("file is empty")
+	}
+
+	if header.Size > int64(s.GetConfig().MaxSize) {
+		return fileData, fmt.Errorf("file is too large")
+	}
+
 	// Read the first 512 bytes of the file to detect its MIME type
 	buffer := make([]byte, 512)
 	_, err = file.Read(buffer)

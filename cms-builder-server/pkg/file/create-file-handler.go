@@ -103,5 +103,5 @@ func handleUploadError(store store.Store, fileData *models.File, w http.Response
 
 	// Write a JSON response with the error message to the writer
 	// at the internal server error (500) status code.
-	SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+	SendJsonResponse(w, http.StatusBadRequest, nil, err.Error())
 }

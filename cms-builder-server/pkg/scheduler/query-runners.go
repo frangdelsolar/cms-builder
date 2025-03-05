@@ -69,8 +69,7 @@ func updateTaskStatus(log *logger.Logger, db *database.Database, schedulerUser *
 
 	previousState := GetSchedulerTask(log, db, cronJobId)
 	differences := utils.CompareInterfaces(previousState, task)
-
-	return queries.Update(context.Background(), log, db, &task, schedulerUser, differences, requestId)
+	return queries.Update(context.Background(), log, db, task, schedulerUser, differences, requestId)
 }
 
 func GetSchedulerTask(log *logger.Logger, db *database.Database, cronJobId string) *SchedulerTask {

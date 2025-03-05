@@ -59,6 +59,11 @@ var UserListHandler mgr.ApiFunction = func(a *mgr.Resource, db *database.Databas
 			filters["id"] = user.ID
 		}
 
+		fbId, ok := queryParams.Query["fbId"]
+		if ok {
+			filters["firebase_id"] = fbId
+		}
+
 		err = queries.FindMany(r.Context(), log, db, instances, pagination, order, filters)
 		if err != nil {
 			log.Error().Err(err).Msgf("Error finding instances")

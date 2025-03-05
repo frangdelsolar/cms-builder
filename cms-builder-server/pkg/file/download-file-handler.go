@@ -59,7 +59,7 @@ func DownloadStoredFileHandler(mgr *manager.ResourceManager, db *database.Databa
 		err = queries.FindOne(r.Context(), log, db, &instance, filters)
 		if err != nil {
 			log.Error().Err(err).Msgf("Instance not found")
-			SendJsonResponse(w, http.StatusInternalServerError, nil, "Instance not found")
+			SendJsonResponse(w, http.StatusNotFound, nil, "Instance not found")
 			return
 		}
 
