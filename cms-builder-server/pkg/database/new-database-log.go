@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
+	authModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/models"
 	dbModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/models"
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
+	utilsPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
 )
 
 // NewDatabaseLogEntry takes an action of type dbTypes.CRUDAction, a user ID, and an object, and returns a pointer to a HistoryEntry and an error.
@@ -16,9 +16,9 @@ import (
 // The object is expected to be a struct with a JSON tag for the ID field named "ID".
 // The function returns an error if the object cannot be marshaled or unmarshaled to JSON.
 // The function uses the GetStructName function to get the name of the struct from the object passed in.
-func NewDatabaseLogEntry(action dbTypes.CRUDAction, user *models.User, object interface{}, difference interface{}, traceId string) (*dbModels.DatabaseLog, error) {
+func NewDatabaseLogEntry(action dbTypes.CRUDAction, user *authModels.User, object interface{}, difference interface{}, traceId string) (*dbModels.DatabaseLog, error) {
 
-	name, err := utils.GetInterfaceName(object)
+	name, err := utilsPkg.GetInterfaceName(object)
 	if err != nil {
 		return nil, err
 	}

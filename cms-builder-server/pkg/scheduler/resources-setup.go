@@ -37,7 +37,7 @@ func SetupSchedulerJobDefinitionResource(manager *mgr.ResourceManager, db *dbTyp
 		models.SchedulerRole: server.AllAllowedAccess,
 	}
 
-	routes := []server.Route{
+	routes := []svrTypes.Route{
 		{
 			Path:         "/job/run",
 			Handler:      RunSchedulerTaskHandler(manager, db, jr),

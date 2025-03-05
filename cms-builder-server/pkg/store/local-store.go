@@ -9,21 +9,24 @@ import (
 	"os"
 	"path/filepath"
 
+	fileModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/file/models"
+	fileTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/file/types"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
+	storeTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store/types"
+	storeUtils "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store/utils"
 )
 
 type LocalStore struct {
 	MediaFolderAbsolutePath string // i. e. /Users/user/.../media/project-name
 	BaseUrl                 string // baseUrl where files will be served
-	Config                  *StoreConfig
+	Config                  *storeTypes.StoreConfig
 }
 
-func (s LocalStore) GetConfig() *StoreConfig {
+func (s LocalStore) GetConfig() *storeTypes.StoreConfig {
 	return s.Config
 }
 
-func NewLocalStore(config *StoreConfig, folder string, baseUrl string) (LocalStore, error) {
+func NewLocalStore(config *storeTypes.StoreConfig, folder string, baseUrl string) (LocalStore, error) {
 	if config == nil {
 		return LocalStore{}, fmt.Errorf("config is nil")
 	}
@@ -59,12 +62,12 @@ func NewLocalStore(config *StoreConfig, folder string, baseUrl string) (LocalSto
 	}, nil
 }
 
-func (s LocalStore) GetPath(file *models.File) string {
+func (s LocalStore) GetPath(file *fileModels.File) string {
 	return s.MediaFolderAbsolutePath + "/" + file.Name
 }
 
-func (s LocalStore) StoreFile(fileName string, file multipart.File, header *multipart.FileHeader, log *loggerTypes.Logger) (fileData *models.File, err error) {
-	fileData = &models.File{}
+func (s LocalStore) StoreFile(fileName string, file multipart.File, header *multipart.FileHeader, log *loggerTypes.Logger) (fileData *fileModels.File, err error) {
+	fileData = &fileModels.File{}
 
 	// make sure files is not empty
 	if header.Size == 0 {
@@ -95,7 +98,7 @@ func (s LocalStore) StoreFile(fileName string, file multipart.File, header *mult
 	}
 
 	// Validate the detected content type
-	valid, err := ValidateContentType(contentType, s.Config.SupportedMimeTypes)
+	valid, err := storeUtils.ValidateContentType(contentType, s.Config.SupportedMimeTypes)
 	if err != nil {
 		return fileData, err
 	}
@@ -104,7 +107,7 @@ func (s LocalStore) StoreFile(fileName string, file multipart.File, header *mult
 	}
 
 	// Create the file path
-	fileData.Name = RandomizeFileName(fileName)
+	fileData.Name = storeUtils.RandomizeFileName(fileName)
 	path := s.GetPath(fileData)
 
 	// Save the file to disk
@@ -149,7 +152,7 @@ func (s LocalStore) StoreFile(fileName string, file multipart.File, header *mult
 
 // DeleteFile takes a file path and deletes the file from disk.
 // It returns an error if the file cannot be deleted.
-func (s LocalStore) DeleteFile(file *models.File, log *loggerTypes.Logger) error {
+func (s LocalStore) DeleteFile(file *fileModels.File, log *loggerTypes.Logger) error {
 	path := s.GetPath(file)
 
 	// Attempt to delete the file
@@ -192,12 +195,12 @@ func (s LocalStore) ListFiles(log *loggerTypes.Logger) ([]string, error) {
 	return output, nil
 }
 
-func (s LocalStore) ReadFile(file *models.File, log *loggerTypes.Logger) ([]byte, error) {
+func (s LocalStore) ReadFile(file *fileModels.File, log *loggerTypes.Logger) ([]byte, error) {
 	path := s.GetPath(file)
 	return os.ReadFile(path)
 }
 
-func (s LocalStore) GetFileInfo(file *models.File, log *loggerTypes.Logger) (*models.FileInfo, error) {
+func (s LocalStore) GetFileInfo(file *fileModels.File, log *loggerTypes.Logger) (*fileTypes.FileInfo, error) {
 	path := s.GetPath(file)
 	stats, err := os.Stat(path)
 	if err != nil {
@@ -209,12 +212,12 @@ func (s LocalStore) GetFileInfo(file *models.File, log *loggerTypes.Logger) (*mo
 	}
 
 	// Detect the content type using the utility function
-	contentType, err := DetectContentTypeFromFile(path)
+	contentType, err := storeUtils.DetectContentTypeFromFile(path)
 	if err != nil {
 		return nil, err
 	}
 
-	fileInfo := &models.FileInfo{
+	fileInfo := &fileTypes.FileInfo{
 		Name:         stats.Name(),
 		Size:         stats.Size(),
 		LastModified: stats.ModTime(),

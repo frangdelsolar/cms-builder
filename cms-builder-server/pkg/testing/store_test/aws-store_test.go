@@ -4,7 +4,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store"
 	"github.com/joho/godotenv"
@@ -44,7 +43,7 @@ func createS3TestFile(t *testing.T, s3 *store.S3Store, fileName string, content 
 	// Create a test file
 	file, fileHeader := createMultipartFile(t, fileName, content)
 
-	fileData, err := s3.StoreFile(fileHeader.Filename, file, fileHeader, logger.Default)
+	fileData, err := s3.StoreFile(fileHeader.Filename, file, fileHeader, loggerPkg.Default)
 	assert.NoError(t, err)
 	assert.NotNil(t, fileData)
 
@@ -53,7 +52,7 @@ func createS3TestFile(t *testing.T, s3 *store.S3Store, fileName string, content 
 
 // Helper function to clean up the test media folder
 func cleanupS3TestMedia(t *testing.T, s3 *store.S3Store, file *models.File) {
-	log := logger.Default
+	log := loggerPkg.Default
 	err := s3.Client.DeleteFile(file.Path, log)
 	assert.NoError(t, err)
 }
@@ -82,7 +81,7 @@ func TestS3StoreFile(t *testing.T) {
 
 	// Test storing a file
 	t.Run("Store File Successfully", func(t *testing.T) {
-		log := logger.Default
+		log := loggerPkg.Default
 		fileData, err := s3.StoreFile(fileHeader.Filename, file, fileHeader, log)
 		assert.NoError(t, err)
 		assert.NotNil(t, fileData)
@@ -95,7 +94,7 @@ func TestS3StoreFile(t *testing.T) {
 		unsupportedFileContent := []byte("unsupported file content")
 		unsupportedFile, unsupportedFileHeader := createMultipartFile(t, "testfile.txt", unsupportedFileContent)
 
-		log := logger.Default
+		log := loggerPkg.Default
 		_, err := s3.StoreFile(unsupportedFileHeader.Filename, unsupportedFile, unsupportedFileHeader, log)
 		assert.Error(t, err)
 	})
@@ -110,7 +109,7 @@ func TestAwsDeleteFile(t *testing.T) {
 
 	// Test deleting a file
 	t.Run("Delete File Successfully", func(t *testing.T) {
-		log := logger.Default
+		log := loggerPkg.Default
 		err := s3.DeleteFile(fileData, log)
 		assert.NoError(t, err)
 	})
@@ -129,7 +128,7 @@ func TestAwsListFiles(t *testing.T) {
 
 	// Test listing files
 	t.Run("List Files Successfully", func(t *testing.T) {
-		log := logger.Default
+		log := loggerPkg.Default
 		listed, err := s3.ListFiles(log)
 		require.NoError(t, err)
 		assert.GreaterOrEqual(t, len(listed), len(createdFiles))
@@ -149,7 +148,7 @@ func TestAwsReadFile(t *testing.T) {
 
 	// Test reading a file
 	t.Run("Read File Successfully", func(t *testing.T) {
-		log := logger.Default
+		log := loggerPkg.Default
 
 		content, err := s3.ReadFile(fileData, log)
 		require.NoError(t, err)
@@ -168,7 +167,7 @@ func TestAwsGetFileInfo(t *testing.T) {
 
 	// Test getting file info
 	t.Run("Get File Info Successfully", func(t *testing.T) {
-		log := logger.Default
+		log := loggerPkg.Default
 
 		fileInfo, err := s3.GetFileInfo(fileData, log)
 		assert.NoError(t, err)

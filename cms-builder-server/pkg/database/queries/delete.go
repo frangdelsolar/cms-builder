@@ -4,14 +4,13 @@ import (
 	"context"
 	"reflect"
 
+	authModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/models"
 	dbPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
-
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 )
 
-func Delete(ctx context.Context, log *loggerTypes.Logger, db *dbTypes.DatabaseConnection, entity interface{}, user *models.User, requestId string) error {
+func Delete(ctx context.Context, log *loggerTypes.Logger, db *dbTypes.DatabaseConnection, entity interface{}, user *authModels.User, requestId string) error {
 	// Use reflection to determine if the entity is a slice or array
 	val := reflect.ValueOf(entity)
 	isSlice := val.Kind() == reflect.Slice || val.Kind() == reflect.Array

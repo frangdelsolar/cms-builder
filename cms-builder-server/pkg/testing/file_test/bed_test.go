@@ -15,7 +15,7 @@ func SetupFileTestBed() TestUtils {
 	godotenv.Load(".test.env")
 
 	db := NewTestDB()
-	err := db.DB.AutoMigrate(models.User{})
+	err := db.DB.AutoMigrate(authModels.User{})
 	if err != nil {
 		panic(err)
 	}

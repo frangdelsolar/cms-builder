@@ -15,7 +15,7 @@ package resourcemanager_test
 // 			"Name": ValidatorsList{RequiredValidator},
 // 		},
 // 		Permissions: server.RolePermissionMap{
-// 			models.AdminRole: []server.CrudOperation{server.OperationCreate},
+// 			models.AdminRole: []server.CrudOperation{server.authConstants.OperationCreate},
 // 		},
 // 		Handlers: &ApiHandlers{
 // 			List:   nil, // Use default

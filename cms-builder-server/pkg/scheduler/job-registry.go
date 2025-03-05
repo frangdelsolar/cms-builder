@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	authModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/models"
 	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 )
 
 type TaskDefinition struct {
@@ -19,7 +19,7 @@ type JobRegistry struct {
 	Jobs map[string]TaskDefinition
 }
 
-func (jr *JobRegistry) RunJob(jd *SchedulerJobDefinition, requestId string, user *models.User, log *loggerTypes.Logger, db *dbTypes.DatabaseConnection) (string, error) {
+func (jr *JobRegistry) RunJob(jd *SchedulerJobDefinition, requestId string, user *authModels.User, log *loggerTypes.Logger, db *dbTypes.DatabaseConnection) (string, error) {
 	log.Info().Str("Job", jd.Name).Msg("Running task")
 
 	// Look up the task definition in the registry
@@ -55,11 +55,11 @@ func (jr *JobRegistry) RunJob(jd *SchedulerJobDefinition, requestId string, user
 	return results, nil
 }
 
-func before(jobDefinition *SchedulerJobDefinition, db *dbTypes.DatabaseConnection, user *models.User, requestId string, log *loggerTypes.Logger) (string, error) {
+func before(jobDefinition *SchedulerJobDefinition, db *dbTypes.DatabaseConnection, user *authModels.User, requestId string, log *loggerTypes.Logger) (string, error) {
 	log.Info().Interface("JobDefinition", jobDefinition).Msg("Starting task job")
 
 	task := SchedulerTask{
-		SystemData: &models.SystemData{
+		SystemData: &authModels.SystemData{
 			CreatedByID: user.ID,
 			UpdatedByID: user.ID,
 		},
@@ -77,7 +77,7 @@ func before(jobDefinition *SchedulerJobDefinition, db *dbTypes.DatabaseConnectio
 	return task.CronJobId, nil
 }
 
-func success(jobId string, db *dbTypes.DatabaseConnection, user *models.User, requestId string, log *loggerTypes.Logger, results string) error {
+func success(jobId string, db *dbTypes.DatabaseConnection, user *authModels.User, requestId string, log *loggerTypes.Logger, results string) error {
 	log.Info().Interface("jobId", jobId).Msg("Task Job Succeded")
 	err := updateTaskStatus(log, db, user, jobId, TaskStatusDone, "", requestId, results)
 	if err != nil {
@@ -87,7 +87,7 @@ func success(jobId string, db *dbTypes.DatabaseConnection, user *models.User, re
 	return nil
 }
 
-func fail(jobId string, db *dbTypes.DatabaseConnection, user *models.User, requestId string, log *loggerTypes.Logger, jobError string, results string) error {
+func fail(jobId string, db *dbTypes.DatabaseConnection, user *authModels.User, requestId string, log *loggerTypes.Logger, jobError string, results string) error {
 	log.Error().Interface("jobId", jobId).Msg("Task Job Failed")
 	err := updateTaskStatus(log, db, user, jobId, TaskStatusFailed, jobError, requestId, results)
 	if err != nil {

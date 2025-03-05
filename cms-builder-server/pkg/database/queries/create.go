@@ -3,14 +3,13 @@ package queries
 import (
 	"context"
 
+	authModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/models"
 	dbPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
-
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 )
 
-func Create(ctx context.Context, log *loggerTypes.Logger, db *dbTypes.DatabaseConnection, instance interface{}, user *models.User, requestId string) error {
+func Create(ctx context.Context, log *loggerTypes.Logger, db *dbTypes.DatabaseConnection, instance interface{}, user *authModels.User, requestId string) error {
 	// Create the instance
 	result := db.DB.WithContext(ctx).Create(instance)
 	if result.Error != nil {

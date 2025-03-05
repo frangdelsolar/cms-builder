@@ -4,15 +4,15 @@ import (
 	"context"
 	"fmt"
 
+	authModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/models"
 	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
 	"github.com/google/uuid"
 )
 
-func getOrCreateJobDefinition(db *dbTypes.DatabaseConnection, log *loggerTypes.Logger, schedulerUser *models.User, jdInput SchedulerJobDefinition) (*SchedulerJobDefinition, error) {
+func getOrCreateJobDefinition(db *dbTypes.DatabaseConnection, log *loggerTypes.Logger, schedulerUser *authModels.User, jdInput SchedulerJobDefinition) (*SchedulerJobDefinition, error) {
 
 	// If there is a job definition with the same name, return it
 	// Name must be unique
@@ -38,7 +38,7 @@ func getOrCreateJobDefinition(db *dbTypes.DatabaseConnection, log *loggerTypes.L
 
 	// If there is no job definition with the same name, create it
 	instance = SchedulerJobDefinition{
-		SystemData: &models.SystemData{
+		SystemData: &authModels.SystemData{
 			CreatedByID: schedulerUser.ID,
 			UpdatedByID: schedulerUser.ID,
 		},
@@ -60,7 +60,7 @@ func getOrCreateJobDefinition(db *dbTypes.DatabaseConnection, log *loggerTypes.L
 	return &instance, nil
 }
 
-func updateTaskStatus(log *loggerTypes.Logger, db *dbTypes.DatabaseConnection, schedulerUser *models.User, cronJobId string, status TaskStatus, errMsg string, requestId string, results string) error {
+func updateTaskStatus(log *loggerTypes.Logger, db *dbTypes.DatabaseConnection, schedulerUser *authModels.User, cronJobId string, status TaskStatus, errMsg string, requestId string, results string) error {
 	task := GetSchedulerTask(log, db, cronJobId)
 	task.SystemData.UpdatedByID = schedulerUser.ID
 	task.Status = status

@@ -6,7 +6,6 @@ import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/clients"
 	dbModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/models"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	mgr "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing"
 	"github.com/joho/godotenv"
@@ -19,7 +18,7 @@ func SetupAuthTestBed() TestUtils {
 	}
 
 	db := NewTestDB()
-	err := db.DB.AutoMigrate(models.User{})
+	err := db.DB.AutoMigrate(authModels.User{})
 	if err != nil {
 		panic(err)
 	}
@@ -41,7 +40,7 @@ func SetupAuthTestBed() TestUtils {
 		panic(err)
 	}
 
-	getSystemUser := func() *models.User {
+	getSystemUser := func() *authModels.User {
 		return CreateSystemUser()
 	}
 

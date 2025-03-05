@@ -27,7 +27,7 @@ func TestDeleteStoredFilesHandler(t *testing.T) {
 		method         string
 		path           string
 		fileID         string
-		user           *models.User
+		user           *authModels.User
 		expectedStatus int
 		expectedBody   string
 		setup          func() *models.File
@@ -43,7 +43,7 @@ func TestDeleteStoredFilesHandler(t *testing.T) {
 			setup: func() *models.File {
 				// Create a file in the database
 				file := &models.File{
-					SystemData: &models.SystemData{
+					SystemData: &authModels.SystemData{
 						CreatedByID: bed.AdminUser.ID,
 					},
 				}
@@ -62,7 +62,7 @@ func TestDeleteStoredFilesHandler(t *testing.T) {
 			setup: func() *models.File {
 				// Create a file in the database
 				file := &models.File{
-					SystemData: &models.SystemData{
+					SystemData: &authModels.SystemData{
 						CreatedByID: bed.AdminUser.ID,
 					},
 				}
@@ -81,7 +81,7 @@ func TestDeleteStoredFilesHandler(t *testing.T) {
 			setup: func() *models.File {
 				// Create a file in the database
 				file := &models.File{
-					SystemData: &models.SystemData{
+					SystemData: &authModels.SystemData{
 						CreatedByID: bed.AdminUser.ID,
 					},
 				}

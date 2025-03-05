@@ -3,28 +3,29 @@ package resources
 import (
 	"net/http"
 
+	auth "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/constants"
+	authTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/types"
 	dbHandlers "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/handlers"
 	dbModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/models"
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
-	manager "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
+	rmTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager/types"
+	svrTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/types"
 )
 
-func SetupDBLoggerResource(resourceManager *manager.ResourceManager, db *dbTypes.DatabaseConnection, log *loggerTypes.Logger) *manager.ResourceConfig {
+func SetupDBLoggerResource(resourceManager *rmTypes.ResourceManager, db *dbTypes.DatabaseConnection, log *loggerTypes.Logger) *rmTypes.ResourceConfig {
 
 	log.Info().Msg("Initializing Database Logger resource")
 
 	skipUserBinding := true // DB Logs don't have a created_by field
 
-	permissions := server.RolePermissionMap{
-		models.AdminRole: []server.CrudOperation{server.OperationRead},
+	permissions := authTypes.RolePermissionMap{
+		auth.AdminRole: []authTypes.CrudOperation{auth.OperationRead},
 	}
 
-	validators := manager.ValidatorsMap{}
-	handlers := &manager.ApiHandlers{} // default
-	routes := []server.Route{
+	validators := rmTypes.ValidatorsMap{}
+	handlers := &rmTypes.ApiHandlers{} // default
+	routes := []svrTypes.Route{
 		{
 			Path:         "/api/database-timeline",
 			Handler:      dbHandlers.TimelineHandler(resourceManager, db),
@@ -34,7 +35,7 @@ func SetupDBLoggerResource(resourceManager *manager.ResourceManager, db *dbTypes
 		},
 	}
 
-	config := &manager.ResourceConfig{
+	config := &rmTypes.ResourceConfig{
 		Model:           dbModels.DatabaseLog{},
 		SkipUserBinding: skipUserBinding,
 		Validators:      validators,

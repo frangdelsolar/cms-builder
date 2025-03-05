@@ -1,14 +1,14 @@
 package models
 
 import (
+	authModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/models"
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	"gorm.io/gorm"
 )
 
 type DatabaseLog struct {
 	gorm.Model
-	User         *models.User       `json:"user"`
+	User         *authModels.User   `json:"user"`
 	UserId       string             `gorm:"foreignKey:UserId" json:"userId"`
 	Username     string             `json:"username"`
 	Action       dbTypes.CRUDAction `json:"action"`

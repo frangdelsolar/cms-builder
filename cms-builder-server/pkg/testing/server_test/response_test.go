@@ -12,14 +12,14 @@ import (
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 )
 
-// TestSendJsonResponse_Success tests SendJsonResponse for a successful response.
+// TestSendJsonResponse_Success tests svrUtils.SendJsonResponse for a successful response.
 func TestSendJsonResponse_Success(t *testing.T) {
 	w := httptest.NewRecorder()
 	data := map[string]string{"key": "value"}
 	msg := "Success message"
 	status := http.StatusOK
 
-	SendJsonResponse(w, status, data, msg)
+	svrUtils.SendJsonResponse(w, status, data, msg)
 
 	// Verify the response
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -44,7 +44,7 @@ func TestSendJsonResponse_Error(t *testing.T) {
 	msg := "Error message"
 	status := http.StatusBadRequest
 
-	SendJsonResponse(w, status, data, msg)
+	svrUtils.SendJsonResponse(w, status, data, msg)
 
 	// Verify the response
 	assert.Equal(t, http.StatusBadRequest, w.Code)

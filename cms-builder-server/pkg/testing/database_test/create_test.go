@@ -73,7 +73,7 @@ func TestCreate_Success(t *testing.T) {
 // 	}
 
 // 	// Simulate a failure in history entry creation by passing an invalid user
-// 	invalidUser := &models.User{} // Invalid user with no ID
+// 	invalidUser := &authModels.User{} // Invalid user with no ID
 
 // 	// Call the Create function
 // 	result := dbQueries.Create(db, &instance, invalidUser, "test-request-id")

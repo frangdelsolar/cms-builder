@@ -10,12 +10,11 @@ import (
 	"testing"
 
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	"github.com/stretchr/testify/assert"
 )
 
-func CreateTestRequest(t *testing.T, method, path, body string, isAuth bool, user *models.User, log *loggerTypes.Logger) *http.Request {
+func CreateTestRequest(t *testing.T, method, path, body string, isAuth bool, user *authModels.User, log *loggerTypes.Logger) *http.Request {
 	req, err := http.NewRequest(method, path, bytes.NewBufferString(body))
 	assert.NoError(t, err)
 
@@ -24,12 +23,12 @@ func CreateTestRequest(t *testing.T, method, path, body string, isAuth bool, use
 
 	ctx := req.Context()
 
-	if user != (*models.User)(nil) {
+	if user != (*authModels.User)(nil) {
 		ctx = context.WithValue(ctx, server.CtxRequestIsAuth, isAuth)
 		ctx = context.WithValue(ctx, server.CtxRequestUser, user)
 	}
 
-	ctx = context.WithValue(ctx, server.CtxRequestLogger, log)
+	ctx = context.WithValue(ctx, server.svrUtils.CtxRequestLogger, log)
 
 	return req.WithContext(ctx)
 }
@@ -43,7 +42,7 @@ func ExecuteHandler(t *testing.T, handler http.HandlerFunc, req *http.Request) *
 
 // HitEndpoint sends a request to the specified endpoint and returns the response.
 // HitEndpoint sends a request to the specified endpoint and returns the response.
-func HitEndpoint(t *testing.T, handler http.HandlerFunc, method, path, body string, isAuth bool, user *models.User, log *loggerTypes.Logger, ip string) *httptest.ResponseRecorder {
+func HitEndpoint(t *testing.T, handler http.HandlerFunc, method, path, body string, isAuth bool, user *authModels.User, log *loggerTypes.Logger, ip string) *httptest.ResponseRecorder {
 	// Create the request
 	req := CreateGodRequestWithIp(t, method, path, body, isAuth, user, log, ip)
 
@@ -52,7 +51,7 @@ func HitEndpoint(t *testing.T, handler http.HandlerFunc, method, path, body stri
 }
 
 // CreateTestRequest creates a test request with a custom IP address.
-func CreateGodRequestWithIp(t *testing.T, method, path, body string, isAuth bool, user *models.User, log *loggerTypes.Logger, ip string) *http.Request {
+func CreateGodRequestWithIp(t *testing.T, method, path, body string, isAuth bool, user *authModels.User, log *loggerTypes.Logger, ip string) *http.Request {
 	req, err := http.NewRequest(method, path, bytes.NewBufferString(body))
 	assert.NoError(t, err)
 
@@ -69,7 +68,7 @@ func CreateGodRequestWithIp(t *testing.T, method, path, body string, isAuth bool
 	ctx := req.Context()
 	ctx = context.WithValue(ctx, server.CtxRequestIsAuth, isAuth)
 	ctx = context.WithValue(ctx, server.CtxRequestUser, user)
-	ctx = context.WithValue(ctx, server.CtxRequestLogger, log)
+	ctx = context.WithValue(ctx, server.svrUtils.CtxRequestLogger, log)
 
 	return req.WithContext(ctx)
 }

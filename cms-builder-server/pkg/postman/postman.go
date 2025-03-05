@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
-	mgr "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
+	loggerPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	rmTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager/types"
 )
 
 // TODO: Needs to figure out how to generate for those urls that are not comming from a model
@@ -29,7 +29,7 @@ const (
 	keyOrigin          = "ORIGIN"
 )
 
-var log = logger.Default
+var log = loggerPkg.Default
 
 func Placeholder(key string) string {
 	return "{{" + key + "}}"
@@ -42,7 +42,7 @@ func ExportPostman(
 	adminEmail,
 	adminPassword,
 	firebaseApiKey string,
-	resources []mgr.Resource,
+	resources []rmTypes.Resource,
 ) error {
 
 	log.Debug().Interface("resources", len(resources)).Msg("Exporting postman...")
@@ -239,7 +239,7 @@ var preRequestScript = PostmanCollectionEvent{
 	},
 }
 
-func GetPostmanCollection(appName string, resources []mgr.Resource) (*PostmanCollection, error) {
+func GetPostmanCollection(appName string, resources []rmTypes.Resource) (*PostmanCollection, error) {
 	if appName == "" {
 		appName = "CollectionName"
 	}
@@ -254,7 +254,7 @@ func GetPostmanCollection(appName string, resources []mgr.Resource) (*PostmanCol
 
 	for _, src := range resources {
 		resourceName := src.ResourceNames.Singular
-		body, _ := mgr.InterfaceToMap(src.Model)
+		body, _ := rmTypes.InterfaceToMap(src.Model)
 		bodyJSON, _ := json.MarshalIndent(body, "", "   ")
 
 		resourceId := strings.ToUpper(resourceName) + "_ID"

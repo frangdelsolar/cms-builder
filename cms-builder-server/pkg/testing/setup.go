@@ -3,9 +3,7 @@ package testing
 import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	mgr "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/scheduler"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
@@ -22,12 +20,12 @@ type TestUtils struct {
 	Logger      *loggerTypes.Logger
 	Mgr         *mgr.ResourceManager
 	Src         *mgr.Resource
-	AdminUser   *models.User
-	VisitorUser *models.User
-	NoRoleUser  *models.User
+	AdminUser   *authModels.User
+	VisitorUser *authModels.User
+	NoRoleUser  *authModels.User
 
 	Scheduler     *scheduler.Scheduler
-	SchedulerUser *models.User
+	SchedulerUser *authModels.User
 
 	Server *server.Server
 
@@ -44,7 +42,7 @@ func NewTestDB() *dbTypes.DatabaseConnection {
 		URL:    "not empty",
 	}
 
-	db, err := database.NewDatabaseConnection(testConfig, logger.Default)
+	db, err := database.NewDatabaseConnection(testConfig, loggerPkg.Default)
 	if err != nil {
 		panic(err)
 	}
@@ -53,5 +51,5 @@ func NewTestDB() *dbTypes.DatabaseConnection {
 }
 
 func NewTestLogger() *loggerTypes.Logger {
-	return logger.Default
+	return loggerPkg.Default
 }

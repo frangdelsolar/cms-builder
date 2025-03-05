@@ -3,25 +3,26 @@ package handlers
 import (
 	"net/http"
 
+	authConstants "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/constants"
+	authUtils "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/utils"
 	dbModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/models"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
-	manager "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
+	rmTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager/types"
+	svrUtils "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/utils"
 )
 
-func TimelineHandler(m *manager.ResourceManager, db *dbTypes.DatabaseConnection) http.HandlerFunc {
+func TimelineHandler(m *rmTypes.ResourceManager, db *dbTypes.DatabaseConnection) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		requestCtx := GetRequestContext(r)
+		requestCtx := svrUtils.GetRequestContext(r)
 		log := requestCtx.Logger
 		user := requestCtx.User
 
 		// 1. Validate Request Method
-		err := ValidateRequestMethod(r, http.MethodGet)
+		err := svrUtils.ValidateRequestMethod(r, http.MethodGet)
 		if err != nil {
 			log.Error().Err(err).Msgf("Error validating request method")
-			SendJsonResponse(w, http.StatusMethodNotAllowed, nil, err.Error())
+			svrUtils.SendJsonResponse(w, http.StatusMethodNotAllowed, nil, err.Error())
 			return
 		}
 
@@ -29,21 +30,21 @@ func TimelineHandler(m *manager.ResourceManager, db *dbTypes.DatabaseConnection)
 		a, err := m.GetResource(&dbModels.DatabaseLog{})
 		if err != nil {
 			log.Error().Err(err).Msgf("Error getting resource")
-			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+			svrUtils.SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
 		}
 
 		// 3. Check Permissions
-		if !UserIsAllowed(a.Permissions, user.GetRoles(), OperationRead, a.ResourceNames.Singular, log) {
-			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to read this resource")
+		if !authUtils.UserIsAllowed(a.Permissions, user.GetRoles(), authConstants.OperationRead, a.ResourceNames.Singular, log) {
+			svrUtils.SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to read this resource")
 			return
 		}
 
 		// 3. Parse Query Parameters
-		queryParams, err := GetRequestQueryParams(r)
+		queryParams, err := svrUtils.GetRequestQueryParams(r)
 		if err != nil {
 			log.Error().Err(err).Msgf("Error validating query parameters")
-			SendJsonResponse(w, http.StatusBadRequest, nil, err.Error())
+			svrUtils.SendJsonResponse(w, http.StatusBadRequest, nil, err.Error())
 			return
 		}
 
@@ -52,25 +53,25 @@ func TimelineHandler(m *manager.ResourceManager, db *dbTypes.DatabaseConnection)
 
 		// 4. Verify Queried Resource
 		if resourceName == "" {
-			SendJsonResponse(w, http.StatusBadRequest, nil, "Resource Name is required")
+			svrUtils.SendJsonResponse(w, http.StatusBadRequest, nil, "Resource Name is required")
 			return
 		}
 
 		queriedApp, err := m.GetResourceByName(resourceName)
 		if err != nil {
 			log.Error().Err(err).Msgf("Error getting resource")
-			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+			svrUtils.SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
 		}
 
-		if !UserIsAllowed(queriedApp.Permissions, user.GetRoles(), OperationRead, resourceName, log) {
-			SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to read this resource")
+		if !authUtils.UserIsAllowed(queriedApp.Permissions, user.GetRoles(), authConstants.OperationRead, resourceName, log) {
+			svrUtils.SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to read this resource")
 			return
 		}
 
 		// 5. Find Query
 		instances, _ := a.GetSlice()
-		pagination := &queries.Pagination{
+		pagination := &dbTypes.Pagination{
 			Total: 0,
 			Page:  queryParams.Page,
 			Limit: queryParams.Limit,
@@ -82,11 +83,11 @@ func TimelineHandler(m *manager.ResourceManager, db *dbTypes.DatabaseConnection)
 
 		err = dbQueries.FindMany(r.Context(), log, db, instances, pagination, queryParams.Order, filters)
 		if err != nil {
-			SendJsonResponse(w, http.StatusNotFound, nil, "Instance not found")
+			svrUtils.SendJsonResponse(w, http.StatusNotFound, nil, "Instance not found")
 			return
 		}
 
-		SendJsonResponseWithPagination(w, http.StatusOK, instances, "resource timeline", pagination)
+		svrUtils.SendJsonResponseWithPagination(w, http.StatusOK, instances, "resource timeline", pagination)
 
 	}
 }

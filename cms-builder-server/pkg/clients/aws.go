@@ -10,10 +10,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	fileTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/file/types"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
-
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 )
 
 type AwsManager struct {
@@ -209,7 +207,7 @@ func (a *AwsManager) ListFiles(log *loggerTypes.Logger) ([]string, error) {
 // It returns a FileInfo object containing the file's name, size, last modified
 // time, and content type. If there is an error, it logs the error and returns
 // it.
-func (a *AwsManager) GetFileInfo(fileName string, log *loggerTypes.Logger) (*models.FileInfo, error) {
+func (a *AwsManager) GetFileInfo(fileName string, log *loggerTypes.Logger) (*fileTypes.FileInfo, error) {
 
 	if fileName == "" {
 		return nil, fmt.Errorf("file name is required")
@@ -231,7 +229,7 @@ func (a *AwsManager) GetFileInfo(fileName string, log *loggerTypes.Logger) (*mod
 		return nil, err
 	}
 
-	fileInfo := &FileInfo{
+	fileInfo := &fileTypes.FileInfo{
 		Name:         fileName,
 		Size:         *resp.ContentLength,
 		LastModified: *resp.LastModified,

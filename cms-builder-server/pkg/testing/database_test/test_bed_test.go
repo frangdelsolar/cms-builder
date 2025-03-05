@@ -2,7 +2,6 @@ package database_test
 
 import (
 	dbModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/models"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing"
 	"github.com/joho/godotenv"
 )
@@ -12,7 +11,7 @@ func SetupDatabaseTestBed() TestUtils {
 	godotenv.Load(".test.env")
 
 	db := NewTestDB()
-	err := db.DB.AutoMigrate(models.User{})
+	err := db.DB.AutoMigrate(authModels.User{})
 	if err != nil {
 		panic(err)
 	}

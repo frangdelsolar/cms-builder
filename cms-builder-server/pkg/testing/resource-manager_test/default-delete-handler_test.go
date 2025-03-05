@@ -5,7 +5,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing/resource-manager_test"
@@ -21,7 +20,7 @@ func TestDefaultDeleteHandler(t *testing.T) {
 		method         string
 		path           string
 		requestBody    string
-		user           *models.User
+		user           *authModels.User
 		setup          func() string // Optional setup function for specific test cases
 		expectedStatus int
 		expectedBody   string
@@ -54,7 +53,7 @@ func TestDefaultDeleteHandler(t *testing.T) {
 			method:         http.MethodDelete,
 			path:           "/mock-struct/123",
 			requestBody:    "",
-			user:           &models.User{},
+			user:           &authModels.User{},
 			expectedStatus: http.StatusForbidden,
 			expectedBody:   "User is not allowed to access this resource",
 		},

@@ -6,7 +6,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing/resource-manager_test"
@@ -22,7 +21,7 @@ func TestDefaultUpdateHandler(t *testing.T) {
 		method         string
 		path           string
 		requestBody    string
-		user           *models.User
+		user           *authModels.User
 		setup          func() *MockStruct // Optional setup function for specific test cases
 		expectedStatus int
 		expectedBody   string
@@ -56,7 +55,7 @@ func TestDefaultUpdateHandler(t *testing.T) {
 			method:         http.MethodPut,
 			path:           "/mock-struct/123",
 			requestBody:    `{"field1": "Updated Name", "field2": "updated@example.com"}`,
-			user:           &models.User{},
+			user:           &authModels.User{},
 			expectedStatus: http.StatusForbidden,
 			expectedBody:   "User is not allowed to access this resource",
 		},

@@ -6,7 +6,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing"
@@ -23,7 +22,7 @@ func TestDefaultCreateHandler(t *testing.T) {
 		method         string
 		path           string
 		requestBody    string
-		user           *models.User
+		user           *authModels.User
 		expectedStatus int
 		expectedBody   string
 		setup          func()
@@ -51,7 +50,7 @@ func TestDefaultCreateHandler(t *testing.T) {
 			method:         http.MethodPost,
 			path:           "/mock-struct/new",
 			requestBody:    `{"field1": "` + RandomString(10) + `", "field2": "` + RandomString(10) + `"}`,
-			user:           &models.User{},
+			user:           &authModels.User{},
 			expectedStatus: http.StatusForbidden,
 			expectedBody:   "User is not allowed to create this resource",
 		},

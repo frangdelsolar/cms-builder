@@ -3,13 +3,13 @@ package scheduler
 import (
 	"time"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
+	authModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/models"
 )
 
 type TaskStatus string
 
 type SchedulerTask struct {
-	*models.SystemData
+	*authModels.SystemData
 	JobDefinitionName string     `json:"jobDefinitionName"`
 	Status            TaskStatus `json:"status"`
 	CronJobId         string     `json:"cronJobId"`
@@ -20,7 +20,7 @@ type SchedulerTask struct {
 type JobFrequencyType string
 
 type SchedulerJobDefinition struct {
-	*models.SystemData
+	*authModels.SystemData
 	Name          string           `gorm:"not null,unique" json:"name"`
 	FrequencyType JobFrequencyType `json:"frequencyType"`
 	AtTime        time.Time

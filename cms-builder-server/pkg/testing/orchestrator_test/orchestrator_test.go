@@ -50,7 +50,7 @@ func TestNewOrchestrator(t *testing.T) {
 	assert.NotNil(t, resourceManager)
 
 	// Auth
-	userResource, err := resourceManager.GetResource(models.User{})
+	userResource, err := resourceManager.GetResource(authModels.User{})
 	assert.NoError(t, err)
 	assert.NotNil(t, userResource)
 

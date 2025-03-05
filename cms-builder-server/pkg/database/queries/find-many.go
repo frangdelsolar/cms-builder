@@ -7,13 +7,7 @@ import (
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 )
 
-type Pagination struct {
-	Total int64 `json:"total"`
-	Page  int   `json:"page"`
-	Limit int   `json:"limit"`
-}
-
-func FindMany(ctx context.Context, log *loggerTypes.Logger, db *dbTypes.DatabaseConnection, entitySlice interface{}, pagination *Pagination, order string, filters map[string]interface{}) error {
+func FindMany(ctx context.Context, log *loggerTypes.Logger, db *dbTypes.DatabaseConnection, entitySlice interface{}, pagination *dbTypes.Pagination, order string, filters map[string]interface{}) error {
 	if order == "" {
 		order = "id desc"
 	}

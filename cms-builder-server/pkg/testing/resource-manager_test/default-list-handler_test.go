@@ -5,7 +5,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing/resource-manager_test"
@@ -21,7 +20,7 @@ func TestDefaultListHandler(t *testing.T) {
 		method         string
 		path           string
 		queryParams    map[string]string
-		user           *models.User
+		user           *authModels.User
 		setup          func() // Optional setup function for specific test cases
 		expectedStatus int
 		expectedBody   string
@@ -56,7 +55,7 @@ func TestDefaultListHandler(t *testing.T) {
 			method:         http.MethodGet,
 			path:           "/mock-struct",
 			queryParams:    map[string]string{"page": "1", "limit": "10"},
-			user:           &models.User{},
+			user:           &authModels.User{},
 			expectedStatus: http.StatusForbidden,
 			expectedBody:   "User is not allowed to read this resource",
 		},

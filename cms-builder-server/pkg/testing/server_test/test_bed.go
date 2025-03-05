@@ -17,7 +17,7 @@ func SetupServerTestBed() TestUtils {
 	godotenv.Load(".test.env")
 
 	db := NewTestDB()
-	err := db.DB.AutoMigrate(models.User{})
+	err := db.DB.AutoMigrate(authModels.User{})
 	if err != nil {
 		panic(err)
 	}
@@ -56,7 +56,7 @@ func SetupServerTestBed() TestUtils {
 		},
 		GodToken: "secret",
 		GodUser:  CreateGodUser(),
-		SystemUser: &models.User{
+		SystemUser: &authModels.User{
 			Email: "system",
 		},
 		Firebase: firebaseClient,

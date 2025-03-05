@@ -17,10 +17,10 @@ func (o *Orchestrator) SetupOrchestratorUsers() error {
 	requestId = "automated::" + requestId
 
 	o.Users = &OrchestratorUsers{
-		Scheduler: &models.User{},
-		God:       &models.User{},
-		System:    &models.User{},
-		Admin:     &models.User{},
+		Scheduler: &authModels.User{},
+		God:       &authModels.User{},
+		System:    &authModels.User{},
+		Admin:     &authModels.User{},
 	}
 
 	systemUser, err := o.GetOrCreateSystemUser(requestId)
@@ -74,9 +74,9 @@ func (o *Orchestrator) SetupOrchestratorUsers() error {
 	return nil
 }
 
-func (o *Orchestrator) GetOrCreateSystemUser(requestId string) (*models.User, error) {
+func (o *Orchestrator) GetOrCreateSystemUser(requestId string) (*authModels.User, error) {
 
-	systemUser := models.User{
+	systemUser := authModels.User{
 		Name:  "System",
 		Email: "system@" + o.Config.GetString(EnvKeys.Domain),
 		Roles: "admin",
@@ -93,7 +93,7 @@ func (o *Orchestrator) GetOrCreateSystemUser(requestId string) (*models.User, er
 		o.Logger.Warn().Err(err).Msg("System User not found")
 	}
 
-	if systemUser.ID == 0 || systemUser == (models.User{}) {
+	if systemUser.ID == 0 || systemUser == (authModels.User{}) {
 		o.Logger.Debug().Interface("user", systemUser).Msg("Creating system user from config")
 		err := dbQueries.Create(ctx, o.Logger, o.DB, &systemUser, &systemUser, requestId)
 		if err != nil {

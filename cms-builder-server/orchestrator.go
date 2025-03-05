@@ -12,7 +12,6 @@ import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/file"
 	loggerPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	requestLogger "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/request-logger"
 	manager "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/scheduler"
@@ -23,10 +22,10 @@ import (
 const orchestratorVersion = "1.6.3"
 
 type OrchestratorUsers struct {
-	God       *models.User
-	Admin     *models.User
-	Scheduler *models.User
-	System    *models.User
+	God       *authModels.User
+	Admin     *authModels.User
+	Scheduler *authModels.User
+	System    *authModels.User
 }
 
 type Orchestrator struct {
@@ -150,7 +149,7 @@ func (o *Orchestrator) InitResourceManager() error {
 
 func (o *Orchestrator) InitAuth() error {
 
-	var getSystemUser = func() *models.User {
+	var getSystemUser = func() *authModels.User {
 		return o.Users.System
 	}
 

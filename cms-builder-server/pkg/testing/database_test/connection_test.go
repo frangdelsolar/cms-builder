@@ -5,7 +5,6 @@ import (
 
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -16,7 +15,7 @@ func TestLoadDB_SQLite_Success(t *testing.T) {
 		Path:   ":memory:", // Use an in-memory SQLite database for testing
 	}
 
-	log := logger.Default
+	log := loggerPkg.Default
 
 	db, err := NewDatabaseConnection(config, log)
 	assert.NoError(t, err)
@@ -32,7 +31,7 @@ func TestLoadDB_SQLite_Success(t *testing.T) {
 // 		URL:    "postgres://user:password@localhost:5432/dbname", // Replace with a valid test URL
 // 	}
 
-// 	log := logger.Default
+// 	log := loggerPkg.Default
 
 // 	db, err := LoadDB(config, log)
 // 	assert.NoError(t, err)
@@ -47,7 +46,7 @@ func TestLoadDB_InvalidDriver(t *testing.T) {
 		Driver: "invalid",
 	}
 
-	log := logger.Default
+	log := loggerPkg.Default
 
 	db, err := NewDatabaseConnection(config, log)
 	assert.Error(t, err)
@@ -57,7 +56,7 @@ func TestLoadDB_InvalidDriver(t *testing.T) {
 
 func TestLoadDB_NilConfig(t *testing.T) {
 	// Test loading a database with a nil config
-	log := logger.Default
+	log := loggerPkg.Default
 
 	db, err := NewDatabaseConnection(nil, log)
 	assert.Error(t, err)
@@ -72,7 +71,7 @@ func TestLoadDB_EmptySQLitePath(t *testing.T) {
 		Path:   "", // Empty path
 	}
 
-	log := logger.Default
+	log := loggerPkg.Default
 
 	db, err := NewDatabaseConnection(config, log)
 	assert.Error(t, err)
@@ -87,7 +86,7 @@ func TestLoadDB_EmptyPostgresURL(t *testing.T) {
 		URL:    "", // Empty URL
 	}
 
-	log := logger.Default
+	log := loggerPkg.Default
 
 	db, err := NewDatabaseConnection(config, log)
 	assert.Error(t, err)
@@ -102,7 +101,7 @@ func TestLoadDB_SQLite_ConnectionError(t *testing.T) {
 		Path:   "/invalid/path/to/database.db", // Invalid path
 	}
 
-	log := logger.Default
+	log := loggerPkg.Default
 
 	db, err := NewDatabaseConnection(config, log)
 	assert.Error(t, err)
@@ -117,7 +116,7 @@ func TestLoadDB_Postgres_ConnectionError(t *testing.T) {
 		URL:    "postgres://invalid:invalid@localhost:5432/invalid", // Invalid URL
 	}
 
-	log := logger.Default
+	log := loggerPkg.Default
 
 	db, err := NewDatabaseConnection(config, log)
 	assert.Error(t, err)
@@ -132,7 +131,7 @@ func TestDatabase_Close(t *testing.T) {
 		Path:   ":memory:", // Use an in-memory SQLite database for testing
 	}
 
-	log := logger.Default
+	log := loggerPkg.Default
 
 	db, err := NewDatabaseConnection(config, log)
 	assert.NoError(t, err)

@@ -13,7 +13,7 @@ const (
 )
 
 type MockStruct struct {
-	models.SystemData
+	authModels.SystemData
 	Field1 string `json:"field1"`
 	Field2 string `json:"field2"`
 }
@@ -24,7 +24,7 @@ func CreateMockResourceInstance(createdByID uint) *MockStruct {
 	}
 
 	return &MockStruct{
-		SystemData: models.SystemData{
+		SystemData: authModels.SystemData{
 			CreatedByID: createdByID,
 			UpdatedByID: createdByID,
 		},

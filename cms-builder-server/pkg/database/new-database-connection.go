@@ -4,8 +4,9 @@ import (
 	"fmt"
 
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	loggerPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
+
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -30,7 +31,7 @@ func NewDatabaseConnection(config *dbTypes.DatabaseConfig, log *loggerTypes.Logg
 	}
 
 	if log == nil {
-		log = logger.Default
+		log = loggerPkg.Default
 	}
 
 	// Validate the driver
