@@ -3,7 +3,7 @@ package database_test
 import (
 	"testing"
 
-	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
+	dbPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 )
@@ -74,7 +74,7 @@ func TestNewDatabaseLogEntry(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := dbQueries.NewDatabaseLogEntry(tt.action, &tt.user, tt.object, nil, "23")
+			got, err := dbPkg.NewDatabaseLogEntry(tt.action, &tt.user, tt.object, nil, "23")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewLogHistoryEntry() error = %v, wantErr %v", err, tt.wantErr)
 				return

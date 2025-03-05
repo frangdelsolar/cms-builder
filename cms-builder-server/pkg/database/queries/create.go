@@ -3,8 +3,10 @@ package queries
 import (
 	"context"
 
+	dbPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
+
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 )
 
@@ -20,7 +22,7 @@ func Create(ctx context.Context, log *loggerTypes.Logger, db *dbTypes.DatabaseCo
 	}
 
 	// Log the create action
-	historyEntry, err := NewDatabaseLogEntry(dbTypes.CreateCRUDAction, user, instance, "", requestId)
+	historyEntry, err := dbPkg.NewDatabaseLogEntry(dbTypes.CreateCRUDAction, user, instance, "", requestId)
 	if err != nil {
 		log.Error().
 			Err(err).

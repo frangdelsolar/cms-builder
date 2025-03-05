@@ -3,6 +3,7 @@ package queries
 import (
 	"context"
 
+	dbPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
@@ -20,7 +21,7 @@ func Update(ctx context.Context, log *loggerTypes.Logger, db *dbTypes.DatabaseCo
 	}
 
 	// Log the update action
-	historyEntry, err := NewDatabaseLogEntry(dbTypes.UpdateCRUDAction, user, entity, differences, requestId)
+	historyEntry, err := dbPkg.NewDatabaseLogEntry(dbTypes.UpdateCRUDAction, user, entity, differences, requestId)
 	if err != nil {
 		log.Error().
 			Interface("differences", differences).

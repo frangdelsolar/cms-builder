@@ -4,6 +4,7 @@ import (
 	"context"
 	"reflect"
 
+	dbPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 
@@ -29,7 +30,7 @@ func Delete(ctx context.Context, log *loggerTypes.Logger, db *dbTypes.DatabaseCo
 	if isSlice {
 		for i := 0; i < val.Len(); i++ {
 			element := val.Index(i).Interface()
-			historyEntry, err := NewDatabaseLogEntry(dbTypes.DeleteCRUDAction, user, element, "", requestId)
+			historyEntry, err := dbPkg.NewDatabaseLogEntry(dbTypes.DeleteCRUDAction, user, element, "", requestId)
 			if err != nil {
 				log.Error().
 					Err(err).
@@ -46,7 +47,7 @@ func Delete(ctx context.Context, log *loggerTypes.Logger, db *dbTypes.DatabaseCo
 			}
 		}
 	} else {
-		historyEntry, err := NewDatabaseLogEntry(dbTypes.DeleteCRUDAction, user, entity, "", requestId)
+		historyEntry, err := dbPkg.NewDatabaseLogEntry(dbTypes.DeleteCRUDAction, user, entity, "", requestId)
 		if err != nil {
 			log.Error().
 				Err(err).
