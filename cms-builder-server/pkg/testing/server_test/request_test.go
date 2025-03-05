@@ -8,7 +8,8 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	loggerPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	"github.com/gorilla/mux"
@@ -46,22 +47,22 @@ func TestGetLoggerFromRequest(t *testing.T) {
 	tests := []struct {
 		name           string
 		contextValue   interface{}
-		expectedLogger *logger.Logger
+		expectedLogger *loggerTypes.Logger
 	}{
 		{
 			name:           "logger exists in context",
-			contextValue:   &logger.Logger{},
-			expectedLogger: &logger.Logger{},
+			contextValue:   &loggerTypes.Logger{},
+			expectedLogger: &loggerTypes.Logger{},
 		},
 		{
 			name:           "logger does not exist in context",
 			contextValue:   nil,
-			expectedLogger: logger.Default,
+			expectedLogger: loggerPkg.Default,
 		},
 		{
 			name:           "invalid type in context",
 			contextValue:   "not-a-logger",
-			expectedLogger: logger.Default,
+			expectedLogger: loggerPkg.Default,
 		},
 	}
 
@@ -520,7 +521,7 @@ func TestUserIsAllowed(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Call the function
-			result := UserIsAllowed(tt.appPermissions, tt.userRoles, tt.action, "test-app-name", logger.Default)
+			result := UserIsAllowed(tt.appPermissions, tt.userRoles, tt.action, "test-app-name", loggerPkg.Default)
 
 			// Verify the result
 			assert.Equal(t, tt.expectedResult, result, "Unexpected result for test case: %s", tt.name)

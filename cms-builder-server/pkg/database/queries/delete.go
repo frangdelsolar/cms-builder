@@ -6,11 +6,11 @@ import (
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 )
 
-func Delete(ctx context.Context, log *logger.Logger, db *database.Database, entity interface{}, user *models.User, requestId string) error {
+func Delete(ctx context.Context, log *loggerTypes.Logger, db *database.Database, entity interface{}, user *models.User, requestId string) error {
 	// Use reflection to determine if the entity is a slice or array
 	val := reflect.ValueOf(entity)
 	isSlice := val.Kind() == reflect.Slice || val.Kind() == reflect.Array

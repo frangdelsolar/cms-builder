@@ -10,7 +10,7 @@ import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/clients"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
 
@@ -21,7 +21,7 @@ import (
 
 const GodTokenHeader = "X-God-Token"
 
-func VerifyUser(userIdToken string, firebase *clients.FirebaseManager, db *database.Database, systemUser *models.User, requestId string, log *logger.Logger) (*models.User, error) {
+func VerifyUser(userIdToken string, firebase *clients.FirebaseManager, db *database.Database, systemUser *models.User, requestId string, log *loggerTypes.Logger) (*models.User, error) {
 
 	accessToken, err := firebase.VerifyIDToken(context.Background(), userIdToken)
 	if err != nil {
@@ -49,7 +49,7 @@ func VerifyUser(userIdToken string, firebase *clients.FirebaseManager, db *datab
 	return &localUser, nil
 }
 
-func RegisterFirebaseUserInDatabase(accessToken *firebaseAuth.Token, firebase *clients.FirebaseManager, db *database.Database, systemUser *models.User, requestId string, log *logger.Logger) (*models.User, error) {
+func RegisterFirebaseUserInDatabase(accessToken *firebaseAuth.Token, firebase *clients.FirebaseManager, db *database.Database, systemUser *models.User, requestId string, log *loggerTypes.Logger) (*models.User, error) {
 	// Extract name and email from the access token's claims
 	name, _ := accessToken.Claims["name"].(string)    // Name might not always be present
 	email, ok := accessToken.Claims["email"].(string) // Email is usually required
@@ -149,7 +149,7 @@ func FormatRoles(roles []models.Role) string {
 	return rolesStr
 }
 
-func CreateUserWithRole(input models.RegisterUserInput, firebase *clients.FirebaseManager, db *database.Database, systemUser *models.User, requestId string, log *logger.Logger) (*models.User, error) {
+func CreateUserWithRole(input models.RegisterUserInput, firebase *clients.FirebaseManager, db *database.Database, systemUser *models.User, requestId string, log *loggerTypes.Logger) (*models.User, error) {
 
 	log.Debug().Interface("input", input).Msg("Creating user with role")
 
@@ -196,7 +196,7 @@ func CreateUserWithRole(input models.RegisterUserInput, firebase *clients.Fireba
 }
 
 // Helper function to register or get an existing Firebase user
-func registerOrGetFirebaseUser(ctx context.Context, firebase *clients.FirebaseManager, input models.RegisterUserInput, log *logger.Logger) (string, error) {
+func registerOrGetFirebaseUser(ctx context.Context, firebase *clients.FirebaseManager, input models.RegisterUserInput, log *loggerTypes.Logger) (string, error) {
 	if !input.RegisterFirebase {
 		return "", nil
 	}
@@ -220,7 +220,7 @@ func registerOrGetFirebaseUser(ctx context.Context, firebase *clients.FirebaseMa
 }
 
 // Helper function to find a user by email
-func findUserByEmail(db *database.Database, email string, log *logger.Logger) (*models.User, error) {
+func findUserByEmail(db *database.Database, email string, log *loggerTypes.Logger) (*models.User, error) {
 	var user models.User
 	if err := db.DB.Where("email = ?", email).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -234,7 +234,7 @@ func findUserByEmail(db *database.Database, email string, log *logger.Logger) (*
 }
 
 // Helper function to handle existing user (update Firebase ID if necessary)
-func handleExistingUser(existingUser *models.User, fbUserId string, db *database.Database, systemUser *models.User, requestId string, log *logger.Logger) (*models.User, error) {
+func handleExistingUser(existingUser *models.User, fbUserId string, db *database.Database, systemUser *models.User, requestId string, log *loggerTypes.Logger) (*models.User, error) {
 	if existingUser.FirebaseId == fbUserId {
 		if fbUserId != "" {
 			log.Info().Msg("User already exists in database with matching Firebase ID")

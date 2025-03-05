@@ -5,11 +5,11 @@ import (
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 )
 
-func Create(ctx context.Context, log *logger.Logger, db *database.Database, instance interface{}, user *models.User, requestId string) error {
+func Create(ctx context.Context, log *loggerTypes.Logger, db *database.Database, instance interface{}, user *models.User, requestId string) error {
 	// Create the instance
 	result := db.DB.WithContext(ctx).Create(instance)
 	if result.Error != nil {

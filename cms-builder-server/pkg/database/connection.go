@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -57,7 +58,7 @@ func (d *Database) Close() error {
 // It takes a pointer to a DBConfig struct as input, which specifies the connection details.
 // On successful connection, it returns a pointer to a Database instance encapsulating the GORM DB object.
 // Otherwise, it returns an error indicating the connection failure.
-func LoadDB(config *DBConfig, log *logger.Logger) (*Database, error) {
+func LoadDB(config *DBConfig, log *loggerTypes.Logger) (*Database, error) {
 	if config == nil {
 		return nil, ErrDBConfigNotProvided
 	}

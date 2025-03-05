@@ -4,14 +4,14 @@ import (
 	"net/http"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	manager "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store"
 )
 
-func SetupFileResource(resourceManager *manager.ResourceManager, db *database.Database, st store.Store, log *logger.Logger, apiBaseUrl string) *manager.ResourceConfig {
+func SetupFileResource(resourceManager *manager.ResourceManager, db *database.Database, st store.Store, log *loggerTypes.Logger, apiBaseUrl string) *manager.ResourceConfig {
 
 	log.Info().Msg("Initializing File resource")
 

@@ -9,7 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 )
 
@@ -63,7 +63,7 @@ func (s LocalStore) GetPath(file *models.File) string {
 	return s.MediaFolderAbsolutePath + "/" + file.Name
 }
 
-func (s LocalStore) StoreFile(fileName string, file multipart.File, header *multipart.FileHeader, log *logger.Logger) (fileData *models.File, err error) {
+func (s LocalStore) StoreFile(fileName string, file multipart.File, header *multipart.FileHeader, log *loggerTypes.Logger) (fileData *models.File, err error) {
 	fileData = &models.File{}
 
 	// make sure files is not empty
@@ -149,7 +149,7 @@ func (s LocalStore) StoreFile(fileName string, file multipart.File, header *mult
 
 // DeleteFile takes a file path and deletes the file from disk.
 // It returns an error if the file cannot be deleted.
-func (s LocalStore) DeleteFile(file *models.File, log *logger.Logger) error {
+func (s LocalStore) DeleteFile(file *models.File, log *loggerTypes.Logger) error {
 	path := s.GetPath(file)
 
 	// Attempt to delete the file
@@ -161,7 +161,7 @@ func (s LocalStore) DeleteFile(file *models.File, log *logger.Logger) error {
 	return nil
 }
 
-func (s LocalStore) ListFiles(log *logger.Logger) ([]string, error) {
+func (s LocalStore) ListFiles(log *loggerTypes.Logger) ([]string, error) {
 	output := []string{}
 
 	err := filepath.Walk(s.MediaFolderAbsolutePath, func(path string, info os.FileInfo, err error) error {
@@ -192,12 +192,12 @@ func (s LocalStore) ListFiles(log *logger.Logger) ([]string, error) {
 	return output, nil
 }
 
-func (s LocalStore) ReadFile(file *models.File, log *logger.Logger) ([]byte, error) {
+func (s LocalStore) ReadFile(file *models.File, log *loggerTypes.Logger) ([]byte, error) {
 	path := s.GetPath(file)
 	return os.ReadFile(path)
 }
 
-func (s LocalStore) GetFileInfo(file *models.File, log *logger.Logger) (*models.FileInfo, error) {
+func (s LocalStore) GetFileInfo(file *models.File, log *loggerTypes.Logger) (*models.FileInfo, error) {
 	path := s.GetPath(file)
 	stats, err := os.Stat(path)
 	if err != nil {

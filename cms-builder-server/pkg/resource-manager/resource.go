@@ -7,7 +7,7 @@ import (
 	"reflect"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 )
 
@@ -163,7 +163,7 @@ func InterfaceToMap(instance interface{}) (map[string]interface{}, error) {
 }
 
 // Validate validates the given instance against the resource's validators.
-func (r *Resource) Validate(instance interface{}, log *logger.Logger) ValidationResult {
+func (r *Resource) Validate(instance interface{}, log *loggerTypes.Logger) ValidationResult {
 	errors := ValidationResult{
 		Errors: make([]ValidationError, 0),
 	}

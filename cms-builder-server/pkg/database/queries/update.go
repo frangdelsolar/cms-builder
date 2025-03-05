@@ -5,11 +5,11 @@ import (
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 )
 
-func Update(ctx context.Context, log *logger.Logger, db *database.Database, entity interface{}, user *models.User, differences interface{}, requestId string) error {
+func Update(ctx context.Context, log *loggerTypes.Logger, db *database.Database, entity interface{}, user *models.User, differences interface{}, requestId string) error {
 	// Update the entity
 	result := db.DB.WithContext(ctx).Save(entity)
 	if result.Error != nil {

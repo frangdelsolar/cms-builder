@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	pkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/scheduler"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store"
@@ -31,7 +31,7 @@ func TestShutdown(t *testing.T) {
 }
 
 // RegisterTestTask registers a test task with the scheduler.
-func RegisterTestTask(s *pkg.Scheduler, log *logger.Logger, store store.Store, db *database.Database, schedulerUser *models.User) (pkg.SchedulerJobDefinition, pkg.SchedulerTaskFunc) {
+func RegisterTestTask(s *pkg.Scheduler, log *loggerTypes.Logger, store store.Store, db *database.Database, schedulerUser *models.User) (pkg.SchedulerJobDefinition, pkg.SchedulerTaskFunc) {
 	jobDefinition := pkg.SchedulerJobDefinition{
 		Name:          "test-job",
 		FrequencyType: pkg.JobFrequencyTypeImmediate,

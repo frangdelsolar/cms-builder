@@ -6,7 +6,7 @@ import (
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 )
 
@@ -19,7 +19,7 @@ type JobRegistry struct {
 	Jobs map[string]TaskDefinition
 }
 
-func (jr *JobRegistry) RunJob(jd *SchedulerJobDefinition, requestId string, user *models.User, log *logger.Logger, db *database.Database) (string, error) {
+func (jr *JobRegistry) RunJob(jd *SchedulerJobDefinition, requestId string, user *models.User, log *loggerTypes.Logger, db *database.Database) (string, error) {
 	log.Info().Str("Job", jd.Name).Msg("Running task")
 
 	// Look up the task definition in the registry
@@ -55,7 +55,7 @@ func (jr *JobRegistry) RunJob(jd *SchedulerJobDefinition, requestId string, user
 	return results, nil
 }
 
-func before(jobDefinition *SchedulerJobDefinition, db *database.Database, user *models.User, requestId string, log *logger.Logger) (string, error) {
+func before(jobDefinition *SchedulerJobDefinition, db *database.Database, user *models.User, requestId string, log *loggerTypes.Logger) (string, error) {
 	log.Info().Interface("JobDefinition", jobDefinition).Msg("Starting task job")
 
 	task := SchedulerTask{
@@ -77,7 +77,7 @@ func before(jobDefinition *SchedulerJobDefinition, db *database.Database, user *
 	return task.CronJobId, nil
 }
 
-func success(jobId string, db *database.Database, user *models.User, requestId string, log *logger.Logger, results string) error {
+func success(jobId string, db *database.Database, user *models.User, requestId string, log *loggerTypes.Logger, results string) error {
 	log.Info().Interface("jobId", jobId).Msg("Task Job Succeded")
 	err := updateTaskStatus(log, db, user, jobId, TaskStatusDone, "", requestId, results)
 	if err != nil {
@@ -87,7 +87,7 @@ func success(jobId string, db *database.Database, user *models.User, requestId s
 	return nil
 }
 
-func fail(jobId string, db *database.Database, user *models.User, requestId string, log *logger.Logger, jobError string, results string) error {
+func fail(jobId string, db *database.Database, user *models.User, requestId string, log *loggerTypes.Logger, jobError string, results string) error {
 	log.Error().Interface("jobId", jobId).Msg("Task Job Failed")
 	err := updateTaskStatus(log, db, user, jobId, TaskStatusFailed, jobError, requestId, results)
 	if err != nil {

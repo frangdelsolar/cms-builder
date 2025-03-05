@@ -5,13 +5,13 @@ import (
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/clients"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	manager "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 )
 
-func SetupUserResource(firebase *clients.FirebaseManager, db *database.Database, log *logger.Logger, getSystemUser func() *models.User) *manager.ResourceConfig {
+func SetupUserResource(firebase *clients.FirebaseManager, db *database.Database, log *loggerTypes.Logger, getSystemUser func() *models.User) *manager.ResourceConfig {
 
 	log.Info().Msg("Initializing User resource")
 

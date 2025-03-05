@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing"
 	"github.com/stretchr/testify/assert"
@@ -14,7 +14,7 @@ import (
 
 func TestLoggingMiddleware_LogsRequest(t *testing.T) {
 
-	var logConfig = &logger.LoggerConfig{
+	var logConfig = &loggerTypes.LoggerConfig{
 		LogLevel: "info",
 	}
 

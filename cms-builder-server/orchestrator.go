@@ -9,7 +9,8 @@ import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	dbLogger "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database-logger"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/file"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	loggerPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	requestLogger "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/request-logger"
 	manager "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
@@ -31,8 +32,8 @@ type Orchestrator struct {
 	Config          *config.ConfigReader
 	DB              *database.Database
 	FirebaseClient  *clients.FirebaseManager
-	Logger          *logger.Logger
-	LoggerConfig    *logger.LoggerConfig
+	Logger          *loggerTypes.Logger
+	LoggerConfig    *loggerTypes.LoggerConfig
 	ResourceManager *manager.ResourceManager
 	Scheduler       *scheduler.Scheduler
 	Server          *server.Server
@@ -94,13 +95,13 @@ func (o *Orchestrator) InitConfigReader() error {
 }
 
 func (o *Orchestrator) InitLogger() error {
-	config := &logger.LoggerConfig{
+	config := &loggerTypes.LoggerConfig{
 		LogLevel:    o.Config.GetString(EnvKeys.LogLevel),
 		LogFilePath: o.Config.GetString(EnvKeys.LogFilePath),
 		WriteToFile: o.Config.GetBool(EnvKeys.LogWriteToFile),
 	}
 
-	logger, err := logger.NewLogger(config)
+	logger, err := loggerPkg.NewLogger(config)
 	if err != nil {
 		return fmt.Errorf("error initializing logger: %w", err)
 	}

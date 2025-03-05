@@ -3,6 +3,7 @@ package testing
 import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	mgr "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/scheduler"
@@ -17,7 +18,7 @@ func init() {
 
 type TestUtils struct {
 	Db          *database.Database
-	Logger      *logger.Logger
+	Logger      *loggerTypes.Logger
 	Mgr         *mgr.ResourceManager
 	Src         *mgr.Resource
 	AdminUser   *models.User
@@ -50,6 +51,6 @@ func NewTestDB() *database.Database {
 	return db
 }
 
-func NewTestLogger() *logger.Logger {
+func NewTestLogger() *loggerTypes.Logger {
 	return logger.Default
 }

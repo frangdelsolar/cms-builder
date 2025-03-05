@@ -9,7 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	loggerPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
 	"github.com/gorilla/mux"
@@ -65,12 +66,12 @@ func GetRequestId(r *http.Request) string {
 	return ""
 }
 
-func GetRequestLogger(r *http.Request) *logger.Logger {
-	if log, ok := r.Context().Value(CtxRequestLogger).(*logger.Logger); ok {
+func GetRequestLogger(r *http.Request) *loggerTypes.Logger {
+	if log, ok := r.Context().Value(CtxRequestLogger).(*loggerTypes.Logger); ok {
 		return log
 	}
 
-	return logger.Default
+	return loggerPkg.Default
 }
 
 func GetRequestUser(r *http.Request) *models.User {
@@ -94,7 +95,7 @@ func GetRequestIsAuth(r *http.Request) bool {
 type RequestContext struct {
 	IsAuthenticated bool
 	User            *models.User
-	Logger          *logger.Logger
+	Logger          *loggerTypes.Logger
 	RequestId       string
 }
 
@@ -207,7 +208,7 @@ func ValidateOrderParam(orderParam string) (string, error) {
 	return order, nil
 }
 
-func UserIsAllowed(appPermissions RolePermissionMap, userRoles []models.Role, action CrudOperation, resourceName string, log *logger.Logger) bool {
+func UserIsAllowed(appPermissions RolePermissionMap, userRoles []models.Role, action CrudOperation, resourceName string, log *loggerTypes.Logger) bool {
 
 	// Loop over the user's roles and their associated permissions
 	for _, role := range userRoles {

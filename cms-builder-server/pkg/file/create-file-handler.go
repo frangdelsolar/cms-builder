@@ -5,7 +5,7 @@ import (
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	manager "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
@@ -95,7 +95,7 @@ func CreateStoredFilesHandler(db *database.Database, st store.Store, apiBaseUrl 
 	}
 }
 
-func handleUploadError(store store.Store, fileData *models.File, w http.ResponseWriter, err error, log *logger.Logger) {
+func handleUploadError(store store.Store, fileData *models.File, w http.ResponseWriter, err error, log *loggerTypes.Logger) {
 	log.Error().Err(err).Msgf("Error uploading file: %s. Rolling back...", fileData.Name)
 
 	// Attempt to delete the file from disk

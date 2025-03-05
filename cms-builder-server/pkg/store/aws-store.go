@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/clients"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 )
 
@@ -32,7 +32,7 @@ func (s *S3Store) GetPath(file *models.File) string {
 // It reads the file bytes and calls the UploadFile method of the AwsManager client.
 // If successful, it returns a FileData object containing the file's name, path, and URL.
 // If there is an error at any step, it logs the error and returns the error.
-func (s *S3Store) StoreFile(fileName string, file multipart.File, header *multipart.FileHeader, log *logger.Logger) (fileData *models.File, err error) {
+func (s *S3Store) StoreFile(fileName string, file multipart.File, header *multipart.FileHeader, log *loggerTypes.Logger) (fileData *models.File, err error) {
 	fileData = &models.File{}
 
 	fileBytes, err := getFileBytes(file)
@@ -105,7 +105,7 @@ func (s *S3Store) StoreFile(fileName string, file multipart.File, header *multip
 // DeleteFile deletes a file from the S3 bucket using the provided file path.
 // It calls the DeleteFile method of the AwsManager client.
 // If an error occurs during the deletion, it logs the error and returns it.
-func (s *S3Store) DeleteFile(file *models.File, log *logger.Logger) error {
+func (s *S3Store) DeleteFile(file *models.File, log *loggerTypes.Logger) error {
 	log.Warn().Interface("file", file).Msg("Deleting file from S3")
 	err := s.Client.DeleteFile(file.Path, log)
 	if err != nil {
@@ -116,15 +116,15 @@ func (s *S3Store) DeleteFile(file *models.File, log *logger.Logger) error {
 	return nil
 }
 
-func (s *S3Store) ListFiles(log *logger.Logger) ([]string, error) {
+func (s *S3Store) ListFiles(log *loggerTypes.Logger) ([]string, error) {
 	return s.Client.ListFiles(log)
 }
 
-func (s *S3Store) ReadFile(file *models.File, log *logger.Logger) ([]byte, error) {
+func (s *S3Store) ReadFile(file *models.File, log *loggerTypes.Logger) ([]byte, error) {
 	return s.Client.DownloadFile(file.Path, log)
 }
 
-func (s *S3Store) GetFileInfo(file *models.File, log *logger.Logger) (*models.FileInfo, error) {
+func (s *S3Store) GetFileInfo(file *models.File, log *loggerTypes.Logger) (*models.FileInfo, error) {
 	info := &models.FileInfo{
 		Name:        file.Name,
 		Size:        file.Size,

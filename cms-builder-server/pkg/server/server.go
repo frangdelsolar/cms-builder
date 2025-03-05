@@ -8,7 +8,7 @@ import (
 	"github.com/NYTimes/gziphandler"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/clients"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	"github.com/gorilla/mux"
 )
@@ -23,7 +23,7 @@ type ServerConfig struct {
 	Port           string
 	CsrfToken      string
 	AllowedOrigins []string
-	LoggerConfig   *logger.LoggerConfig
+	LoggerConfig   *loggerTypes.LoggerConfig
 	GodToken       string
 	GodUser        *models.User
 	SystemUser     *models.User
@@ -36,10 +36,10 @@ type Server struct {
 	Middlewares []func(http.Handler) http.Handler
 	Root        *mux.Router
 	DB          *database.Database
-	Logger      *logger.Logger
+	Logger      *loggerTypes.Logger
 }
 
-func NewServer(config *ServerConfig, db *database.Database, log *logger.Logger) (*Server, error) {
+func NewServer(config *ServerConfig, db *database.Database, log *loggerTypes.Logger) (*Server, error) {
 	log.Info().Interface("config", config).Msg("Initializing server")
 
 	if config == nil {
