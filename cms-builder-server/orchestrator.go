@@ -7,7 +7,7 @@ import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/clients"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/config"
 	dbPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	dbLogger "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database-logger"
+	dbResources "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/resources"
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/file"
 	loggerPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
@@ -160,7 +160,7 @@ func (o *Orchestrator) InitAuth() error {
 }
 
 func (o *Orchestrator) InitDatabaseLogger() error {
-	resourceConfig := dbLogger.SetupDBLoggerResource(o.ResourceManager, o.DB, o.Logger)
+	resourceConfig := dbResources.SetupDBLoggerResource(o.ResourceManager, o.DB, o.Logger)
 	_, err := o.ResourceManager.AddResource(resourceConfig)
 	return err
 }

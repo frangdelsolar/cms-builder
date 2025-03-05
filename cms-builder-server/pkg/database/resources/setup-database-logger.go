@@ -1,8 +1,9 @@
-package databaselogger
+package resources
 
 import (
 	"net/http"
 
+	dbHandlers "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/handlers"
 	dbModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/models"
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
@@ -26,7 +27,7 @@ func SetupDBLoggerResource(resourceManager *manager.ResourceManager, db *dbTypes
 	routes := []server.Route{
 		{
 			Path:         "/api/database-timeline",
-			Handler:      TimelineHandler(resourceManager, db),
+			Handler:      dbHandlers.TimelineHandler(resourceManager, db),
 			Name:         "database-timeline",
 			RequiresAuth: true,
 			Methods:      []string{http.MethodGet},
