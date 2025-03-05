@@ -3,8 +3,8 @@ package file
 import (
 	"net/http"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	manager "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
@@ -13,9 +13,9 @@ import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
 )
 
-func CreateStoredFilesHandler(db *database.Database, st store.Store, apiBaseUrl string) manager.ApiFunction {
+func CreateStoredFilesHandler(db *dbTypes.DatabaseConnection, st store.Store, apiBaseUrl string) manager.ApiFunction {
 
-	return func(a *manager.Resource, db *database.Database) http.HandlerFunc {
+	return func(a *manager.Resource, db *dbTypes.DatabaseConnection) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 
 			requestCtx := GetRequestContext(r)

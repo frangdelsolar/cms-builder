@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	"github.com/go-co-op/gocron/v2"
@@ -34,12 +34,12 @@ type GoCronScheduler interface {
 
 // Scheduler is the main struct for managing scheduled jobs.
 type Scheduler struct {
-	Cron        GoCronScheduler     // Instance of the gocron scheduler.
-	User        *models.User        // User associated with the scheduler.
-	DB          *database.Database  // Database connection for persisting job data.
-	Logger      *loggerTypes.Logger // Logger for logging scheduler events.
-	TaskManager TaskManager         // Thread-safe map for storing job results.
-	JobRegistry JobRegistry         // Registry of task functions and their parameters.
+	Cron        GoCronScheduler             // Instance of the gocron scheduler.
+	User        *models.User                // User associated with the scheduler.
+	DB          *dbTypes.DatabaseConnection // Database connection for persisting job data.
+	Logger      *loggerTypes.Logger         // Logger for logging scheduler events.
+	TaskManager TaskManager                 // Thread-safe map for storing job results.
+	JobRegistry JobRegistry                 // Registry of task functions and their parameters.
 }
 
 // RegisterTask registers a task function with the scheduler.
@@ -64,7 +64,7 @@ func (s *Scheduler) RegisterTask(taskName string, taskFunction SchedulerTaskFunc
 // Returns:
 //   - *Scheduler: Initialized scheduler instance.
 //   - error: Error if initialization fails.
-func NewScheduler(db *database.Database, schedulerUser *models.User, log *loggerTypes.Logger) (*Scheduler, error) {
+func NewScheduler(db *dbTypes.DatabaseConnection, schedulerUser *models.User, log *loggerTypes.Logger) (*Scheduler, error) {
 	log.Info().Msg("Initializing scheduler")
 
 	s, err := gocron.NewScheduler()

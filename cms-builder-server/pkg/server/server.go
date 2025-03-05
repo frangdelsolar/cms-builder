@@ -7,7 +7,7 @@ import (
 
 	"github.com/NYTimes/gziphandler"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/clients"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	"github.com/gorilla/mux"
@@ -35,11 +35,11 @@ type Server struct {
 	ServerConfig
 	Middlewares []func(http.Handler) http.Handler
 	Root        *mux.Router
-	DB          *database.Database
+	DB          *dbTypes.DatabaseConnection
 	Logger      *loggerTypes.Logger
 }
 
-func NewServer(config *ServerConfig, db *database.Database, log *loggerTypes.Logger) (*Server, error) {
+func NewServer(config *ServerConfig, db *dbTypes.DatabaseConnection, log *loggerTypes.Logger) (*Server, error) {
 	log.Info().Interface("config", config).Msg("Initializing server")
 
 	if config == nil {

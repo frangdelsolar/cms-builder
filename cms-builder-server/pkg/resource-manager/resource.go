@@ -6,13 +6,13 @@ import (
 	"net/http"
 	"reflect"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 )
 
 // ApiFunction defines the signature for API handler functions.
-type ApiFunction func(resource *Resource, db *database.Database) http.HandlerFunc
+type ApiFunction func(resource *Resource, db *dbTypes.DatabaseConnection) http.HandlerFunc
 
 // ApiHandlers holds the handlers for various API operations.
 type ApiHandlers struct {

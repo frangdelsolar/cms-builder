@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	mgr "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 )
 
@@ -19,7 +19,7 @@ var filterKeys = map[string]bool{
 }
 
 // DefaultCreateHandler handles the creation of a new resource.
-var UserCreateHandler mgr.ApiFunction = func(a *mgr.Resource, db *database.Database) http.HandlerFunc {
+var UserCreateHandler mgr.ApiFunction = func(a *mgr.Resource, db *dbTypes.DatabaseConnection) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		requestCtx := GetRequestContext(r)
 		log := requestCtx.Logger

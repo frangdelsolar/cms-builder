@@ -32,7 +32,7 @@ package database_test
 
 // 	// Verify that a history entry was created
 // 	var historyEntry database.DatabaseLog
-// 	err = db.DB.Where("action = ? AND resource_id = ?", database.DeleteCRUDAction, instance.ID).First(&historyEntry).Error
+// 	err = db.DB.Where("action = ? AND resource_id = ?", database.dbTypes.DeleteCRUDAction, instance.ID).First(&historyEntry).Error
 // 	assert.NoError(t, err)
 // 	assert.Equal(t, user.StringID(), historyEntry.UserId)
 // 	assert.Equal(t, "test-request-id", historyEntry.TraceId)
@@ -70,7 +70,7 @@ package database_test
 
 // 		// Verify that a history entry was created for each instance
 // 		var historyEntry database.DatabaseLog
-// 		err = db.DB.Where("action = ? AND resource_id = ?", database.DeleteCRUDAction, instance.ID).First(&historyEntry).Error
+// 		err = db.DB.Where("action = ? AND resource_id = ?", database.dbTypes.DeleteCRUDAction, instance.ID).First(&historyEntry).Error
 // 		assert.NoError(t, err)
 // 		assert.Equal(t, user.StringID(), historyEntry.UserId)
 // 		assert.Equal(t, "test-request-id", historyEntry.TraceId)
@@ -108,7 +108,7 @@ package database_test
 
 // 	// Verify that no history entry was created
 // 	var historyEntry database.DatabaseLog
-// 	err = db.DB.Where("action = ? AND resource_id = ?", database.DeleteCRUDAction, instance.ID).First(&historyEntry).Error
+// 	err = db.DB.Where("action = ? AND resource_id = ?", database.dbTypes.DeleteCRUDAction, instance.ID).First(&historyEntry).Error
 // 	assert.Error(t, err)
 // 	assert.Equal(t, gorm.ErrRecordNotFound, err)
 // }
@@ -148,7 +148,7 @@ package database_test
 
 // 		// Verify that no history entry was created
 // 		var historyEntry database.DatabaseLog
-// 		err = db.DB.Where("action = ? AND resource_id = ?", database.DeleteCRUDAction, instance.ID).First(&historyEntry).Error
+// 		err = db.DB.Where("action = ? AND resource_id = ?", database.dbTypes.DeleteCRUDAction, instance.ID).First(&historyEntry).Error
 // 		assert.Error(t, err)
 // 		assert.Equal(t, gorm.ErrRecordNotFound, err)
 // 	}

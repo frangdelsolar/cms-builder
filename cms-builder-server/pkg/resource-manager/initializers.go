@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
 	"github.com/rs/zerolog/log"
@@ -33,7 +33,7 @@ func InitializeResourceNames(r *Resource) (ResourceNames, error) {
 	}, nil
 }
 
-func InitializeRoutes(r *Resource, input []server.Route, db *database.Database) error {
+func InitializeRoutes(r *Resource, input []server.Route, db *dbTypes.DatabaseConnection) error {
 	baseRoute := "/api/" + r.ResourceNames.KebabPlural
 
 	routes := []server.Route{

@@ -3,13 +3,12 @@ package queries
 import (
 	"context"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 )
 
-func Create(ctx context.Context, log *loggerTypes.Logger, db *database.Database, instance interface{}, user *models.User, requestId string) error {
+func Create(ctx context.Context, log *loggerTypes.Logger, db *dbTypes.DatabaseConnection, instance interface{}, user *models.User, requestId string) error {
 	// Create the instance
 	result := db.DB.WithContext(ctx).Create(instance)
 	if result.Error != nil {
@@ -21,7 +20,7 @@ func Create(ctx context.Context, log *loggerTypes.Logger, db *database.Database,
 	}
 
 	// Log the create action
-	historyEntry, err := NewDatabaseLogEntry(CreateCRUDAction, user, instance, "", requestId)
+	historyEntry, err := NewDatabaseLogEntry(dbTypes.CreateCRUDAction, user, instance, "", requestId)
 	if err != nil {
 		log.Error().
 			Err(err).

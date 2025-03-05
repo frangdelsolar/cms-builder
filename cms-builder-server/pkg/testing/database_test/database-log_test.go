@@ -3,8 +3,8 @@ package database_test
 import (
 	"testing"
 
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 )
 
@@ -16,7 +16,7 @@ type TestStruct struct {
 func TestNewDatabaseLogEntry(t *testing.T) {
 	tests := []struct {
 		name       string
-		action     CRUDAction
+		action     dbTypes.CRUDAction
 		user       User
 		object     interface{}
 		wantErr    bool
@@ -24,7 +24,7 @@ func TestNewDatabaseLogEntry(t *testing.T) {
 	}{
 		{
 			name:   "success",
-			action: CreateCRUDAction,
+			action: dbTypes.CreateCRUDAction,
 			user: User{
 				ID:    uint(1),
 				Name:  "Test User",
@@ -36,7 +36,7 @@ func TestNewDatabaseLogEntry(t *testing.T) {
 		},
 		{
 			name:   "marshal error",
-			action: CreateCRUDAction,
+			action: dbTypes.CreateCRUDAction,
 			user: User{
 				ID:    uint(1),
 				Name:  "Test User",
@@ -48,7 +48,7 @@ func TestNewDatabaseLogEntry(t *testing.T) {
 		},
 		{
 			name:   "unmarshal error",
-			action: CreateCRUDAction,
+			action: dbTypes.CreateCRUDAction,
 			user: User{
 				ID:    uint(1),
 				Name:  "Test User",
@@ -60,7 +60,7 @@ func TestNewDatabaseLogEntry(t *testing.T) {
 		},
 		{
 			name:   "no ID",
-			action: CreateCRUDAction,
+			action: dbTypes.CreateCRUDAction,
 			user: User{
 				ID:    uint(1),
 				Name:  "Test User",

@@ -4,15 +4,15 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
 	"github.com/google/uuid"
 )
 
-func getOrCreateJobDefinition(db *database.Database, log *loggerTypes.Logger, schedulerUser *models.User, jdInput SchedulerJobDefinition) (*SchedulerJobDefinition, error) {
+func getOrCreateJobDefinition(db *dbTypes.DatabaseConnection, log *loggerTypes.Logger, schedulerUser *models.User, jdInput SchedulerJobDefinition) (*SchedulerJobDefinition, error) {
 
 	// If there is a job definition with the same name, return it
 	// Name must be unique
@@ -60,7 +60,7 @@ func getOrCreateJobDefinition(db *database.Database, log *loggerTypes.Logger, sc
 	return &instance, nil
 }
 
-func updateTaskStatus(log *loggerTypes.Logger, db *database.Database, schedulerUser *models.User, cronJobId string, status TaskStatus, errMsg string, requestId string, results string) error {
+func updateTaskStatus(log *loggerTypes.Logger, db *dbTypes.DatabaseConnection, schedulerUser *models.User, cronJobId string, status TaskStatus, errMsg string, requestId string, results string) error {
 	task := GetSchedulerTask(log, db, cronJobId)
 	task.SystemData.UpdatedByID = schedulerUser.ID
 	task.Status = status
@@ -72,7 +72,7 @@ func updateTaskStatus(log *loggerTypes.Logger, db *database.Database, schedulerU
 	return dbQueries.Update(context.Background(), log, db, task, schedulerUser, differences, requestId)
 }
 
-func GetSchedulerTask(log *loggerTypes.Logger, db *database.Database, cronJobId string) *SchedulerTask {
+func GetSchedulerTask(log *loggerTypes.Logger, db *dbTypes.DatabaseConnection, cronJobId string) *SchedulerTask {
 	var task SchedulerTask
 
 	filters := map[string]interface{}{

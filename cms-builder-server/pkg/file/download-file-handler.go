@@ -6,15 +6,15 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	manager "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store"
 )
 
-func DownloadStoredFileHandler(mgr *manager.ResourceManager, db *database.Database, st store.Store) http.HandlerFunc {
+func DownloadStoredFileHandler(mgr *manager.ResourceManager, db *dbTypes.DatabaseConnection, st store.Store) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 

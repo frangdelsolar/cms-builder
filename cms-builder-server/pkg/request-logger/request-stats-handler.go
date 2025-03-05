@@ -4,13 +4,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	manager "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 )
 
-func RequestStatsHandler(mgr *manager.ResourceManager, db *database.Database) http.HandlerFunc {
+func RequestStatsHandler(mgr *manager.ResourceManager, db *dbTypes.DatabaseConnection) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		requestCtx := GetRequestContext(r)

@@ -12,7 +12,7 @@ package database_test
 // func TestNewDatabaseLogEntry(t *testing.T) {
 // 	tests := []struct {
 // 		name       string
-// 		action     CRUDAction
+// 		action     dbTypes.CRUDAction
 // 		user       User
 // 		object     interface{}
 // 		wantErr    bool
@@ -20,7 +20,7 @@ package database_test
 // 	}{
 // 		{
 // 			name:   "success",
-// 			action: CreateCRUDAction,
+// 			action: dbTypes.CreateCRUDAction,
 // 			user: User{
 // 				ID:    uint(1),
 // 				Name:  "Test User",
@@ -32,7 +32,7 @@ package database_test
 // 		},
 // 		{
 // 			name:   "marshal error",
-// 			action: CreateCRUDAction,
+// 			action: dbTypes.CreateCRUDAction,
 // 			user: User{
 // 				ID:    uint(1),
 // 				Name:  "Test User",
@@ -44,7 +44,7 @@ package database_test
 // 		},
 // 		{
 // 			name:   "unmarshal error",
-// 			action: CreateCRUDAction,
+// 			action: dbTypes.CreateCRUDAction,
 // 			user: User{
 // 				ID:    uint(1),
 // 				Name:  "Test User",
@@ -56,7 +56,7 @@ package database_test
 // 		},
 // 		{
 // 			name:   "no ID",
-// 			action: CreateCRUDAction,
+// 			action: dbTypes.CreateCRUDAction,
 // 			user: User{
 // 				ID:    uint(1),
 // 				Name:  "Test User",

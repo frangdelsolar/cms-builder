@@ -3,7 +3,7 @@ package scheduler
 import (
 	"net/http"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	mgr "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
@@ -28,7 +28,7 @@ func SetupSchedulerTaskResource() *mgr.ResourceConfig {
 
 }
 
-func SetupSchedulerJobDefinitionResource(manager *mgr.ResourceManager, db *database.Database, jr JobRegistry) *mgr.ResourceConfig {
+func SetupSchedulerJobDefinitionResource(manager *mgr.ResourceManager, db *dbTypes.DatabaseConnection, jr JobRegistry) *mgr.ResourceConfig {
 
 	skipUserBinding := true // Scheduler Models don't have a created_by field
 

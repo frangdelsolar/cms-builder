@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
@@ -12,11 +12,11 @@ import (
 
 type ResourceManager struct {
 	Resources map[string]*Resource
-	DB        *database.Database
+	DB        *dbTypes.DatabaseConnection
 	Logger    *loggerTypes.Logger
 }
 
-func NewResourceManager(db *database.Database, log *loggerTypes.Logger) *ResourceManager {
+func NewResourceManager(db *dbTypes.DatabaseConnection, log *loggerTypes.Logger) *ResourceManager {
 	return &ResourceManager{
 		Resources: make(map[string]*Resource),
 		DB:        db,

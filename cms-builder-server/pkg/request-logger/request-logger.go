@@ -3,14 +3,14 @@ package requestlogger
 import (
 	"net/http"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	manager "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 )
 
-func SetupRequestLoggerResource(resourceManager *manager.ResourceManager, db *database.Database, log *loggerTypes.Logger) *manager.ResourceConfig {
+func SetupRequestLoggerResource(resourceManager *manager.ResourceManager, db *dbTypes.DatabaseConnection, log *loggerTypes.Logger) *manager.ResourceConfig {
 
 	log.Info().Msg("Initializing Request Logger resource")
 

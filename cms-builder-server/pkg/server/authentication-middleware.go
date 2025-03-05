@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/clients"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
@@ -16,12 +15,13 @@ import (
 	firebaseAuth "firebase.google.com/go/auth"
 
 	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	"gorm.io/gorm"
 )
 
 const GodTokenHeader = "X-God-Token"
 
-func VerifyUser(userIdToken string, firebase *clients.FirebaseManager, db *database.Database, systemUser *models.User, requestId string, log *loggerTypes.Logger) (*models.User, error) {
+func VerifyUser(userIdToken string, firebase *clients.FirebaseManager, db *dbTypes.DatabaseConnection, systemUser *models.User, requestId string, log *loggerTypes.Logger) (*models.User, error) {
 
 	accessToken, err := firebase.VerifyIDToken(context.Background(), userIdToken)
 	if err != nil {
@@ -49,7 +49,7 @@ func VerifyUser(userIdToken string, firebase *clients.FirebaseManager, db *datab
 	return &localUser, nil
 }
 
-func RegisterFirebaseUserInDatabase(accessToken *firebaseAuth.Token, firebase *clients.FirebaseManager, db *database.Database, systemUser *models.User, requestId string, log *loggerTypes.Logger) (*models.User, error) {
+func RegisterFirebaseUserInDatabase(accessToken *firebaseAuth.Token, firebase *clients.FirebaseManager, db *dbTypes.DatabaseConnection, systemUser *models.User, requestId string, log *loggerTypes.Logger) (*models.User, error) {
 	// Extract name and email from the access token's claims
 	name, _ := accessToken.Claims["name"].(string)    // Name might not always be present
 	email, ok := accessToken.Claims["email"].(string) // Email is usually required
@@ -92,7 +92,7 @@ func VerifyGodUser(envToken string, requestToken string) bool {
 // verification fails, it will return a 401 error. If the verification is
 // successful, it will continue to the next handler in the chain, setting a
 // "requested_by" header in the request with the ID of the verified user.
-func AuthMiddleware(envGodToken string, godUser *models.User, firebase *clients.FirebaseManager, db *database.Database, systemUser *models.User) func(next http.Handler) http.Handler {
+func AuthMiddleware(envGodToken string, godUser *models.User, firebase *clients.FirebaseManager, db *dbTypes.DatabaseConnection, systemUser *models.User) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
@@ -149,7 +149,7 @@ func FormatRoles(roles []models.Role) string {
 	return rolesStr
 }
 
-func CreateUserWithRole(input models.RegisterUserInput, firebase *clients.FirebaseManager, db *database.Database, systemUser *models.User, requestId string, log *loggerTypes.Logger) (*models.User, error) {
+func CreateUserWithRole(input models.RegisterUserInput, firebase *clients.FirebaseManager, db *dbTypes.DatabaseConnection, systemUser *models.User, requestId string, log *loggerTypes.Logger) (*models.User, error) {
 
 	log.Debug().Interface("input", input).Msg("Creating user with role")
 
@@ -220,7 +220,7 @@ func registerOrGetFirebaseUser(ctx context.Context, firebase *clients.FirebaseMa
 }
 
 // Helper function to find a user by email
-func findUserByEmail(db *database.Database, email string, log *loggerTypes.Logger) (*models.User, error) {
+func findUserByEmail(db *dbTypes.DatabaseConnection, email string, log *loggerTypes.Logger) (*models.User, error) {
 	var user models.User
 	if err := db.DB.Where("email = ?", email).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -234,7 +234,7 @@ func findUserByEmail(db *database.Database, email string, log *loggerTypes.Logge
 }
 
 // Helper function to handle existing user (update Firebase ID if necessary)
-func handleExistingUser(existingUser *models.User, fbUserId string, db *database.Database, systemUser *models.User, requestId string, log *loggerTypes.Logger) (*models.User, error) {
+func handleExistingUser(existingUser *models.User, fbUserId string, db *dbTypes.DatabaseConnection, systemUser *models.User, requestId string, log *loggerTypes.Logger) (*models.User, error) {
 	if existingUser.FirebaseId == fbUserId {
 		if fbUserId != "" {
 			log.Info().Msg("User already exists in database with matching Firebase ID")

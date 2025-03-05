@@ -3,15 +3,15 @@ package scheduler
 import (
 	"net/http"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	mgr "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 )
 
 // DefaultCreateHandler handles the creation of a new resource.
 // SchedulerJobDefinition
-var RunSchedulerTaskHandler = func(manager *mgr.ResourceManager, db *database.Database, s JobRegistry) http.HandlerFunc {
+var RunSchedulerTaskHandler = func(manager *mgr.ResourceManager, db *dbTypes.DatabaseConnection, s JobRegistry) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		requestCtx := GetRequestContext(r)
 		log := requestCtx.Logger

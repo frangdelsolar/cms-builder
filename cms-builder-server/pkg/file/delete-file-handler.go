@@ -3,16 +3,16 @@ package file
 import (
 	"net/http"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	manager "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store"
 )
 
-func DeleteStoredFilesHandler(db *database.Database, st store.Store) manager.ApiFunction {
-	return func(a *manager.Resource, db *database.Database) http.HandlerFunc {
+func DeleteStoredFilesHandler(db *dbTypes.DatabaseConnection, st store.Store) manager.ApiFunction {
+	return func(a *manager.Resource, db *dbTypes.DatabaseConnection) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 
 			requestCtx := GetRequestContext(r)

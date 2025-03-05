@@ -3,12 +3,12 @@ package file
 import (
 	"net/http"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	manager "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 )
 
-func UpdateStoredFilesHandler(a *manager.Resource, db *database.Database) http.HandlerFunc {
+func UpdateStoredFilesHandler(a *manager.Resource, db *dbTypes.DatabaseConnection) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := ValidateRequestMethod(r, http.MethodPut)
 		if err != nil {

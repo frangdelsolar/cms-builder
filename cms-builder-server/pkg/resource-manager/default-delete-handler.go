@@ -3,14 +3,14 @@ package resourcemanager
 import (
 	"net/http"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 )
 
 // DefaultDeleteHandler handles the deletion of a resource.
-var DefaultDeleteHandler ApiFunction = func(a *Resource, db *database.Database) http.HandlerFunc {
+var DefaultDeleteHandler ApiFunction = func(a *Resource, db *dbTypes.DatabaseConnection) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		requestCtx := GetRequestContext(r)
 		log := requestCtx.Logger

@@ -3,7 +3,7 @@ package queries
 import (
 	"context"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 )
 
@@ -13,7 +13,7 @@ type Pagination struct {
 	Limit int   `json:"limit"`
 }
 
-func FindMany(ctx context.Context, log *loggerTypes.Logger, db *database.Database, entitySlice interface{}, pagination *Pagination, order string, filters map[string]interface{}) error {
+func FindMany(ctx context.Context, log *loggerTypes.Logger, db *dbTypes.DatabaseConnection, entitySlice interface{}, pagination *Pagination, order string, filters map[string]interface{}) error {
 	if order == "" {
 		order = "id desc"
 	}

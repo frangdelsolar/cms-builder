@@ -13,7 +13,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 )
@@ -37,7 +37,7 @@ func (w *WriterWrapper) Write(b []byte) (int, error) {
 }
 
 // RequestLoggerMiddleware assigns a unique ID to each request and adds it to the context.
-func RequestLoggerMiddleware(db *database.Database) func(next http.Handler) http.Handler {
+func RequestLoggerMiddleware(db *dbTypes.DatabaseConnection) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 

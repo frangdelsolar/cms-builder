@@ -3,11 +3,11 @@ package queries
 import (
 	"context"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 )
 
-func FindOne(ctx context.Context, log *loggerTypes.Logger, db *database.Database, entity interface{}, filters map[string]interface{}) error {
+func FindOne(ctx context.Context, log *loggerTypes.Logger, db *dbTypes.DatabaseConnection, entity interface{}, filters map[string]interface{}) error {
 
 	// Log the filters for debugging
 	log.Info().

@@ -1,26 +1,22 @@
-package resourcemanager
+package auth
 
 import (
 	"encoding/json"
 	"net/http"
 
-	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
-	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
+
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
+	mgr "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 )
 
-// filterKeys defines the keys to be filtered out from the request body.
 var filterKeys = map[string]bool{
-	"ID":          true,
-	"CreatedAt":   true,
-	"UpdatedAt":   true,
-	"DeletedAt":   true,
-	"CreatedByID": true,
-	"UpdatedByID": true,
+	"ID": true,
 }
 
 // DefaultCreateHandler handles the creation of a new resource.
-var DefaultCreateHandler ApiFunction = func(a *Resource, db *dbTypes.DatabaseConnection) http.HandlerFunc {
+var UserCreateHandler mgr.ApiFunction = func(a *mgr.Resource, db *dbTypes.DatabaseConnection) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		requestCtx := GetRequestContext(r)
 		log := requestCtx.Logger
@@ -47,10 +43,6 @@ var DefaultCreateHandler ApiFunction = func(a *Resource, db *dbTypes.DatabaseCon
 			return
 		}
 
-		// 4. Add User Information
-		body["CreatedByID"] = user.ID
-		body["UpdatedByID"] = user.ID
-
 		// 5. Marshal Body to JSON
 		bodyBytes, err := json.Marshal(body)
 		if err != nil {
@@ -75,7 +67,7 @@ var DefaultCreateHandler ApiFunction = func(a *Resource, db *dbTypes.DatabaseCon
 		}
 
 		// 8. Create Instance in Database
-		err = dbQueries.Create(r.Context(), log, db, instance, user, requestId)
+		err = queries.Create(r.Context(), log, db, instance, user, requestId)
 		if err != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, "Error creating resource")
 			return

@@ -30,7 +30,7 @@ type OrchestratorUsers struct {
 
 type Orchestrator struct {
 	Config          *config.ConfigReader
-	DB              *database.Database
+	DB              *dbTypes.DatabaseConection
 	FirebaseClient  *clients.FirebaseManager
 	Logger          *loggerTypes.Logger
 	LoggerConfig    *loggerTypes.LoggerConfig
@@ -117,7 +117,7 @@ func (o *Orchestrator) InitDatabase() error {
 		Driver: o.Config.GetString(EnvKeys.DbDriver),
 	}
 
-	db, err := database.LoadDB(config, o.Logger)
+	db, err := database.NewDatabaseConnection(config, o.Logger)
 	if err != nil {
 		return fmt.Errorf("error initializing database: %w", err)
 	}

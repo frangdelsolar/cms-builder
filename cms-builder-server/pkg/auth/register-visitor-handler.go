@@ -6,12 +6,12 @@ import (
 	"net/http"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/clients"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 )
 
-func RegisterVisitorController(firebase *clients.FirebaseManager, db *database.Database, getSystemUser func() *models.User) http.HandlerFunc {
+func RegisterVisitorController(firebase *clients.FirebaseManager, db *dbTypes.DatabaseConnection, getSystemUser func() *models.User) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 

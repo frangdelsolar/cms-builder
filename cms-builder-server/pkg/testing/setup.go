@@ -2,6 +2,7 @@ package testing
 
 import (
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
@@ -17,7 +18,7 @@ func init() {
 }
 
 type TestUtils struct {
-	Db          *database.Database
+	Db          *dbTypes.DatabaseConnection
 	Logger      *loggerTypes.Logger
 	Mgr         *mgr.ResourceManager
 	Src         *mgr.Resource
@@ -33,17 +34,17 @@ type TestUtils struct {
 	Store store.Store
 }
 
-func NewTestDB() *database.Database {
+func NewTestDB() *dbTypes.DatabaseConnection {
 
 	dbPath := "test.db"
 
-	testConfig := &database.DBConfig{
+	testConfig := &dbTypes.DatabaseConfig{
 		Driver: "sqlite",
 		Path:   dbPath,
 		URL:    "not empty",
 	}
 
-	db, err := database.LoadDB(testConfig, logger.Default)
+	db, err := database.NewDatabaseConnection(testConfig, logger.Default)
 	if err != nil {
 		panic(err)
 	}
