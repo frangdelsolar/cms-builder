@@ -5,6 +5,7 @@ import (
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
+	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	mgr "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
@@ -64,7 +65,7 @@ var UserListHandler mgr.ApiFunction = func(a *mgr.Resource, db *database.Databas
 			filters["firebase_id"] = fbId
 		}
 
-		err = queries.FindMany(r.Context(), log, db, instances, pagination, order, filters)
+		err = dbQueries.FindMany(r.Context(), log, db, instances, pagination, order, filters)
 		if err != nil {
 			log.Error().Err(err).Msgf("Error finding instances")
 			SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())

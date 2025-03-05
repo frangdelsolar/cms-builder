@@ -5,6 +5,7 @@ import (
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
+	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	manager "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 )
@@ -78,7 +79,7 @@ func TimelineHandler(m *manager.ResourceManager, db *database.Database) http.Han
 			"resource_name": resourceName,
 		}
 
-		err = queries.FindMany(r.Context(), log, db, instances, pagination, queryParams.Order, filters)
+		err = dbQueries.FindMany(r.Context(), log, db, instances, pagination, queryParams.Order, filters)
 		if err != nil {
 			SendJsonResponse(w, http.StatusNotFound, nil, "Instance not found")
 			return

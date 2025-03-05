@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
+	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	manager "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
@@ -72,7 +72,7 @@ func CreateStoredFilesHandler(db *database.Database, st store.Store, apiBaseUrl 
 				return
 			}
 
-			err = queries.Create(r.Context(), log, db, fileData, user, requestId)
+			err = dbQueries.Create(r.Context(), log, db, fileData, user, requestId)
 			if err != nil {
 				SendJsonResponse(w, http.StatusInternalServerError, nil, "Error creating "+a.ResourceNames.Singular)
 				return
@@ -84,7 +84,7 @@ func CreateStoredFilesHandler(db *database.Database, st store.Store, apiBaseUrl 
 
 			fileData.Url = apiBaseUrl + "/private/api/files/" + fileData.StringID() + "/download"
 
-			err = queries.Update(r.Context(), log, db, fileData, user, differences, requestId)
+			err = dbQueries.Update(r.Context(), log, db, fileData, user, differences, requestId)
 			if err != nil {
 				SendJsonResponse(w, http.StatusInternalServerError, nil, "Error updating "+a.ResourceNames.Singular)
 				return

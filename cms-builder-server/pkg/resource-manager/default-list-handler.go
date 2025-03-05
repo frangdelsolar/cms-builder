@@ -5,6 +5,7 @@ import (
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
+	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 )
@@ -58,7 +59,7 @@ var DefaultListHandler ApiFunction = func(a *Resource, db *database.Database) ht
 		if !(a.SkipUserBinding || isAdmin) {
 			filters["created_by_id"] = user.FirebaseId
 		}
-		err = queries.FindMany(r.Context(), log, db, instances, pagination, order, filters)
+		err = dbQueries.FindMany(r.Context(), log, db, instances, pagination, order, filters)
 		if err != nil {
 			log.Error().Err(err).Msgf("Error finding instances")
 			SendJsonResponse(w, http.StatusNotFound, nil, "Error finding instances")

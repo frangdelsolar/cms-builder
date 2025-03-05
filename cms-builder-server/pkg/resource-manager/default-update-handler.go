@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
+	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
@@ -48,7 +48,7 @@ var DefaultUpdateHandler ApiFunction = func(a *Resource, db *database.Database) 
 		}
 
 		instance := a.GetOne()
-		err = queries.FindOne(r.Context(), log, db, &instance, filters)
+		err = dbQueries.FindOne(r.Context(), log, db, &instance, filters)
 		if err != nil {
 			log.Error().Err(err).Msgf("Instance not found")
 			SendJsonResponse(w, http.StatusNotFound, nil, "Instance not found")
@@ -56,7 +56,7 @@ var DefaultUpdateHandler ApiFunction = func(a *Resource, db *database.Database) 
 		}
 
 		previousState := a.GetOne()
-		_ = queries.FindOne(r.Context(), log, db, &previousState, filters)
+		_ = dbQueries.FindOne(r.Context(), log, db, &previousState, filters)
 
 		// 5. Format Request Body and Filter Keys
 		body, err := FormatRequestBody(r, filterKeys)
@@ -102,7 +102,7 @@ var DefaultUpdateHandler ApiFunction = func(a *Resource, db *database.Database) 
 		}
 
 		// 11. Create Instance in Database
-		err = queries.Update(r.Context(), log, db, instance, user, differences, requestId)
+		err = dbQueries.Update(r.Context(), log, db, instance, user, differences, requestId)
 		if err != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, "Error updating resource")
 			return

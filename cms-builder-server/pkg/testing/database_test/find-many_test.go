@@ -24,7 +24,7 @@ package database_test
 // 		Page:  1,
 // 		Limit: 10,
 // 	}
-// 	result := queries.FindMany(db, &instances, pagination, "id desc", "")
+// 	result := dbQueries.FindMany(db, &instances, pagination, "id desc", "")
 
 // 	// Assertions
 // 	assert.NoError(t, result.Error)
@@ -48,7 +48,7 @@ package database_test
 
 // 	// Call the FindMany function without pagination
 // 	var instances []MockStruct
-// 	result := queries.FindMany(db, &instances, nil, "id desc", "")
+// 	result := dbQueries.FindMany(db, &instances, nil, "id desc", "")
 
 // 	// Assertions
 // 	assert.NoError(t, result.Error)
@@ -69,7 +69,7 @@ package database_test
 // 		Page:  1,
 // 		Limit: 10,
 // 	}
-// 	result := queries.FindMany(db, &instances, pagination, "id desc", "")
+// 	result := dbQueries.FindMany(db, &instances, pagination, "id desc", "")
 
 // 	// Assertions
 // 	assert.Error(t, result.Error)

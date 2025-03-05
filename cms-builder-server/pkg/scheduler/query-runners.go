@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
+	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
@@ -26,7 +26,7 @@ func getOrCreateJobDefinition(db *database.Database, log *loggerTypes.Logger, sc
 		"with_seconds":   jdInput.WithSeconds,
 	}
 
-	err := queries.FindOne(context.Background(), log, db, &instance, filters)
+	err := dbQueries.FindOne(context.Background(), log, db, &instance, filters)
 	if err != nil {
 		log.Error().Err(err).Interface("filters", filters).Msg("Failed to find job definition")
 		// return nil, err
@@ -52,7 +52,7 @@ func getOrCreateJobDefinition(db *database.Database, log *loggerTypes.Logger, sc
 	id := uuid.New()
 	requestId := fmt.Sprintf("scheduler-worker::%s", id.String())
 
-	err = queries.Create(context.Background(), log, db, &instance, schedulerUser, requestId)
+	err = dbQueries.Create(context.Background(), log, db, &instance, schedulerUser, requestId)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func updateTaskStatus(log *loggerTypes.Logger, db *database.Database, schedulerU
 
 	previousState := GetSchedulerTask(log, db, cronJobId)
 	differences := utils.CompareInterfaces(previousState, task)
-	return queries.Update(context.Background(), log, db, task, schedulerUser, differences, requestId)
+	return dbQueries.Update(context.Background(), log, db, task, schedulerUser, differences, requestId)
 }
 
 func GetSchedulerTask(log *loggerTypes.Logger, db *database.Database, cronJobId string) *SchedulerTask {
@@ -79,7 +79,7 @@ func GetSchedulerTask(log *loggerTypes.Logger, db *database.Database, cronJobId 
 		"cron_job_id": cronJobId,
 	}
 
-	err := queries.FindOne(context.Background(), log, db, &task, filters)
+	err := dbQueries.FindOne(context.Background(), log, db, &task, filters)
 	if err != nil {
 		return nil
 	}

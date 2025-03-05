@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
+	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 )
@@ -39,7 +39,7 @@ var DefaultDetailHandler ApiFunction = func(a *Resource, db *database.Database) 
 		}
 
 		instance := a.GetOne()
-		err = queries.FindOne(r.Context(), log, db, &instance, filters)
+		err = dbQueries.FindOne(r.Context(), log, db, &instance, filters)
 		if err != nil {
 			log.Error().Err(err).Msgf("Instance not found")
 			SendJsonResponse(w, http.StatusNotFound, nil, "Instance not found")

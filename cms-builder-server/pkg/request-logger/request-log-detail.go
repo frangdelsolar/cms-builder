@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
+	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	manager "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
@@ -46,7 +46,7 @@ func RequestLogHandler(mgr *manager.ResourceManager, db *database.Database) http
 			"trace_id": itemId,
 		}
 
-		err = queries.FindOne(r.Context(), log, db, &instance, filters)
+		err = dbQueries.FindOne(r.Context(), log, db, &instance, filters)
 		if err != nil {
 			log.Error().Err(err).Msgf("Instance not found")
 			SendJsonResponse(w, http.StatusInternalServerError, nil, "Instance not found")
@@ -72,7 +72,7 @@ func RequestLogHandler(mgr *manager.ResourceManager, db *database.Database) http
 			"database_logs.trace_id": itemId, // join condition
 		}
 
-		err = queries.FindMany(r.Context(), log, db, &databaseLogs, nil, "", filters)
+		err = dbQueries.FindMany(r.Context(), log, db, &databaseLogs, nil, "", filters)
 		if err != nil {
 			log.Warn().Err(err).Msgf("Error finding instance")
 		}

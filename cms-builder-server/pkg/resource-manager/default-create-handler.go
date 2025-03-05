@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
+	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 )
 
@@ -75,7 +75,7 @@ var DefaultCreateHandler ApiFunction = func(a *Resource, db *database.Database) 
 		}
 
 		// 8. Create Instance in Database
-		err = queries.Create(r.Context(), log, db, instance, user, requestId)
+		err = dbQueries.Create(r.Context(), log, db, instance, user, requestId)
 		if err != nil {
 			SendJsonResponse(w, http.StatusInternalServerError, nil, "Error creating resource")
 			return

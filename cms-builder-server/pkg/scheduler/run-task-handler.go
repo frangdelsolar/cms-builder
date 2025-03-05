@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
+	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	mgr "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 )
@@ -46,7 +46,7 @@ var RunSchedulerTaskHandler = func(manager *mgr.ResourceManager, db *database.Da
 			"name": jobDefinitionName,
 		}
 
-		err = queries.FindOne(r.Context(), log, db, instance, filters)
+		err = dbQueries.FindOne(r.Context(), log, db, instance, filters)
 		if err != nil {
 			SendJsonResponse(w, http.StatusNotFound, nil, "Instance not found")
 			return

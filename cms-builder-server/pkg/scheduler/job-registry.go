@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
+	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 )
@@ -68,7 +68,7 @@ func before(jobDefinition *SchedulerJobDefinition, db *database.Database, user *
 		CronJobId:         "user-triggered::" + requestId,
 	}
 
-	err := queries.Create(context.Background(), log, db, &task, user, requestId)
+	err := dbQueries.Create(context.Background(), log, db, &task, user, requestId)
 	if err != nil {
 		log.Error().Err(err).Msg("Error saving task")
 		return "", err

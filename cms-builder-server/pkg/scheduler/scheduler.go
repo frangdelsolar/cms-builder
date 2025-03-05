@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
+	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	"github.com/go-co-op/gocron/v2"
@@ -195,7 +195,7 @@ func (s *Scheduler) Before(jobDefinition *SchedulerJobDefinition) func(jobID uui
 		}
 
 		requestId := getRequestIdForCronJob(jobID)
-		err := queries.Create(context.Background(), s.Logger, s.DB, &task, s.User, requestId)
+		err := dbQueries.Create(context.Background(), s.Logger, s.DB, &task, s.User, requestId)
 		if err != nil {
 			s.Logger.Error().Err(err).Msg("Error saving task")
 		}

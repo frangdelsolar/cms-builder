@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
+	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	manager "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
@@ -47,7 +47,7 @@ func DeleteStoredFilesHandler(db *database.Database, st store.Store) manager.Api
 			}
 
 			instance := models.File{}
-			err = queries.FindOne(r.Context(), log, db, &instance, filters)
+			err = dbQueries.FindOne(r.Context(), log, db, &instance, filters)
 			if err != nil {
 				log.Error().Err(err).Msgf("Instance not found")
 				SendJsonResponse(w, http.StatusInternalServerError, nil, "Instance not found")
@@ -59,7 +59,7 @@ func DeleteStoredFilesHandler(db *database.Database, st store.Store) manager.Api
 				log.Warn().Err(err).Msg("Error deleting file. Path may not exist")
 			}
 
-			err = queries.Delete(r.Context(), log, db, &instance, user, requestId)
+			err = dbQueries.Delete(r.Context(), log, db, &instance, user, requestId)
 			if err != nil {
 				SendJsonResponse(w, http.StatusInternalServerError, nil, "Error deleting file")
 				return

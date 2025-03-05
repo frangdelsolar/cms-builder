@@ -22,7 +22,7 @@ package database_test
 // 	differences := map[string]interface{}{"field1": "Updated Field 1"}
 
 // 	// Call the Update function
-// 	result := queries.Update(db, &instance, user, differences, "test-request-id")
+// 	result := dbQueries.Update(db, &instance, user, differences, "test-request-id")
 
 // 	// Assertions
 // 	assert.NoError(t, result.Error)
@@ -62,7 +62,7 @@ package database_test
 // 	differences := map[string]interface{}{"field1": "Updated Field 1"}
 
 // 	// Call the Update function
-// 	result := queries.Update(db, &instance, user, differences, "test-request-id")
+// 	result := dbQueries.Update(db, &instance, user, differences, "test-request-id")
 
 // 	// Assertions
 // 	assert.Error(t, result.Error)

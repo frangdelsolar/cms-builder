@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
+	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing"
 	"github.com/stretchr/testify/assert"
 )
@@ -24,7 +24,7 @@ func TestCreate_Success(t *testing.T) {
 	}
 
 	// Call the Create function
-	err := queries.Create(ctx, log, db, &instance, user, "test-request-id")
+	err := dbQueries.Create(ctx, log, db, &instance, user, "test-request-id")
 
 	// Assertions
 	assert.NoError(t, err)
@@ -54,7 +54,7 @@ func TestCreate_Success(t *testing.T) {
 // 	}
 
 // 	// Call the Create function
-// 	result := queries.Create(db, &instance, user, "test-request-id")
+// 	result := dbQueries.Create(db, &instance, user, "test-request-id")
 
 // 	// Assertions
 // 	assert.Error(t, result.Error)
@@ -76,7 +76,7 @@ func TestCreate_Success(t *testing.T) {
 // 	invalidUser := &models.User{} // Invalid user with no ID
 
 // 	// Call the Create function
-// 	result := queries.Create(db, &instance, invalidUser, "test-request-id")
+// 	result := dbQueries.Create(db, &instance, invalidUser, "test-request-id")
 
 // 	// Assertions
 // 	assert.NoError(t, result.Error) // The Create function should still succeed

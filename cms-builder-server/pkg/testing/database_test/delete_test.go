@@ -19,7 +19,7 @@ package database_test
 // 	db.DB.Create(&instance)
 
 // 	// Call the Delete function
-// 	result := queries.Delete(db, &instance, user, "test-request-id")
+// 	result := dbQueries.Delete(db, &instance, user, "test-request-id")
 
 // 	// Assertions
 // 	assert.NoError(t, result.Error)
@@ -52,11 +52,11 @@ package database_test
 // 		{Field1: "Test Field 5", Field2: "Test Field 6"},
 // 	}
 // 	for i := range instances {
-// 		queries.Create(db, &instances[i], user, "test-request-id")
+// 		dbQueries.Create(db, &instances[i], user, "test-request-id")
 // 	}
 
 // 	// Call the Delete function
-// 	result := queries.Delete(db, instances, user, "test-request-id")
+// 	result := dbQueries.Delete(db, instances, user, "test-request-id")
 
 // 	// Assertions
 // 	assert.NoError(t, result.Error)
@@ -95,7 +95,7 @@ package database_test
 // 	db.Close()
 
 // 	// Call the Delete function
-// 	result := queries.Delete(db, &instance, user, "test-request-id")
+// 	result := dbQueries.Delete(db, &instance, user, "test-request-id")
 
 // 	// Assertions
 // 	assert.Error(t, result.Error)
@@ -134,7 +134,7 @@ package database_test
 // 	db.Close()
 
 // 	// Call the Delete function
-// 	result := queries.Delete(db, instances, user, "test-request-id")
+// 	result := dbQueries.Delete(db, instances, user, "test-request-id")
 
 // 	// Assertions
 // 	assert.Error(t, result.Error)

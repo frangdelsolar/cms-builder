@@ -3,7 +3,7 @@ package orchestrator
 import (
 	"context"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
+	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	"github.com/google/uuid"
@@ -88,14 +88,14 @@ func (o *Orchestrator) GetOrCreateSystemUser(requestId string) (*models.User, er
 
 	ctx := context.Background()
 
-	err := queries.FindOne(ctx, o.Logger, o.DB, &systemUser, filters)
+	err := dbQueries.FindOne(ctx, o.Logger, o.DB, &systemUser, filters)
 	if err != nil {
 		o.Logger.Warn().Err(err).Msg("System User not found")
 	}
 
 	if systemUser.ID == 0 || systemUser == (models.User{}) {
 		o.Logger.Debug().Interface("user", systemUser).Msg("Creating system user from config")
-		err := queries.Create(ctx, o.Logger, o.DB, &systemUser, &systemUser, requestId)
+		err := dbQueries.Create(ctx, o.Logger, o.DB, &systemUser, &systemUser, requestId)
 		if err != nil {
 			o.Logger.Error().Err(err).Msg("Error creating system user")
 			return nil, err

@@ -9,13 +9,13 @@ import (
 
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/clients"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
 
 	firebaseAuth "firebase.google.com/go/auth"
 
+	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	"gorm.io/gorm"
 )
 
@@ -34,7 +34,7 @@ func VerifyUser(userIdToken string, firebase *clients.FirebaseManager, db *datab
 		"firebase_id": accessToken.UID,
 	}
 
-	err = queries.FindOne(context.Background(), log, db, &localUser, filters)
+	err = dbQueries.FindOne(context.Background(), log, db, &localUser, filters)
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			// Need
@@ -74,7 +74,7 @@ func RegisterFirebaseUserInDatabase(accessToken *firebaseAuth.Token, firebase *c
 	}
 
 	// Save the user to the database
-	err := queries.Create(context.Background(), log, db, localUser, systemUser, requestId)
+	err := dbQueries.Create(context.Background(), log, db, localUser, systemUser, requestId)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create user")
 		return nil, err
@@ -186,7 +186,7 @@ func CreateUserWithRole(input models.RegisterUserInput, firebase *clients.Fireba
 		Roles:      roles,
 	}
 
-	if err := queries.Create(context.Background(), log, db, &newUser, systemUser, requestId); err != nil {
+	if err := dbQueries.Create(context.Background(), log, db, &newUser, systemUser, requestId); err != nil {
 		log.Error().Err(err).Msg("Failed to create user in database")
 		return nil, fmt.Errorf("failed to create user in database: %w", err)
 	}
@@ -247,7 +247,7 @@ func handleExistingUser(existingUser *models.User, fbUserId string, db *database
 
 	existingUser.FirebaseId = fbUserId
 
-	if err := queries.Update(context.Background(), log, db, existingUser, systemUser, differences, requestId); err != nil {
+	if err := dbQueries.Update(context.Background(), log, db, existingUser, systemUser, differences, requestId); err != nil {
 		log.Error().Err(err).Msg("Failed to update user in database")
 		return nil, fmt.Errorf("failed to update user in database: %w", err)
 	}

@@ -18,7 +18,7 @@ package database_test
 
 // 	// Call the FindOne function
 // 	var foundInstance MockStruct
-// 	result := queries.FindOne(db, &foundInstance, "id = ?", instance.ID)
+// 	result := dbQueries.FindOne(db, &foundInstance, "id = ?", instance.ID)
 
 // 	// Assertions
 // 	assert.NoError(t, result.Error)
@@ -34,7 +34,7 @@ package database_test
 
 // 	// Call the FindOne function for a non-existent resource
 // 	var foundInstance MockStruct
-// 	result := queries.FindOne(db, &foundInstance, "id = ?", 99999)
+// 	result := dbQueries.FindOne(db, &foundInstance, "id = ?", 99999)
 
 // 	// Assertions
 // 	assert.Error(t, result.Error)
@@ -51,7 +51,7 @@ package database_test
 
 // 	// Call the FindOne function
 // 	var foundInstance MockStruct
-// 	result := queries.FindOne(db, &foundInstance, "id = ?", 1)
+// 	result := dbQueries.FindOne(db, &foundInstance, "id = ?", 1)
 
 // 	// Assertions
 // 	assert.Error(t, result.Error)
