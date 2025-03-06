@@ -52,7 +52,7 @@ func TestStressTest(t *testing.T) {
 
 	// Start the server in a goroutine
 	go func() {
-		svrPkg.RunServer(bed.Server, bed.Mgr.GetRoutes, apiBaseUrl)
+		svrPkg.RunServer(bed.Server, bed.Mgr.GetRoutes)
 	}()
 
 	// Wait for the server to start

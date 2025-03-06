@@ -24,7 +24,7 @@ import (
 	storeTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store/types"
 )
 
-const orchestratorVersion = "1.6.3"
+const orchestratorVersion = "1.6.8"
 
 type OrchestratorUsers struct {
 	God       *authModels.User
