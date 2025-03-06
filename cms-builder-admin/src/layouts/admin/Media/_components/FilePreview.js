@@ -9,13 +9,18 @@ import {
   Button,
   IconButton,
   Tooltip,
+  Stack,
+  Box,
 } from "@mui/material";
 import Grid from "@mui/material/Grid2";
 import FileCopyIcon from "@mui/icons-material/FileCopy";
+import DownloadIcon from "@mui/icons-material/Download";
+import { QRCodeCanvas } from "qrcode.react";
 
 import { ApiContext } from "../../../../context/ApiContext";
 import { useNotifications } from "../../../../context/ToastContext";
 import { useDialogs } from "../../../../context/DialogContext";
+import axios from "axios";
 
 const FilePreview = (props) => {
   const file = props.file;
@@ -29,20 +34,22 @@ const FilePreview = (props) => {
   };
 
   const fileUrlRef = useRef(null);
+  const privateFileUrlRef = useRef(null);
 
-  const [downloadUrl, setDownloadUrl] = useState(null);
+  const [privateDownloadUrl, setPrivateDownloadUrl] = useState(null);
+
   useEffect(() => {
     if (file) {
-      setDownloadUrl(
+      setPrivateDownloadUrl(
         `${apiService.apiUrl()}/private/api/files/${file.ID}/download`
       );
     }
   }, [file]);
 
-  const handleCopyUrl = () => {
-    if (fileUrlRef.current) {
+  const handleCopyUrl = (ref) => {
+    if (ref.current) {
       navigator.clipboard
-        .writeText(fileUrlRef.current.innerText)
+        .writeText(ref.current.innerText)
         .then(() => {
           toast.show("URL copied to clipboard", "success");
         })
@@ -56,12 +63,19 @@ const FilePreview = (props) => {
   const handleDownload = async () => {
     try {
       const response = await apiService.downloadFile(file.ID);
-      const blob = new Blob([response], { type: "application/octet-stream" });
-      const url = URL.createObjectURL(blob);
+
+      // Create a URL for the blob
+      const url = URL.createObjectURL(response.data);
+
+      // Create a temporary anchor element to trigger the download
       const link = document.createElement("a");
       link.href = url;
       link.download = file.name;
+      document.body.appendChild(link);
       link.click();
+
+      // Clean up
+      document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Error downloading file:", error);
@@ -78,25 +92,32 @@ const FilePreview = (props) => {
     try {
       await apiService.destroy("files", file.ID);
       toast.show("Item deleted successfully", "success");
-      window.location.reload(); // TODO: Consider a more targeted update if possible
+      props.refresh();
     } catch (error) {
       console.error("Error deleting item:", error);
       toast.show("Error deleting file", error.message);
     }
   };
 
-  if (!file) return null; // Simplified condition
+  if (!file) return null;
 
   return (
     <Card>
-      <CardHeader title="File Info" />
+      <CardHeader
+        title={
+          <Typography variant="h5" style={{ wordWrap: "break-word" }}>
+            {file.name || "N/A"}
+          </Typography>
+        }
+        avatar={
+          <Box>
+            <QRCodeCanvas value={privateDownloadUrl} size={70} />
+          </Box>
+        }
+      />
       <CardContent>
-        <Paper elevation={0} sx={{ padding: 2 }}>
+        <Paper elevation={0}>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="subtitle1">Name:</Typography>
-              <Typography>{file.name || "N/A"}</Typography>
-            </Grid>
             <Grid item xs={12} sm={6}>
               <Typography variant="subtitle1">Size:</Typography>
               <Typography>
@@ -114,42 +135,49 @@ const FilePreview = (props) => {
           </Grid>
         </Paper>
 
-        <Paper
-          elevation={0}
-          sx={{
-            padding: 2,
-            marginTop: 2,
-            backgroundColor: "#f5f5f5",
-            display: "flex",
-            alignItems: "center",
-          }} // Add display: flex
-        >
-          <Typography
-            variant="p"
-            fontFamily={"monospace"}
-            ref={fileUrlRef}
+        <Stack spacing={2} sx={{ marginTop: 2 }}>
+          <Typography variant="h6">Private access</Typography>
+          <Paper
+            elevation={0}
             sx={{
-              flexGrow: 1,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
+              padding: 2,
+              backgroundColor: "#f5f5f5",
+              display: "flex",
+              alignItems: "center",
             }}
           >
-            {downloadUrl}
-          </Typography>
-          <Tooltip title="Copy URL">
-            <IconButton onClick={handleCopyUrl} aria-label="copy">
-              <FileCopyIcon />
-            </IconButton>
-          </Tooltip>
-        </Paper>
+            <Typography
+              variant="p"
+              fontFamily={"monospace"}
+              ref={privateFileUrlRef}
+              sx={{
+                flexGrow: 1,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {privateDownloadUrl}
+            </Typography>
+            <Tooltip title="Copy URL">
+              <IconButton
+                onClick={() => handleCopyUrl(privateFileUrlRef)}
+                aria-label="copy"
+              >
+                <FileCopyIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Download">
+              <IconButton onClick={() => handleDownload} aria-label="download">
+                <DownloadIcon />
+              </IconButton>
+            </Tooltip>
+          </Paper>
+        </Stack>
       </CardContent>
       <CardActions sx={{ display: "flex", justifyContent: "flex-end" }}>
         <Button size="small" color="error" onClick={handleDelete}>
           Delete
-        </Button>
-        <Button size="small" color="primary" onClick={handleDownload}>
-          Download
         </Button>
       </CardActions>
     </Card>

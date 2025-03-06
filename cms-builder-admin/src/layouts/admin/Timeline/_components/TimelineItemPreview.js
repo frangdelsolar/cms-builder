@@ -120,7 +120,7 @@ function TimelineItemPreview() {
             onClick={handleResourceIdInputClick}
           />
           <ActionLabel event={currentEvent} />
-          <RequestPreview requestId={currentEvent?.requestId} />
+          <RequestPreview traceId={currentEvent?.traceId} />
           <Grid item container direction="row" spacing={2}>
             <Grid item xs={12} sm={6} sx={{ flexGrow: 1 }}>
               <EventPreview event={currentEvent} />

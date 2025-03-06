@@ -34,6 +34,7 @@ const ModelTable = () => {
   const dialogs = useDialogs();
 
   // Local state for the table
+  const [refreshKey, setRefreshKey] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [paginationModel, setPaginationModel] = useState({
     page: 0,
@@ -168,10 +169,13 @@ const ModelTable = () => {
       } catch (error) {
         let errorMessage = "Error fetching data: " + error.message;
         toast.show(errorMessage, { severity: "error" });
+        setIsLoading(false);
+        setRows([]);
+        setTotal(0);
       }
     };
     getData();
-  }, [schemas, entity, paginationModel, sortModel]);
+  }, [schemas, entity, paginationModel, sortModel, refreshKey]);
 
   // Defines actions (edit/delete) for each row
 
@@ -179,12 +183,9 @@ const ModelTable = () => {
   const handleEdit = async (data) => {
     try {
       await apiService.put(entity.kebabPluralName, data, data);
-      // TODO: Maybe I can update state directly
       toast.show("Item updated successfully", "success");
-      window.location.reload();
+      setRefreshKey((prevKey) => prevKey + 1);
     } catch (error) {
-      // TODO: Show error message
-      console.log("Error updating item: ", error);
       let errorMessage = "Error updating item: " + error.message;
       toast.show(errorMessage, "error");
       if (error.data && error.data.Errors) {
@@ -198,9 +199,8 @@ const ModelTable = () => {
     try {
       await apiService.post(entity.kebabPluralName, data);
       dialogs.close();
-      // TODO: Maybe I can update state directly
       toast.show("Item saved successfully", "success");
-      window.location.reload();
+      setRefreshKey((prevKey) => prevKey + 1);
     } catch (error) {
       let errorMessage = "Error saving item: " + error.message;
       toast.show(errorMessage, "error");
@@ -212,11 +212,9 @@ const ModelTable = () => {
   const handleDelete = async (params) => {
     try {
       await apiService.destroy(entity.kebabPluralName, params.id);
-      // TODO: Maybe I can update state directly
       toast.show("Item deleted successfully", "success");
-      window.location.reload();
+      setRefreshKey((prevKey) => prevKey + 1);
     } catch (error) {
-      // TODO: Show error message
       let errorMessage = "Error deleting item: " + error.message;
       toast.show(errorMessage, "error");
     }

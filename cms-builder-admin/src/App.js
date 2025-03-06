@@ -12,19 +12,19 @@ import { ToastProvider } from "./context/ToastContext";
 export default function App() {
   return (
     <StoreProvider>
-      <AuthProvider>
-        <ApiProvider>
-          <ThemeProvider theme={theme}>
-            <BrowserRouter>
-              <ToastProvider>
+      <ThemeProvider theme={theme}>
+        <ToastProvider>
+          <AuthProvider>
+            <ApiProvider>
+              <BrowserRouter>
                 <DialogProvider>
                   <AppRoutes />
                 </DialogProvider>
-              </ToastProvider>
-            </BrowserRouter>
-          </ThemeProvider>
-        </ApiProvider>
-      </AuthProvider>
+              </BrowserRouter>
+            </ApiProvider>
+          </AuthProvider>
+        </ToastProvider>
+      </ThemeProvider>
     </StoreProvider>
   );
 }

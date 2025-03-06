@@ -40,10 +40,20 @@ const GenericForm = ({ submitHandler }) => {
   }, [schema, uiSchema, templates, widgets, dispatch]);
 
   useEffect(() => {
-    if (formErrors.length > 0) {
-      const formatted = formErrors.map((error) => ({
-        message: error.message || error,
-      }));
+    if (formErrors && formErrors.length > 0) {
+      const formatted = {};
+
+      for (let error of formErrors) {
+        if (formatted[error.Field]) {
+          formatted[error.Field].__errors.push(error.Error);
+          continue;
+        }
+
+        formatted[error.Field] = {
+          __errors: [error.Error],
+        };
+      }
+
       setFormattedErrors(formatted);
     } else {
       setFormattedErrors([]);

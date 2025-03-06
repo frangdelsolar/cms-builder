@@ -40,7 +40,8 @@ export default function MediaPage() {
     const uploadFile = async () => {
       try {
         const response = await apiService.postFile(uploadFormData.file);
-        console.log("File uploaded:", response);
+        // refresh
+        updateFileList();
         setSaving(false);
         dialogs.close();
       } catch (error) {
@@ -55,19 +56,18 @@ export default function MediaPage() {
   const onUploadFile = (data) => {
     setUploadFormData(data);
   };
+  let updateFileList = async () => {
+    try {
+      const response = await apiService.list("files", 1, 100);
+      const files = response.data;
+      setFileData(files);
+    } catch (error) {
+      toast.show(error.message, "error");
+    }
+  };
 
   useEffect(() => {
-    let fn = async () => {
-      try {
-        const response = await apiService.list("files", 1, 100);
-        const files = response.data;
-        setFileData(files);
-      } catch (error) {
-        toast.show(error.message, "error");
-      }
-    };
-
-    fn();
+    updateFileList();
   }, []);
 
   useEffect(() => {
@@ -201,6 +201,11 @@ export default function MediaPage() {
     });
   }, [selectedItem]);
 
+  const onFileDelete = async () => {
+    setSelectedFile(null);
+    updateFileList();
+  };
+
   return (
     <Grid container padding={1} spacing={2}>
       <Grid size={{ xs: 12, sm: 6, md: 5 }}>
@@ -233,7 +238,7 @@ export default function MediaPage() {
         </Card>
       </Grid>
       <Grid size="grow">
-        <FilePreview file={selectedFile} />
+        <FilePreview file={selectedFile} refresh={onFileDelete} />
       </Grid>
     </Grid>
   );
