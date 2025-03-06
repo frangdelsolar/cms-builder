@@ -30,6 +30,7 @@ jobs:
       LOG_WRITE_TO_FILE: false
       FIREBASE_SECRET: ${{ secrets.FIREBASE_SECRET }}
       FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+      STATIC_PATH: static
       STORE_MAX_SIZE: 5000
       STORE_SUPPORTED_MIME_TYPES: "*"
       STORE_TYPE: local
