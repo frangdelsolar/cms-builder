@@ -16,9 +16,8 @@ const ResearchRequests = ({ data }) => {
   const [selectedStatusCode, setSelectedStatusCode] = useState(""); // Selected status code
   const [apiPaths, setApiPaths] = useState([]); // List of unique API paths for the selected status code
   const [selectedApiPath, setSelectedApiPath] = useState(""); // Selected API path
-  const [requestIdentifiers, setRequestIdentifiers] = useState([]); // List of request identifiers for the selected filters
-  const [selectedRequestIdentifier, setSelectedRequestIdentifier] =
-    useState(""); // Selected request identifier
+  const [traceIds, setTraceIds] = useState([]); // List of request identifiers for the selected filters
+  const [selectedTraceId, setSelectedTraceId] = useState(""); // Selected request identifier
   const [selectedRequestDetail, setSelectedRequestDetail] = useState(null); // Details of the selected request
 
   // Extract unique status codes from the data
@@ -56,7 +55,7 @@ const ResearchRequests = ({ data }) => {
       }
 
       // Update request identifiers based on the selected status code and API path
-      updateRequestIdentifiers(filteredRequests, selectedApiPath);
+      updateTraceIds(filteredRequests, selectedApiPath);
     }
   }, [selectedStatusCode, data]);
 
@@ -73,12 +72,12 @@ const ResearchRequests = ({ data }) => {
       }
 
       // Update request identifiers based on the selected status code and API path
-      updateRequestIdentifiers(filteredRequests, selectedApiPath);
+      updateTraceIds(filteredRequests, selectedApiPath);
     }
   }, [selectedApiPath, data]);
 
   // Helper function to update request identifiers
-  const updateRequestIdentifiers = (filteredRequests, apiPath) => {
+  const updateTraceIds = (filteredRequests, apiPath) => {
     if (apiPath) {
       filteredRequests = filteredRequests.filter(
         (request) => request.path === apiPath
@@ -86,15 +85,15 @@ const ResearchRequests = ({ data }) => {
     }
 
     const identifiers = filteredRequests.map((request) => request.trace_id);
-    setRequestIdentifiers(identifiers);
-    setSelectedRequestIdentifier(""); // Reset selected request identifier
+    setTraceIds(identifiers);
+    setSelectedTraceId(""); // Reset selected request identifier
   };
 
   // Fetch request details when the button is clicked
   const fetchRequestDetail = () => {
-    if (selectedRequestIdentifier && data && Array.isArray(data)) {
+    if (selectedTraceId && data && Array.isArray(data)) {
       const requestDetail = data.find(
-        (request) => request.trace_id === selectedRequestIdentifier
+        (request) => request.trace_id === selectedTraceId
       );
       setSelectedRequestDetail(requestDetail);
     }
@@ -164,15 +163,15 @@ const ResearchRequests = ({ data }) => {
         >
           <InputLabel>Request Identifier</InputLabel>
           <Select
-            value={selectedRequestIdentifier}
+            value={selectedTraceId}
             onChange={(e) => {
               setSelectedRequestDetail("");
-              setSelectedRequestIdentifier(e.target.value);
+              setSelectedTraceId(e.target.value);
             }}
             label="Request Identifier"
             disabled={!selectedStatusCode && !selectedApiPath} // Disable if no filters are selected
           >
-            {requestIdentifiers.map((identifier) => (
+            {traceIds.map((identifier) => (
               <MenuItem key={identifier} value={identifier}>
                 {identifier}
               </MenuItem>
@@ -185,7 +184,7 @@ const ResearchRequests = ({ data }) => {
           variant="contained"
           color="primary"
           onClick={fetchRequestDetail}
-          disabled={!selectedRequestIdentifier} // Disable if no request identifier is selected
+          disabled={!selectedTraceId} // Disable if no request identifier is selected
           style={{ marginBottom: "16px", width: "100%" }}
         >
           Fetch Request Detail
@@ -193,7 +192,7 @@ const ResearchRequests = ({ data }) => {
 
         {/* Display Request Details */}
         {selectedRequestDetail && (
-          <RequestPreview requestId={selectedRequestDetail.trace_id} />
+          <RequestPreview traceId={selectedRequestDetail.trace_id} />
         )}
       </CardContent>
     </Card>

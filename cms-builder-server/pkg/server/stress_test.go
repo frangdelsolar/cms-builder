@@ -47,12 +47,9 @@ func TestStressTest(t *testing.T) {
 	bed := testPkg.SetupServerTestBed()
 	apiBaseUrl := "http://localhost:8080"
 
-	routes := bed.Mgr.GetRoutes(apiBaseUrl)
-	t.Log(routes)
-
 	// Start the server in a goroutine
 	go func() {
-		svrPkg.RunServer(bed.Server, bed.Mgr.GetRoutes, apiBaseUrl)
+		svrPkg.RunServer(bed.Server, bed.Mgr.GetRoutes)
 	}()
 
 	// Wait for the server to start

@@ -5,6 +5,7 @@ config.yaml
 coverage.out
 covprofile
 *test_output*
+*test-files*
 *.env*
 *postman-output*
 

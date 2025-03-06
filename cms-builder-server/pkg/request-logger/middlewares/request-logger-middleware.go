@@ -1,4 +1,4 @@
-package middlewares
+package requestlogger
 
 import (
 	"bytes"
@@ -129,5 +129,4 @@ func RequestLoggerMiddleware(db *dbTypes.DatabaseConnection) func(next http.Hand
 			}
 		})
 	}
-
 }

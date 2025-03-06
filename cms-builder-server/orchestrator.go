@@ -24,7 +24,7 @@ import (
 	storeTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store/types"
 )
 
-const orchestratorVersion = "1.6.3"
+const orchestratorVersion = "1.6.8"
 
 type OrchestratorUsers struct {
 	God       *authModels.User
@@ -195,6 +195,7 @@ func (o *Orchestrator) InitUsers() error {
 
 func (o *Orchestrator) InitServer() error {
 	config := &svrTypes.ServerConfig{
+		BaseUrl:        o.Config.GetString(EnvKeys.BaseUrl),
 		Host:           o.Config.GetString(EnvKeys.ServerHost),
 		Port:           o.Config.GetString(EnvKeys.ServerPort),
 		CsrfToken:      o.Config.GetString(EnvKeys.CsrfToken),
@@ -279,5 +280,5 @@ func (o *Orchestrator) InitScheduler() error {
 func (o *Orchestrator) Run() error {
 	o.Logger.Info().Msg("Starting Server")
 
-	return svrPkg.RunServer(o.Server, o.ResourceManager.GetRoutes, o.Config.GetString(EnvKeys.BaseUrl))
+	return svrPkg.RunServer(o.Server, o.ResourceManager.GetRoutes)
 }

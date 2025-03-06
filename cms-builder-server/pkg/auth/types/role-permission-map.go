@@ -1,4 +1,4 @@
-package types
+package auth
 
 // RolePermissionMap maps roles to their allowed CRUD operations.
 type RolePermissionMap map[Role][]CrudOperation

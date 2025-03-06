@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useContext, useEffect, useState, useMemo } from "react";
 import {
   Accordion,
   AccordionSummary,
@@ -7,11 +7,15 @@ import {
   Paper,
   Stack,
   Chip,
+  Button,
+  CircularProgress,
+  Card,
+  CardContent,
+  CardHeader,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { CheckCircle, Error } from "@mui/icons-material";
-import { Card, CardContent, CardHeader } from "@mui/material";
-import { useContext, useEffect, useState } from "react";
+import SyncIcon from "@mui/icons-material/Sync";
 import { ApiContext } from "../../../../context/ApiContext";
 import { useNotifications } from "../../../../context/ToastContext";
 
@@ -19,43 +23,78 @@ function SchedulerWidget() {
   const apiService = useContext(ApiContext);
   const toast = useNotifications();
 
-  const [data, setData] = useState([]);
+  const [tasks, setTasks] = useState([]); // Initialize as an empty array
+  const [isLoading, setIsLoading] = useState(false);
 
+  // Fetch initial tasks
   useEffect(() => {
-    const getData = async () => {
+    const fetchTasks = async () => {
+      setIsLoading(true);
       try {
         const res = await apiService.list("scheduler-tasks", 1, 10);
-        setData(res.data);
+        setTasks(res.data); // Use an empty array as fallback
       } catch (error) {
-        toast.show(`Error fetching scheduler tasks: ${error.message}`, "error");
+        toast.show(`Error fetching tasks: ${error.message}`, "error");
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    getData();
+    fetchTasks();
   }, []);
 
   return (
     <Card>
       <CardHeader title="Scheduler" />
       <CardContent>
-        <TaskAccordion tasks={data} />
+        {isLoading ? (
+          <CircularProgress />
+        ) : (
+          <TaskAccordion tasks={tasks} setTasks={setTasks} />
+        )}
       </CardContent>
     </Card>
   );
 }
 
-export default SchedulerWidget;
+const TaskAccordion = ({ tasks, setTasks }) => {
+  const apiService = useContext(ApiContext);
+  const toast = useNotifications();
 
-const TaskAccordion = ({ tasks }) => {
+  const [isRunning, setIsRunning] = useState(false);
+
   // Group tasks by jobDefinitionName
-  const groupedTasks = tasks.reduce((acc, task) => {
-    const key = task.jobDefinitionName;
-    if (!acc[key]) {
-      acc[key] = [];
+  const groupedTasks = useMemo(() => {
+    if (!Array.isArray(tasks)) {
+      return {}; // Return an empty object if tasks is not an array
     }
-    acc[key].push(task);
-    return acc;
-  }, {});
+    return tasks.reduce((acc, task) => {
+      const key = task.jobDefinitionName;
+      if (!acc[key]) {
+        acc[key] = [];
+      }
+      acc[key].push(task);
+      return acc;
+    }, {});
+  }, [tasks]);
+
+  // Run a job and update the task list
+  const runJob = async (jobName) => {
+    setIsRunning(true);
+    try {
+      const res = await apiService.runJob(jobName);
+
+      if (res.success) {
+        toast.show(res.message, "success");
+        // Add the new task to the tasks array
+        setTasks((prevTasks) => [res.data, ...prevTasks]);
+      }
+    } catch (error) {
+      toast.show(`Error running job: ${error.message}`, "error");
+    } finally {
+      setIsRunning(false);
+    }
+  };
 
   return (
     <Stack spacing={2}>
@@ -81,11 +120,22 @@ const TaskAccordion = ({ tasks }) => {
                 elevation={0}
                 sx={{ padding: 2, width: "100%", backgroundColor: "#f5f5f5" }}
               >
-                <Typography variant="subtitle1" gutterBottom>
-                  Total Runs: {runs.length} | Success: {successCount} | Failed:{" "}
-                  {failedCount}
-                </Typography>
-                {runs.map((run, index) => (
+                <Stack direction="row" spacing={2} alignItems="center">
+                  <Typography variant="subtitle1" gutterBottom>
+                    Total Runs: {runs.length} | Success: {successCount} |
+                    Failed: {failedCount}
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    onClick={() => runJob(jobName)}
+                    disabled={isRunning}
+                    startIcon={<SyncIcon />}
+                  >
+                    {isRunning ? "Running..." : "Run"}
+                  </Button>
+                </Stack>
+
+                {runs.map((run) => (
                   <Accordion key={run.ID} sx={{ marginTop: 2 }}>
                     <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                       <Stack direction="row" spacing={2} alignItems="center">
@@ -94,9 +144,7 @@ const TaskAccordion = ({ tasks }) => {
                         ) : (
                           <Error color="error" />
                         )}
-                        <Typography>
-                          Run {index + 1} - {run.status}
-                        </Typography>
+                        <Typography>Run {run.ID}</Typography>
                         <Chip
                           label={new Date(run.CreatedAt).toLocaleString()}
                           size="small"
@@ -118,6 +166,19 @@ const TaskAccordion = ({ tasks }) => {
                             <strong>Error:</strong> {run.error}
                           </Typography>
                         )}
+                        {run.results && (
+                          <Typography component="div">
+                            <strong>Results:</strong>
+                            <pre
+                              style={{
+                                whiteSpace: "pre-wrap",
+                                wordBreak: "break-word",
+                              }}
+                            >
+                              {run.results}
+                            </pre>
+                          </Typography>
+                        )}
                       </Stack>
                     </AccordionDetails>
                   </Accordion>
@@ -130,3 +191,5 @@ const TaskAccordion = ({ tasks }) => {
     </Stack>
   );
 };
+
+export default SchedulerWidget;

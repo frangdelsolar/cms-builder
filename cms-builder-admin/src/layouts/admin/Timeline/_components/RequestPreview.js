@@ -12,7 +12,7 @@ import { ApiContext } from "../../../../context/ApiContext";
 import { useNotifications } from "../../../../context/ToastContext";
 import { formatChanges } from "./utils";
 
-const RequestPreview = ({ requestId }) => {
+const RequestPreview = ({ traceId }) => {
   const apiService = useContext(ApiContext);
   const toast = useNotifications();
   const [isLoading, setIsLoading] = useState(false);
@@ -20,12 +20,12 @@ const RequestPreview = ({ requestId }) => {
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
-    if (requestId) {
+    if (traceId) {
       handleFetchClick();
     } else {
       resetState();
     }
-  }, [requestId]);
+  }, [traceId]);
 
   const resetState = () => {
     setRequestDetails(null);
@@ -35,11 +35,11 @@ const RequestPreview = ({ requestId }) => {
   const handleFetchClick = async () => {
     setIsLoading(true);
     try {
-      const resp = await apiService.getRequestLogEntries(requestId);
+      const resp = await apiService.getRequestLogEntries(traceId);
 
       const actions = [];
       resp.data.database_logs.forEach((action) => {
-        const label = `${action.username} ${action.action} ${action.resourceName} (${action.resourceId})`;
+        const label = `${action.username} ${action.action} ${action.resourceName} (${action.traceId})`;
         actions.push(label);
       });
 
@@ -58,11 +58,11 @@ const RequestPreview = ({ requestId }) => {
     }
   };
 
-  const handleChange = (panel) => (requestId, isExpanded) => {
+  const handleChange = (panel) => (traceId, isExpanded) => {
     setExpanded(isExpanded ? panel : false);
   };
 
-  if (!requestId) return null;
+  if (!traceId) return null;
 
   return (
     <Accordion
@@ -74,7 +74,7 @@ const RequestPreview = ({ requestId }) => {
       <AccordionSummary expandIcon={<ExpandMore />}>
         <Typography sx={{ display: "pre-wrap", wordBreak: "break-word" }}>
           <strong style={{ marginRight: "5px" }}>Request Id:</strong>
-          {requestId}
+          {traceId}
         </Typography>
       </AccordionSummary>
       <AccordionDetails>

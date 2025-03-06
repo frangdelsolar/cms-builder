@@ -41,7 +41,6 @@ const createApiService = ({ token, apiBaseUrl, origin }) => {
       const response = await axios(config);
       return response.data;
     } catch (error) {
-      console.error("Error executing API call:", error);
       throw error.response?.data || error.message;
     }
   };
@@ -86,17 +85,17 @@ const createEntityService = ({ executeApiCall }) => {
 
 // Request Service
 const createRequestService = ({ executeApiCall }) => {
-  const getRequestLogEntries = (requestId) => {
+  const getRequestLogEntries = (traceId) => {
     return executeApiCall({
       method: "GET",
-      relativePath: `private/api/request-logs/${requestId}`,
+      relativePath: `private/request-logs/${traceId}`,
     });
   };
 
   const getRequestStats = () => {
     return executeApiCall({
       method: "GET",
-      relativePath: `private/api/request-logs-stats`,
+      relativePath: `private/request-logs-stats`,
     });
   };
 
@@ -104,7 +103,7 @@ const createRequestService = ({ executeApiCall }) => {
 };
 
 // File Service
-const createFileService = ({ executeApiCall }) => {
+const createFileService = ({ executeApiCall, apiBaseUrl, token }) => {
   const postFile = (file) => {
     const formData = new FormData();
     formData.append("file", file);
@@ -117,16 +116,30 @@ const createFileService = ({ executeApiCall }) => {
     });
   };
 
-  const downloadFile = (fileId) => {
-    return executeApiCall({
-      method: "GET",
-      relativePath: `private/api/files/${fileId}/download`,
-    });
+  const downloadFile = async (fileId) => {
+    const url = `${apiBaseUrl}/private/api/files/${fileId}/download`;
+
+    const headers = {
+      Authorization: `Bearer ${token}`, // Use the token from the service
+    };
+
+    try {
+      const response = await axios({
+        method: "GET",
+        url: url,
+        headers: headers,
+        responseType: "blob", // Ensure the response is treated as a binary blob
+      });
+
+      return response; // Return the raw Response object
+    } catch (error) {
+      console.error("Error downloading file:", error);
+      throw error;
+    }
   };
 
   return { postFile, downloadFile };
 };
-
 // Resource Service
 const createResourceService = ({ executeApiCall }) => {
   const list = async (
@@ -164,11 +177,24 @@ const createResourceService = ({ executeApiCall }) => {
     });
     return executeApiCall({
       method: "GET",
-      relativePath: `private/api/database-logs/timeline?${params.toString()}`,
+      relativePath: `private/api/database-timeline?${params.toString()}`,
     });
   };
 
   return { list, getTimelineForResource };
+};
+
+const createJobService = ({ executeApiCall }) => {
+  const runJob = async (jobName) => {
+    const params = new URLSearchParams({ job_definition_name: jobName });
+
+    return executeApiCall({
+      method: "POST",
+      relativePath: `private/job/run?${params.toString()}`,
+    });
+  };
+
+  return { runJob };
 };
 
 // CRUD Service
@@ -199,24 +225,28 @@ const createCrudService = ({ executeApiCall }) => {
   return { post, put, destroy };
 };
 
-const healthCheck = async () => {
-  return executeApiCall({
-    method: "GET",
-    relativePath: "health",
-  });
+const healthCheck = ({ executeApiCall }) => {
+  return {
+    healthCheck: () =>
+      executeApiCall({
+        method: "GET",
+        relativePath: "", // Adjust the path as needed
+      }),
+  };
 };
 
 // Main API Service
-const apiService = ({ token, apiBaseUrl }) => {
-  const { executeApiCall } = createApiService({ token, apiBaseUrl, origin });
+const apiService = ({ token, apiBaseUrl, origin }) => {
+  const { executeApiCall } = createApiService({ token, apiBaseUrl });
 
   return {
     ...createEntityService({ executeApiCall }),
     ...createRequestService({ executeApiCall }),
-    ...createFileService({ executeApiCall }),
+    ...createFileService({ executeApiCall, apiBaseUrl, token }),
     ...createResourceService({ executeApiCall }),
     ...createCrudService({ executeApiCall }),
-    healthCheck,
+    ...healthCheck({ executeApiCall }),
+    ...createJobService({ executeApiCall }),
     apiUrl: () => apiBaseUrl,
   };
 };

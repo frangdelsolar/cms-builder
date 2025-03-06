@@ -1,4 +1,4 @@
-package types
+package auth
 
 // Role represents a user role.
 type Role string

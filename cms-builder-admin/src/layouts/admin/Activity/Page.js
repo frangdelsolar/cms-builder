@@ -105,10 +105,10 @@ export default function ActivityPage() {
                 data={formattedData.status_groups}
               />
             </Grid>
-            <Grid size={{ xs: 12, md: 8 }}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <ApiLatencyBarChart data={stats.requests} />
             </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <SchedulerWidget />
             </Grid>
           </Grid>

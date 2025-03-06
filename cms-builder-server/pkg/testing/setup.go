@@ -16,7 +16,7 @@ import (
 )
 
 func init() {
-	godotenv.Load()
+	godotenv.Load(".test.env")
 }
 
 type TestUtils struct {
