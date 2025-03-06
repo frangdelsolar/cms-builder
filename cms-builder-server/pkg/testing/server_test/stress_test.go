@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing"
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing/server_test"
+	svrPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
+	testPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing"
 )
 
 // StressTestReport holds the results of the stress test
@@ -30,7 +30,7 @@ type StressTestReport struct {
 }
 
 func TestStressTest(t *testing.T) {
-	bed := SetupServerTestBed()
+	bed := testPkg.SetupServerTestBed()
 	apiBaseUrl := "http://localhost:8080"
 
 	routes := bed.Mgr.GetRoutes(apiBaseUrl)
@@ -38,7 +38,7 @@ func TestStressTest(t *testing.T) {
 
 	// Start the server in a goroutine
 	go func() {
-		bed.Server.Run(bed.Mgr.GetRoutes, apiBaseUrl)
+		svrPkg.RunServer(bed.Server, bed.Mgr.GetRoutes, apiBaseUrl)
 	}()
 
 	// Wait for the server to start
@@ -81,7 +81,7 @@ func TestStressTest(t *testing.T) {
 				requestStartTime := time.Now()
 
 				// Hit the endpoint
-				rr := HitEndpoint(
+				rr := testPkg.HitEndpoint(
 					t,
 					bed.Server.Root.ServeHTTP, // Handler function
 					"POST",                    // HTTP method

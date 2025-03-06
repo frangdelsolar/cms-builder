@@ -9,7 +9,7 @@ import (
 
 	orc "github.com/frangdelsolar/cms-builder/cms-builder-server"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/postman"
-	mgr "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
+	rmTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager/types"
 )
 
 func main() {
@@ -49,7 +49,7 @@ func main() {
 	adminEmail := o.Config.GetString(orc.EnvKeys.AdminEmail)
 	adminPassword := o.Config.GetString(orc.EnvKeys.AdminPassword)
 	firebaseApiKey := o.Config.GetString(orc.EnvKeys.FirebaseApiKey)
-	resources := []mgr.Resource{}
+	resources := []rmTypes.Resource{}
 
 	for _, r := range o.ResourceManager.Resources {
 		resources = append(resources, *r)

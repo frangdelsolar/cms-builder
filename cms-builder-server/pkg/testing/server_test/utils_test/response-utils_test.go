@@ -8,8 +8,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
+	svrTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/types"
+	svrUtils "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/utils"
 )
 
 // TestSendJsonResponse_Success tests svrUtils.SendJsonResponse for a successful response.
@@ -25,7 +26,7 @@ func TestSendJsonResponse_Success(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
 
-	var response Response
+	var response svrTypes.Response
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 	assert.True(t, response.Success)
@@ -50,7 +51,7 @@ func TestSendJsonResponse_Error(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
 
-	var response Response
+	var response svrTypes.Response
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 	assert.False(t, response.Success)
@@ -68,19 +69,19 @@ func TestSendJsonResponseWithPagination_Success(t *testing.T) {
 	data := map[string]string{"key": "value"}
 	msg := "Success message"
 	status := http.StatusOK
-	pagination := &queries.Pagination{
+	pagination := &dbTypes.Pagination{
 		Total: 100,
 		Page:  1,
 		Limit: 10,
 	}
 
-	SendJsonResponseWithPagination(w, status, data, msg, pagination)
+	svrUtils.SendJsonResponseWithPagination(w, status, data, msg, pagination)
 
 	// Verify the response
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
 
-	var response Response
+	var response svrTypes.Response
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 	assert.True(t, response.Success)
@@ -98,19 +99,19 @@ func TestSendJsonResponseWithPagination_Error(t *testing.T) {
 	data := map[string]string{"key": "value"}
 	msg := "Error message"
 	status := http.StatusBadRequest
-	pagination := &queries.Pagination{
+	pagination := &dbTypes.Pagination{
 		Total: 100,
 		Page:  1,
 		Limit: 10,
 	}
 
-	SendJsonResponseWithPagination(w, status, data, msg, pagination)
+	svrUtils.SendJsonResponseWithPagination(w, status, data, msg, pagination)
 
 	// Verify the response
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
 
-	var response Response
+	var response svrTypes.Response
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 	assert.False(t, response.Success)
@@ -123,7 +124,7 @@ func TestSendJsonResponseWithPagination_Error(t *testing.T) {
 	assert.Equal(t, pagination, response.Pagination) // Pagination should now be included
 }
 
-// TestParseResponse_Success tests ParseResponse for successful parsing of a JSON response.
+// TestParseResponse_Success tests svrUtils.ParseResponse for successful parsing of a JSON response.
 func TestParseResponse_Success(t *testing.T) {
 	// Create a sample JSON response
 	jsonResponse := `{
@@ -133,7 +134,7 @@ func TestParseResponse_Success(t *testing.T) {
 	}`
 
 	var data map[string]string
-	response, err := ParseResponse([]byte(jsonResponse), &data)
+	response, err := svrUtils.ParseResponse([]byte(jsonResponse), &data)
 
 	// Verify the parsed response
 	assert.NoError(t, err)
@@ -147,20 +148,20 @@ func TestParseResponse_Success(t *testing.T) {
 	assert.Equal(t, data, *responseData)
 }
 
-// TestParseResponse_Error tests ParseResponse for error handling with invalid JSON.
+// TestParseResponse_Error tests svrUtils.ParseResponse for error handling with invalid JSON.
 func TestParseResponse_Error(t *testing.T) {
 	// Create an invalid JSON response
 	invalidJSON := `{invalid json}`
 
 	var data map[string]string
-	_, err := ParseResponse([]byte(invalidJSON), &data)
+	_, err := svrUtils.ParseResponse([]byte(invalidJSON), &data)
 
 	// Verify the error
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error unmarshalling response JSON")
 }
 
-// TestParseResponse_DataError tests ParseResponse for error handling when unmarshalling the data field fails.
+// TestParseResponse_DataError tests svrUtils.ParseResponse for error handling when unmarshalling the data field fails.
 func TestParseResponse_DataError(t *testing.T) {
 	// Create a JSON response with invalid data
 	jsonResponse := `{
@@ -170,7 +171,7 @@ func TestParseResponse_DataError(t *testing.T) {
 	}`
 
 	var data map[string]string
-	_, err := ParseResponse([]byte(jsonResponse), &data)
+	_, err := svrUtils.ParseResponse([]byte(jsonResponse), &data)
 
 	// Verify the error
 	assert.Error(t, err)

@@ -6,9 +6,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	loggerPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	"github.com/stretchr/testify/assert"
+
+	loggerPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	svrConstants "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/constants"
+	svrMiddlewares "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/middlewares"
 )
 
 // TestCorsMiddleware_AllowedOrigin tests that the middleware allows requests from allowed origins.
@@ -17,7 +19,7 @@ func TestCorsMiddleware_AllowedOrigin(t *testing.T) {
 	logger := loggerPkg.Default
 
 	allowedOrigins := []string{"https://example.com"}
-	middleware := CorsMiddleware(allowedOrigins)
+	middleware := svrMiddlewares.CorsMiddleware(allowedOrigins)
 
 	// Create a test handler
 	handler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -29,7 +31,7 @@ func TestCorsMiddleware_AllowedOrigin(t *testing.T) {
 	req.Header.Set("Origin", "https://example.com")
 
 	// Add the logger to the request context
-	ctx := context.WithValue(req.Context(), CtxRequestLogger, &logger)
+	ctx := context.WithValue(req.Context(), svrConstants.CtxRequestLogger, &logger)
 	req = req.WithContext(ctx)
 
 	// Record the response
@@ -49,7 +51,7 @@ func TestCorsMiddleware_DisallowedOrigin(t *testing.T) {
 	logger := loggerPkg.Default
 
 	allowedOrigins := []string{"https://example.com"}
-	middleware := CorsMiddleware(allowedOrigins)
+	middleware := svrMiddlewares.CorsMiddleware(allowedOrigins)
 
 	// Create a test handler
 	handler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -61,7 +63,7 @@ func TestCorsMiddleware_DisallowedOrigin(t *testing.T) {
 	req.Header.Set("Origin", "https://malicious.com")
 
 	// Add the logger to the request context
-	ctx := context.WithValue(req.Context(), CtxRequestLogger, &logger)
+	ctx := context.WithValue(req.Context(), svrConstants.CtxRequestLogger, &logger)
 	req = req.WithContext(ctx)
 
 	// Record the response
@@ -79,7 +81,7 @@ func TestCorsMiddleware_WildcardOrigin(t *testing.T) {
 	logger := loggerPkg.Default
 
 	allowedOrigins := []string{"*"}
-	middleware := CorsMiddleware(allowedOrigins)
+	middleware := svrMiddlewares.CorsMiddleware(allowedOrigins)
 
 	// Create a test handler
 	handler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -91,7 +93,7 @@ func TestCorsMiddleware_WildcardOrigin(t *testing.T) {
 	req.Header.Set("Origin", "https://example.com")
 
 	// Add the logger to the request context
-	ctx := context.WithValue(req.Context(), CtxRequestLogger, &logger)
+	ctx := context.WithValue(req.Context(), svrConstants.CtxRequestLogger, &logger)
 	req = req.WithContext(ctx)
 
 	// Record the response
@@ -109,7 +111,7 @@ func TestCorsMiddleware_OptionsRequest(t *testing.T) {
 	logger := loggerPkg.Default
 
 	allowedOrigins := []string{"https://example.com"}
-	middleware := CorsMiddleware(allowedOrigins)
+	middleware := svrMiddlewares.CorsMiddleware(allowedOrigins)
 
 	// Create a test handler
 	handler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -121,7 +123,7 @@ func TestCorsMiddleware_OptionsRequest(t *testing.T) {
 	req.Header.Set("Origin", "https://example.com")
 
 	// Add the logger to the request context
-	ctx := context.WithValue(req.Context(), CtxRequestLogger, &logger)
+	ctx := context.WithValue(req.Context(), svrConstants.CtxRequestLogger, &logger)
 	req = req.WithContext(ctx)
 
 	// Record the response
@@ -140,7 +142,7 @@ func TestCorsMiddleware_MissingOrigin(t *testing.T) {
 	logger := loggerPkg.Default
 
 	allowedOrigins := []string{"https://example.com"}
-	middleware := CorsMiddleware(allowedOrigins)
+	middleware := svrMiddlewares.CorsMiddleware(allowedOrigins)
 
 	// Create a test handler
 	handler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -151,7 +153,7 @@ func TestCorsMiddleware_MissingOrigin(t *testing.T) {
 	req := httptest.NewRequest("GET", "https://example.com", nil)
 
 	// Add the logger to the request context
-	ctx := context.WithValue(req.Context(), CtxRequestLogger, &logger)
+	ctx := context.WithValue(req.Context(), svrConstants.CtxRequestLogger, &logger)
 	req = req.WithContext(ctx)
 
 	// Record the response

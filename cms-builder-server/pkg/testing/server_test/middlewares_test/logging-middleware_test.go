@@ -6,10 +6,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing"
 	"github.com/stretchr/testify/assert"
+
+	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
+	svrConstants "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/constants"
+	svrMiddlewares "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/middlewares"
+	testPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing"
 )
 
 func TestLoggingMiddleware_LogsRequest(t *testing.T) {
@@ -24,14 +26,14 @@ func TestLoggingMiddleware_LogsRequest(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		// Retrieve the logger from the context
-		loggerFromContext := r.Context().Value(CtxRequestLogger)
+		loggerFromContext := r.Context().Value(svrConstants.CtxRequestLogger)
 		assert.NotNil(t, loggerFromContext)
 
 		w.WriteHeader(http.StatusOK)
 	})
 
 	// Wrap the handler with the middleware
-	middleware := LoggingMiddleware(logConfig)
+	middleware := svrMiddlewares.LoggingMiddleware(logConfig)
 	wrappedHandler := middleware(handler)
 
 	// Create a test request
@@ -41,9 +43,9 @@ func TestLoggingMiddleware_LogsRequest(t *testing.T) {
 	requestId := "test-request-id"
 
 	ctx := req.Context()
-	ctx = context.WithValue(ctx, CtxRequestIsAuth, true)
-	ctx = context.WithValue(ctx, CtxRequestUser, mockUser)
-	ctx = context.WithValue(ctx, CtxTraceId, requestId)
+	ctx = context.WithValue(ctx, svrConstants.CtxRequestIsAuth, true)
+	ctx = context.WithValue(ctx, svrConstants.CtxRequestUser, mockUser)
+	ctx = context.WithValue(ctx, svrConstants.CtxTraceId, requestId)
 	req = req.WithContext(ctx)
 
 	// Record the response

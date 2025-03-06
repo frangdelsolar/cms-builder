@@ -1,13 +1,14 @@
-package scheduler_test
+package testing
 
 import (
+	authModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/models"
 	dbModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/models"
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/scheduler"
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing"
+	schPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/scheduler"
+	schModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/scheduler/models"
 )
 
-func SetupSchedulerTestBed() testPkg.TestUtils {
-	db := testPkg.NewTestDB()
+func SetupSchedulerTestBed() TestUtils {
+	db := NewTestDB()
 	err := db.DB.AutoMigrate(authModels.User{})
 	if err != nil {
 		panic(err)
@@ -18,17 +19,17 @@ func SetupSchedulerTestBed() testPkg.TestUtils {
 		panic(err)
 	}
 
-	err = db.DB.AutoMigrate(SchedulerJobDefinition{})
+	err = db.DB.AutoMigrate(schModels.SchedulerJobDefinition{})
 	if err != nil {
 		panic(err)
 	}
 
-	err = db.DB.AutoMigrate(SchedulerTask{})
+	err = db.DB.AutoMigrate(schModels.SchedulerTask{})
 	if err != nil {
 		panic(err)
 	}
 
-	log := testPkg.NewTestLogger()
+	log := NewTestLogger()
 
 	schedulerUser := CreateSchedulerUser()
 	err = db.DB.Create(schedulerUser).Error
@@ -36,12 +37,12 @@ func SetupSchedulerTestBed() testPkg.TestUtils {
 		panic(err)
 	}
 
-	scheduler, err := NewScheduler(db, schedulerUser, log)
+	scheduler, err := schPkg.NewScheduler(db, schedulerUser, log)
 	if err != nil {
 		panic(err)
 	}
 
-	return testPkg.TestUtils{
+	return TestUtils{
 		Scheduler:     scheduler,
 		SchedulerUser: schedulerUser,
 		Db:            db,

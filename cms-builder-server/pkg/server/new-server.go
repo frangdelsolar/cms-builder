@@ -7,6 +7,7 @@ import (
 
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
+	svrMiddlewares "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/middlewares"
 	svrTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/types"
 	"github.com/gorilla/mux"
 )
@@ -15,8 +16,6 @@ var (
 	ErrServerConfigNotProvided = errors.New("database config not provided")
 	ErrServerNotInitialized    = errors.New("server not initialized")
 )
-
-const TimeoutSeconds = 15
 
 func NewServer(config *svrTypes.ServerConfig, db *dbTypes.DatabaseConnection, log *loggerTypes.Logger) (*svrTypes.Server, error) {
 	log.Info().Interface("config", config).Msg("Initializing server")
@@ -31,8 +30,8 @@ func NewServer(config *svrTypes.ServerConfig, db *dbTypes.DatabaseConnection, lo
 		Server: &http.Server{
 			Addr:         config.Host + ":" + config.Port,
 			Handler:      r,
-			WriteTimeout: TimeoutSeconds * time.Second,
-			ReadTimeout:  TimeoutSeconds * time.Second,
+			WriteTimeout: svrMiddlewares.TimeoutSeconds * time.Second,
+			ReadTimeout:  svrMiddlewares.TimeoutSeconds * time.Second,
 		},
 		ServerConfig: *config,
 		Middlewares:  []func(http.Handler) http.Handler{},

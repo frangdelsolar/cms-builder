@@ -7,21 +7,22 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	"github.com/stretchr/testify/assert"
+
+	svrMiddlewares "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/middlewares"
 )
 
 func TestTimeoutMiddleware(t *testing.T) {
 
 	// Create a mock handler that panics
 	panicHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		secs := TimeoutSeconds + 1
+		secs := svrMiddlewares.TimeoutSeconds + 1
 		t.Log("Testing timeout middleware waiting for", secs, "seconds")
 		time.Sleep(time.Duration(secs) * time.Second)
 	})
 
 	// Wrap the panic handler with the RecoveryMiddleware
-	recoveredHandler := TimeoutMiddleware(panicHandler)
+	recoveredHandler := svrMiddlewares.TimeoutMiddleware(panicHandler)
 
 	// Create a test recorder to capture the response
 	recorder := httptest.NewRecorder()

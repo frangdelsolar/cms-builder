@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
+	svrMiddlewares "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/middlewares"
 )
 
 func TestRateLimitMiddleware(t *testing.T) {
@@ -18,7 +18,7 @@ func TestRateLimitMiddleware(t *testing.T) {
 	})
 
 	// Wrap the handler with the middleware
-	middleware := RateLimitMiddleware()
+	middleware := svrMiddlewares.RateLimitMiddleware()
 	wrappedHandler := middleware(handler)
 
 	// Create a test request
@@ -28,7 +28,7 @@ func TestRateLimitMiddleware(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	// Test within the rate limit
-	for i := 0; i < MaxRequestsPerMinute; i++ {
+	for i := 0; i < svrMiddlewares.MaxRequestsPerMinute; i++ {
 		wrappedHandler.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusOK, w.Code)
 		w = httptest.NewRecorder() // reset the recorder.
@@ -39,8 +39,8 @@ func TestRateLimitMiddleware(t *testing.T) {
 	assert.Equal(t, http.StatusTooManyRequests, w.Code)
 
 	// Test after the window has passed
-	t.Log("Waiting for the window to pass for", WaitingSeconds+1, "seconds")
-	time.Sleep((WaitingSeconds + 1) * time.Second)
+	t.Log("Waiting for the window to pass for", svrMiddlewares.WaitingSeconds+1, "seconds")
+	time.Sleep((svrMiddlewares.WaitingSeconds + 1) * time.Second)
 	w = httptest.NewRecorder()
 	wrappedHandler.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -50,7 +50,7 @@ func TestRateLimitMiddleware(t *testing.T) {
 	req2.RemoteAddr = "192.168.1.2:1234"
 	w2 := httptest.NewRecorder()
 
-	for i := 0; i < MaxRequestsPerMinute; i++ {
+	for i := 0; i < svrMiddlewares.MaxRequestsPerMinute; i++ {
 		wrappedHandler.ServeHTTP(w2, req2)
 		assert.Equal(t, http.StatusOK, w2.Code)
 		w2 = httptest.NewRecorder()
@@ -62,7 +62,7 @@ func TestRateLimitMiddleware(t *testing.T) {
 }
 
 func TestRateLimiter_Allow(t *testing.T) {
-	rl := NewRateLimiter(5, 1*time.Second) // 5 requests per second
+	rl := svrMiddlewares.NewRateLimiter(5, 1*time.Second) // 5 requests per second
 	clientIP := "192.168.1.1"
 
 	// Allow 5 requests

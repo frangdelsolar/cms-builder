@@ -8,10 +8,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
+	authModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/models"
+	svrConstants "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/constants"
+	svrMiddlewares "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/middlewares"
 )
 
-// TestProtectedRouteMiddleware tests the ProtectedRouteMiddleware function.
+// TestProtectedRouteMiddleware tests the svrMiddlewares.ProtectedRouteMiddleware function.
 func TestProtectedRouteMiddleware(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -58,14 +60,14 @@ func TestProtectedRouteMiddleware(t *testing.T) {
 			})
 
 			// Wrap the handler with the middleware
-			wrappedHandler := ProtectedRouteMiddleware(handler)
+			wrappedHandler := svrMiddlewares.ProtectedRouteMiddleware(handler)
 
 			// Create a test request
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 			// Add context values to the request
-			ctx := context.WithValue(req.Context(), CtxRequestIsAuth, tt.auth)
-			ctx = context.WithValue(ctx, CtxRequestUser, tt.user)
+			ctx := context.WithValue(req.Context(), svrConstants.CtxRequestIsAuth, tt.auth)
+			ctx = context.WithValue(ctx, svrConstants.CtxRequestUser, tt.user)
 			req = req.WithContext(ctx)
 
 			// Record the response

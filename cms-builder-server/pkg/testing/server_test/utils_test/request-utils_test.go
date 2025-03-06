@@ -8,13 +8,16 @@ import (
 	"net/url"
 	"testing"
 
-	loggerPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
-	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
+
+	authModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/models"
+	loggerPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
+	svrConstants "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/constants"
+	svrTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/types"
+	svrUtils "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/utils"
 )
 
 // TestValidateRequestMethod_Valid tests that svrUtils.ValidateRequestMethod returns nil for a valid request method.
@@ -72,7 +75,7 @@ func TestGetLoggerFromRequest(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 			// Add the context value to the request
-			ctx := context.WithValue(req.Context(), CtxRequestLogger, tt.contextValue)
+			ctx := context.WithValue(req.Context(), svrConstants.CtxRequestLogger, tt.contextValue)
 			req = req.WithContext(ctx)
 
 			// Call the function
@@ -123,7 +126,7 @@ func TestGetRequestAccessToken(t *testing.T) {
 			}
 
 			// Call the function
-			token := GetRequestAccessToken(req)
+			token := svrUtils.GetRequestAccessToken(req)
 
 			// Verify the result
 			assert.Equal(t, tt.expectedToken, token, "Unexpected token")
@@ -161,7 +164,7 @@ func TestGetRequestId(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 			// Add the context value to the request
-			ctx := context.WithValue(req.Context(), CtxTraceId, tt.contextValue)
+			ctx := context.WithValue(req.Context(), svrConstants.CtxTraceId, tt.contextValue)
 			req = req.WithContext(ctx)
 
 			// Call the function
@@ -203,7 +206,7 @@ func TestGetRequestUser(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 			// Add the context value to the request
-			ctx := context.WithValue(req.Context(), CtxRequestUser, tt.contextValue)
+			ctx := context.WithValue(req.Context(), svrConstants.CtxRequestUser, tt.contextValue)
 			req = req.WithContext(ctx)
 
 			// Call the function
@@ -215,7 +218,7 @@ func TestGetRequestUser(t *testing.T) {
 	}
 }
 
-// TestGetRequestIsAuth tests the GetRequestIsAuth function.
+// TestGetRequestIsAuth tests the svrUtils.GetRequestIsAuth function.
 func TestGetRequestIsAuth(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -245,11 +248,11 @@ func TestGetRequestIsAuth(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 			// Add the context value to the request
-			ctx := context.WithValue(req.Context(), CtxRequestIsAuth, tt.contextValue)
+			ctx := context.WithValue(req.Context(), svrConstants.CtxRequestIsAuth, tt.contextValue)
 			req = req.WithContext(ctx)
 
 			// Call the function
-			isAuth := GetRequestIsAuth(req)
+			isAuth := svrUtils.GetRequestIsAuth(req)
 
 			// Verify the result
 			assert.Equal(t, tt.expectedIsAuth, isAuth, "Unexpected authentication status")
@@ -263,10 +266,10 @@ func TestGetRequestContext(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 	// Add context values to the request
-	ctx := context.WithValue(req.Context(), CtxTraceId, "test-request-id")
-	ctx = context.WithValue(ctx, CtxRequestIsAuth, true)
-	ctx = context.WithValue(ctx, CtxRequestUser, &authModels.User{ID: 1, Name: "John Doe"})
-	ctx = context.WithValue(ctx, CtxRequestLogger, &zerolog.Logger{})
+	ctx := context.WithValue(req.Context(), svrConstants.CtxTraceId, "test-request-id")
+	ctx = context.WithValue(ctx, svrConstants.CtxRequestIsAuth, true)
+	ctx = context.WithValue(ctx, svrConstants.CtxRequestUser, &authModels.User{ID: 1, Name: "John Doe"})
+	ctx = context.WithValue(ctx, svrConstants.CtxRequestLogger, &zerolog.Logger{})
 	req = req.WithContext(ctx)
 
 	// Call the function
@@ -279,7 +282,7 @@ func TestGetRequestContext(t *testing.T) {
 	assert.NotNil(t, requestContext.Logger, "Expected a non-nil logger")
 }
 
-// TestGetIntQueryParam tests the GetIntQueryParam function.
+// TestGetIntQueryParam tests the svrUtils.GetIntQueryParam function.
 func TestGetIntQueryParam(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -314,7 +317,7 @@ func TestGetIntQueryParam(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Call the function
-			value, err := GetIntQueryParam(tt.param, tt.query)
+			value, err := svrUtils.GetIntQueryParam(tt.param, tt.query)
 
 			// Verify the result
 			if tt.expectedError == "" {
@@ -332,7 +335,7 @@ func TestGetRequestQueryParams(t *testing.T) {
 	tests := []struct {
 		name           string
 		query          url.Values
-		expectedParams *QueryParams
+		expectedParams *svrTypes.QueryParams
 	}{
 		{
 			name: "valid query parameters",
@@ -342,7 +345,7 @@ func TestGetRequestQueryParams(t *testing.T) {
 				"order": []string{"name"},
 				"query": []string{"test"},
 			},
-			expectedParams: &QueryParams{
+			expectedParams: &svrTypes.QueryParams{
 				Limit: 10,
 				Page:  2,
 				Order: "name",
@@ -354,7 +357,7 @@ func TestGetRequestQueryParams(t *testing.T) {
 			query: url.Values{
 				"page": []string{"2"},
 			},
-			expectedParams: &QueryParams{
+			expectedParams: &svrTypes.QueryParams{
 				Limit: 10, // Default limit
 				Page:  2,
 				Order: "id desc", // Default order
@@ -367,7 +370,7 @@ func TestGetRequestQueryParams(t *testing.T) {
 				"limit": []string{"invalid"},
 				"page":  []string{"2"},
 			},
-			expectedParams: &QueryParams{
+			expectedParams: &svrTypes.QueryParams{
 				Limit: 10, // Default limit due to invalid value
 				Page:  2,
 				Order: "id desc", // Default order
@@ -381,7 +384,7 @@ func TestGetRequestQueryParams(t *testing.T) {
 				"page":  []string{"2"},
 				"order": []string{"TestStruct"},
 			},
-			expectedParams: &QueryParams{
+			expectedParams: &svrTypes.QueryParams{
 				Limit: 10,
 				Page:  2,
 				Order: "test_struct", // Default order due to invalid value
@@ -391,7 +394,7 @@ func TestGetRequestQueryParams(t *testing.T) {
 		{
 			name:  "no query parameters",
 			query: url.Values{},
-			expectedParams: &QueryParams{
+			expectedParams: &svrTypes.QueryParams{
 				Limit: 10,        // Default limit
 				Page:  1,         // Default page
 				Order: "id desc", // Default order
@@ -407,7 +410,7 @@ func TestGetRequestQueryParams(t *testing.T) {
 			req.URL = &url.URL{RawQuery: tt.query.Encode()}
 
 			// Call the function
-			params, err := GetRequestQueryParams(req)
+			params, err := svrUtils.GetRequestQueryParams(req)
 
 			// Verify the result
 			assert.NoError(t, err, "Expected no error")
@@ -416,7 +419,7 @@ func TestGetRequestQueryParams(t *testing.T) {
 	}
 }
 
-// TestValidateOrderParam tests the ValidateOrderParam function.
+// TestValidateOrderParam tests the svrUtils.ValidateOrderParam function.
 func TestValidateOrderParam(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -441,7 +444,7 @@ func TestValidateOrderParam(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Call the function
-			order, err := ValidateOrderParam(tt.orderParam)
+			order, err := svrUtils.ValidateOrderParam(tt.orderParam)
 
 			// Verify the result
 			if tt.expectedError == "" {
@@ -455,81 +458,7 @@ func TestValidateOrderParam(t *testing.T) {
 	}
 }
 
-// TestUserIsAllowed tests the UserIsAllowed function.
-func TestUserIsAllowed(t *testing.T) {
-
-	const EditorRole models.Role = "editor"
-	// Define test cases
-	tests := []struct {
-		name           string
-		appPermissions RolePermissionMap
-		userRoles      []models.Role
-		action         CrudOperation
-		expectedResult bool
-	}{
-		{
-			name: "user has permission for the action",
-			appPermissions: RolePermissionMap{
-				models.AdminRole: {OperationRead, authConstants.OperationCreate},
-				EditorRole:       {OperationRead},
-			},
-			userRoles:      []models.Role{models.AdminRole},
-			action:         OperationRead,
-			expectedResult: true,
-		},
-		{
-			name: "user does not have permission for the action",
-			appPermissions: RolePermissionMap{
-				models.AdminRole: {authConstants.OperationCreate},
-				EditorRole:       {OperationRead},
-			},
-			userRoles:      []models.Role{EditorRole},
-			action:         authConstants.OperationCreate,
-			expectedResult: false,
-		},
-		{
-			name: "user has no roles",
-			appPermissions: RolePermissionMap{
-				models.AdminRole: {OperationRead, authConstants.OperationCreate},
-				EditorRole:       {OperationRead},
-			},
-			userRoles:      []models.Role{},
-			action:         OperationRead,
-			expectedResult: false,
-		},
-		{
-			name: "role has no permissions",
-			appPermissions: RolePermissionMap{
-				models.AdminRole: {},
-				EditorRole:       {OperationRead},
-			},
-			userRoles:      []models.Role{models.AdminRole},
-			action:         OperationRead,
-			expectedResult: false,
-		},
-		{
-			name: "role does not exist in permissions",
-			appPermissions: RolePermissionMap{
-				EditorRole: {OperationRead},
-			},
-			userRoles:      []models.Role{models.AdminRole},
-			action:         OperationRead,
-			expectedResult: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Call the function
-			result := authUtils.UserIsAllowed(tt.appPermissions, tt.userRoles, tt.action, "test-app-name", loggerPkg.Default)
-
-			// Verify the result
-			assert.Equal(t, tt.expectedResult, result, "Unexpected result for test case: %s", tt.name)
-		})
-	}
-}
-
-// TestReadRequestBody tests the ReadRequestBody function.
+// TestReadRequestBody tests the svrUtils.ReadRequestBody function.
 func TestReadRequestBody(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -556,8 +485,8 @@ func TestReadRequestBody(t *testing.T) {
 			// Create a test request with the request body
 			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewBufferString(tt.requestBody))
 
-			// Call the ReadRequestBody function
-			result, err := ReadRequestBody(req)
+			// Call the svrUtils.ReadRequestBody function
+			result, err := svrUtils.ReadRequestBody(req)
 
 			// Verify the result
 			if tt.expectedError {
@@ -642,7 +571,7 @@ func TestFormatRequestBody(t *testing.T) {
 	}
 }
 
-// TestGetUrlParam tests the GetUrlParam function.
+// TestGetUrlParam tests the svrUtils.GetUrlParam function.
 func TestGetUrlParam(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -678,8 +607,8 @@ func TestGetUrlParam(t *testing.T) {
 			// Create a new router and set the URL parameters
 			router := mux.NewRouter()
 			router.HandleFunc("/users/{id}", func(w http.ResponseWriter, r *http.Request) {
-				// Call the GetUrlParam function
-				result := GetUrlParam(tt.param, r)
+				// Call the svrUtils.GetUrlParam function
+				result := svrUtils.GetUrlParam(tt.param, r)
 
 				// Verify the result
 				assert.Equal(t, tt.expectedResult, result, "Unexpected result for test case: %s", tt.name)
