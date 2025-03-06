@@ -1,6 +1,9 @@
 package testing
 
-import "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
+import (
+	authConstants "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/constants"
+	authModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/models"
+)
 
 func CreateAllAllowedUser() *authModels.User {
 	return CreateUser("All Allowed User", AllAllowedRole.S())
@@ -11,15 +14,15 @@ func CreateSystemUser() *authModels.User {
 }
 
 func CreateAdminUser() *authModels.User {
-	return CreateUser("Admin User", models.AdminRole.S())
+	return CreateUser("Admin User", authConstants.AdminRole.S())
 }
 
 func CreateGodUser() *authModels.User {
-	return CreateUser("God User", models.AdminRole.S())
+	return CreateUser("God User", authConstants.AdminRole.S())
 }
 
 func CreateVisitorUser() *authModels.User {
-	return CreateUser("Visitor User", models.VisitorRole.S())
+	return CreateUser("Visitor User", authConstants.VisitorRole.S())
 }
 
 func CreateNoRoleUser() *authModels.User {
@@ -27,7 +30,7 @@ func CreateNoRoleUser() *authModels.User {
 }
 
 func CreateSchedulerUser() *authModels.User {
-	return CreateUser("Scheduler User", models.SchedulerRole.S())
+	return CreateUser("Scheduler User", authConstants.SchedulerRole.S())
 }
 
 func CreateUser(name string, roles string) *authModels.User {

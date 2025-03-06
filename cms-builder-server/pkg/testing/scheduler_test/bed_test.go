@@ -6,8 +6,8 @@ import (
 	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing"
 )
 
-func SetupSchedulerTestBed() TestUtils {
-	db := NewTestDB()
+func SetupSchedulerTestBed() testPkg.TestUtils {
+	db := testPkg.NewTestDB()
 	err := db.DB.AutoMigrate(authModels.User{})
 	if err != nil {
 		panic(err)
@@ -28,7 +28,7 @@ func SetupSchedulerTestBed() TestUtils {
 		panic(err)
 	}
 
-	log := NewTestLogger()
+	log := testPkg.NewTestLogger()
 
 	schedulerUser := CreateSchedulerUser()
 	err = db.DB.Create(schedulerUser).Error
@@ -41,7 +41,7 @@ func SetupSchedulerTestBed() TestUtils {
 		panic(err)
 	}
 
-	return TestUtils{
+	return testPkg.TestUtils{
 		Scheduler:     scheduler,
 		SchedulerUser: schedulerUser,
 		Db:            db,

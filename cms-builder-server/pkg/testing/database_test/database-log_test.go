@@ -3,9 +3,9 @@ package database_test
 import (
 	"testing"
 
+	authModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/models"
 	dbPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 )
 
 type TestStruct struct {
@@ -17,7 +17,7 @@ func TestNewDatabaseLogEntry(t *testing.T) {
 	tests := []struct {
 		name       string
 		action     dbTypes.CRUDAction
-		user       User
+		user       authModels.User
 		object     interface{}
 		wantErr    bool
 		wantDetail string
@@ -25,7 +25,7 @@ func TestNewDatabaseLogEntry(t *testing.T) {
 		{
 			name:   "success",
 			action: dbTypes.CreateCRUDAction,
-			user: User{
+			user: authModels.User{
 				ID:    uint(1),
 				Name:  "Test User",
 				Email: "YHs7r@example.com",
@@ -37,7 +37,7 @@ func TestNewDatabaseLogEntry(t *testing.T) {
 		{
 			name:   "marshal error",
 			action: dbTypes.CreateCRUDAction,
-			user: User{
+			user: authModels.User{
 				ID:    uint(1),
 				Name:  "Test User",
 				Email: "YHs7r@example.com",
@@ -49,7 +49,7 @@ func TestNewDatabaseLogEntry(t *testing.T) {
 		{
 			name:   "unmarshal error",
 			action: dbTypes.CreateCRUDAction,
-			user: User{
+			user: authModels.User{
 				ID:    uint(1),
 				Name:  "Test User",
 				Email: "YHs7r@example.com",
@@ -61,7 +61,7 @@ func TestNewDatabaseLogEntry(t *testing.T) {
 		{
 			name:   "no ID",
 			action: dbTypes.CreateCRUDAction,
-			user: User{
+			user: authModels.User{
 				ID:    uint(1),
 				Name:  "Test User",
 				Email: "YHs7r@example.com",

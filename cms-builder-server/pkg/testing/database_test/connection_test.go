@@ -3,9 +3,11 @@ package database_test
 import (
 	"testing"
 
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	"github.com/stretchr/testify/assert"
+
+	dbPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
+	loggerPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 )
 
 func TestLoadDB_SQLite_Success(t *testing.T) {
@@ -17,7 +19,7 @@ func TestLoadDB_SQLite_Success(t *testing.T) {
 
 	log := loggerPkg.Default
 
-	db, err := NewDatabaseConnection(config, log)
+	db, err := dbPkg.NewDatabaseConnection(config, log)
 	assert.NoError(t, err)
 	assert.NotNil(t, db)
 	assert.NotNil(t, db.DB)
@@ -33,7 +35,7 @@ func TestLoadDB_SQLite_Success(t *testing.T) {
 
 // 	log := loggerPkg.Default
 
-// 	db, err := LoadDB(config, log)
+// 	db, err := dbPkg.NewDatabaseConnection(config, log)
 // 	assert.NoError(t, err)
 // 	assert.NotNil(t, db)
 // 	assert.NotNil(t, db.DB)
@@ -48,9 +50,9 @@ func TestLoadDB_InvalidDriver(t *testing.T) {
 
 	log := loggerPkg.Default
 
-	db, err := NewDatabaseConnection(config, log)
+	db, err := dbPkg.NewDatabaseConnection(config, log)
 	assert.Error(t, err)
-	assert.Equal(t, ErrInvalidDriver, err)
+	assert.Equal(t, dbPkg.ErrInvalidDriver, err)
 	assert.Nil(t, db)
 }
 
@@ -58,9 +60,9 @@ func TestLoadDB_NilConfig(t *testing.T) {
 	// Test loading a database with a nil config
 	log := loggerPkg.Default
 
-	db, err := NewDatabaseConnection(nil, log)
+	db, err := dbPkg.NewDatabaseConnection(nil, log)
 	assert.Error(t, err)
-	assert.Equal(t, ErrDBConfigNotProvided, err)
+	assert.Equal(t, dbPkg.ErrDBConfigNotProvided, err)
 	assert.Nil(t, db)
 }
 
@@ -73,9 +75,9 @@ func TestLoadDB_EmptySQLitePath(t *testing.T) {
 
 	log := loggerPkg.Default
 
-	db, err := NewDatabaseConnection(config, log)
+	db, err := dbPkg.NewDatabaseConnection(config, log)
 	assert.Error(t, err)
-	assert.Equal(t, ErrEmptySQLitePath, err)
+	assert.Equal(t, dbPkg.ErrEmptySQLitePath, err)
 	assert.Nil(t, db)
 }
 
@@ -88,9 +90,9 @@ func TestLoadDB_EmptyPostgresURL(t *testing.T) {
 
 	log := loggerPkg.Default
 
-	db, err := NewDatabaseConnection(config, log)
+	db, err := dbPkg.NewDatabaseConnection(config, log)
 	assert.Error(t, err)
-	assert.Equal(t, ErrEmptyPostgresURL, err)
+	assert.Equal(t, dbPkg.ErrEmptyPostgresURL, err)
 	assert.Nil(t, db)
 }
 
@@ -103,7 +105,7 @@ func TestLoadDB_SQLite_ConnectionError(t *testing.T) {
 
 	log := loggerPkg.Default
 
-	db, err := NewDatabaseConnection(config, log)
+	db, err := dbPkg.NewDatabaseConnection(config, log)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to connect to database")
 	assert.Nil(t, db)
@@ -118,7 +120,7 @@ func TestLoadDB_Postgres_ConnectionError(t *testing.T) {
 
 	log := loggerPkg.Default
 
-	db, err := NewDatabaseConnection(config, log)
+	db, err := dbPkg.NewDatabaseConnection(config, log)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to connect to database")
 	assert.Nil(t, db)
@@ -133,7 +135,7 @@ func TestDatabase_Close(t *testing.T) {
 
 	log := loggerPkg.Default
 
-	db, err := NewDatabaseConnection(config, log)
+	db, err := dbPkg.NewDatabaseConnection(config, log)
 	assert.NoError(t, err)
 	assert.NotNil(t, db)
 
@@ -145,7 +147,7 @@ func TestDatabase_Close(t *testing.T) {
 	// Attempt to close again (should return an error)
 	err = db.Close()
 	assert.Error(t, err)
-	assert.Equal(t, ErrDBNotInitialized, err)
+	assert.Equal(t, dbPkg.ErrDBNotInitialized, err)
 }
 
 func TestDatabase_Close_NotInitialized(t *testing.T) {
@@ -154,5 +156,5 @@ func TestDatabase_Close_NotInitialized(t *testing.T) {
 
 	err := db.Close()
 	assert.Error(t, err)
-	assert.Equal(t, ErrDBNotInitialized, err)
+	assert.Equal(t, dbPkg.ErrDBNotInitialized, err)
 }

@@ -12,11 +12,11 @@ import (
 	"github.com/joho/godotenv"
 )
 
-func SetupServerTestBed() TestUtils {
+func SetupServerTestBed() testPkg.TestUtils {
 
 	godotenv.Load(".test.env")
 
-	db := NewTestDB()
+	db := testPkg.NewTestDB()
 	err := db.DB.AutoMigrate(authModels.User{})
 	if err != nil {
 		panic(err)
@@ -37,7 +37,7 @@ func SetupServerTestBed() TestUtils {
 		panic(err)
 	}
 
-	log := NewTestLogger()
+	log := testPkg.NewTestLogger()
 
 	firebaseConfig := &clients.FirebaseConfig{
 		Secret: os.Getenv("FIREBASE_SECRET"),
@@ -75,12 +75,12 @@ func SetupServerTestBed() TestUtils {
 		panic(err)
 	}
 
-	return TestUtils{
+	return testPkg.TestUtils{
 		Db:          db,
 		Logger:      log,
 		Server:      server,
 		Mgr:         mgr,
-		AdminUser:   CreateAdminUser(),
-		VisitorUser: CreateVisitorUser(),
+		AdminUser:   testPkg.CreateAdminUser(),
+		VisitorUser: testPkg.CreateVisitorUser(),
 	}
 }

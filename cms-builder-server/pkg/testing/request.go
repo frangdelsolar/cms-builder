@@ -9,9 +9,11 @@ import (
 	"os"
 	"testing"
 
-	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	"github.com/stretchr/testify/assert"
+
+	authModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/models"
+	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
+	svrConstants "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/constants"
 )
 
 func CreateTestRequest(t *testing.T, method, path, body string, isAuth bool, user *authModels.User, log *loggerTypes.Logger) *http.Request {
@@ -24,16 +26,16 @@ func CreateTestRequest(t *testing.T, method, path, body string, isAuth bool, use
 	ctx := req.Context()
 
 	if user != (*authModels.User)(nil) {
-		ctx = context.WithValue(ctx, server.CtxRequestIsAuth, isAuth)
-		ctx = context.WithValue(ctx, server.CtxRequestUser, user)
+		ctx = context.WithValue(ctx, svrConstants.CtxRequestIsAuth, isAuth)
+		ctx = context.WithValue(ctx, svrConstants.CtxRequestUser, user)
 	}
 
-	ctx = context.WithValue(ctx, server.svrUtils.CtxRequestLogger, log)
+	ctx = context.WithValue(ctx, svrConstants.CtxRequestLogger, log)
 
 	return req.WithContext(ctx)
 }
 
-// ExecuteHandler executes the handler and returns the response recorder
+// testPkg.ExecuteHandler executes the handler and returns the response recorder
 func ExecuteHandler(t *testing.T, handler http.HandlerFunc, req *http.Request) *httptest.ResponseRecorder {
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
@@ -50,7 +52,7 @@ func HitEndpoint(t *testing.T, handler http.HandlerFunc, method, path, body stri
 	return ExecuteHandler(t, handler, req)
 }
 
-// CreateTestRequest creates a test request with a custom IP address.
+// testPkg.CreateTestRequest creates a test request with a custom IP address.
 func CreateGodRequestWithIp(t *testing.T, method, path, body string, isAuth bool, user *authModels.User, log *loggerTypes.Logger, ip string) *http.Request {
 	req, err := http.NewRequest(method, path, bytes.NewBufferString(body))
 	assert.NoError(t, err)
@@ -66,9 +68,9 @@ func CreateGodRequestWithIp(t *testing.T, method, path, body string, isAuth bool
 	req.Body = io.NopCloser(bytes.NewBufferString(body))
 
 	ctx := req.Context()
-	ctx = context.WithValue(ctx, server.CtxRequestIsAuth, isAuth)
-	ctx = context.WithValue(ctx, server.CtxRequestUser, user)
-	ctx = context.WithValue(ctx, server.svrUtils.CtxRequestLogger, log)
+	ctx = context.WithValue(ctx, svrConstants.CtxRequestIsAuth, isAuth)
+	ctx = context.WithValue(ctx, svrConstants.CtxRequestUser, user)
+	ctx = context.WithValue(ctx, svrConstants.CtxRequestLogger, log)
 
 	return req.WithContext(ctx)
 }

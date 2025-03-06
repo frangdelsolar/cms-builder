@@ -3,9 +3,11 @@ package orchestrator
 import (
 	"context"
 
+	authConstants "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/constants"
+	authModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/models"
+	authTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/types"
+	authUtils "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/utils"
 	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	"github.com/google/uuid"
 )
 
@@ -31,32 +33,32 @@ func (o *Orchestrator) SetupOrchestratorUsers() error {
 
 	o.Users.System = systemUser
 
-	usersData := []models.RegisterUserInput{
+	usersData := []authTypes.RegisterUserInput{
 		{
 			Name:             "God",
 			Email:            "god@" + o.Config.GetString(EnvKeys.Domain),
 			Password:         uuid.New().String(),
-			Roles:            []models.Role{models.AdminRole},
+			Roles:            []authTypes.Role{authConstants.AdminRole},
 			RegisterFirebase: false,
 		},
 		{
 			Name:             o.Config.GetString(EnvKeys.AdminName),
 			Email:            o.Config.GetString(EnvKeys.AdminEmail),
 			Password:         o.Config.GetString(EnvKeys.AdminPassword),
-			Roles:            []models.Role{models.AdminRole},
+			Roles:            []authTypes.Role{authConstants.AdminRole},
 			RegisterFirebase: true,
 		},
 		{
 			Name:             "Scheduler",
 			Email:            "scheduler@" + o.Config.GetString(EnvKeys.Domain),
 			Password:         uuid.New().String(),
-			Roles:            []models.Role{models.SchedulerRole},
+			Roles:            []authTypes.Role{authConstants.SchedulerRole},
 			RegisterFirebase: false,
 		},
 	}
 
 	for _, userData := range usersData {
-		user, err := server.CreateUserWithRole(userData, o.FirebaseClient, o.DB, o.Users.System, requestId, o.Logger)
+		user, err := authUtils.CreateUserWithRole(userData, o.FirebaseClient, o.DB, o.Users.System, requestId, o.Logger)
 		if err != nil {
 			o.Logger.Error().Err(err).Interface("user", userData).Msg("Error creating user")
 			return err

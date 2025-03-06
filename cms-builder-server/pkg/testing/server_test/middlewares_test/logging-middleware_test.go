@@ -18,7 +18,7 @@ func TestLoggingMiddleware_LogsRequest(t *testing.T) {
 		LogLevel: "info",
 	}
 
-	mockUser := CreateAdminUser()
+	mockUser := testPkg.CreateAdminUser()
 
 	// Create a test handler
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

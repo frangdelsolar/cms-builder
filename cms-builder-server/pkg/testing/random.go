@@ -14,12 +14,12 @@ func RandomUint() uint {
 	return uint(rand.Intn(1000000))
 }
 
-// RandomName returns a random string of 10 characters, useful for generating user names in tests.
+// testPkg.RandomName returns a random string of 10 characters, useful for generating user names in tests.
 func RandomName() string {
 	return RandomString(10)
 }
 
-// RandomEmail returns a random email address, useful for generating email addresses in tests.
+// testPkg.RandomEmail returns a random email address, useful for generating email addresses in tests.
 func RandomEmail() string {
 	name := RandomString(8)
 	domain := "example.com"
@@ -48,7 +48,7 @@ func RandomPassword() string {
 	return password
 }
 
-// RandomString returns a random string of n characters, consisting only of letters.
+// testPkg.RandomString returns a random string of n characters, consisting only of letters.
 func RandomString(n int) string {
 	b := make([]byte, n)
 	for i := range b {
