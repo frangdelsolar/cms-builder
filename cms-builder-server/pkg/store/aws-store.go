@@ -9,22 +9,25 @@ import (
 	"net/http"
 	"path/filepath"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/clients"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
+	cliPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/clients"
+	fileModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/file/models"
+	fileTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/file/types"
+	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
+	storeTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store/types"
+	storeUtils "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store/utils"
 )
 
 type S3Store struct {
-	Client    *clients.AwsManager
-	Config    *StoreConfig
-	AwsConfig *S3Config
+	Client    *cliPkg.AwsManager
+	Config    *storeTypes.StoreConfig
+	AwsConfig *storeTypes.S3Config
 }
 
-func (s *S3Store) GetConfig() *StoreConfig {
+func (s *S3Store) GetConfig() *storeTypes.StoreConfig {
 	return s.Config
 }
 
-func (s *S3Store) GetPath(file *models.File) string {
+func (s *S3Store) GetPath(file *fileModels.File) string {
 	return s.AwsConfig.Folder + "/" + file.Name
 }
 
@@ -32,8 +35,8 @@ func (s *S3Store) GetPath(file *models.File) string {
 // It reads the file bytes and calls the UploadFile method of the AwsManager client.
 // If successful, it returns a FileData object containing the file's name, path, and URL.
 // If there is an error at any step, it logs the error and returns the error.
-func (s *S3Store) StoreFile(fileName string, file multipart.File, header *multipart.FileHeader, log *logger.Logger) (fileData *models.File, err error) {
-	fileData = &models.File{}
+func (s *S3Store) StoreFile(fileName string, file multipart.File, header *multipart.FileHeader, log *loggerTypes.Logger) (fileData *fileModels.File, err error) {
+	fileData = &fileModels.File{}
 
 	fileBytes, err := getFileBytes(file)
 	if err != nil {
@@ -66,7 +69,7 @@ func (s *S3Store) StoreFile(fileName string, file multipart.File, header *multip
 	log.Debug().Str("detected-content-type", contentType).Msg("Detected file content type")
 
 	// Validate the detected content type
-	valid, err := ValidateContentType(contentType, s.Config.SupportedMimeTypes)
+	valid, err := storeUtils.ValidateContentType(contentType, s.Config.SupportedMimeTypes)
 	if err != nil {
 		return fileData, err
 	}
@@ -74,7 +77,7 @@ func (s *S3Store) StoreFile(fileName string, file multipart.File, header *multip
 		return fileData, fmt.Errorf("invalid content type: %s", contentType)
 	}
 
-	fileData.Name = RandomizeFileName(fileName)
+	fileData.Name = storeUtils.RandomizeFileName(fileName)
 
 	// Create the uploads directory if it doesn't exist
 	path := s.GetPath(fileData)
@@ -105,7 +108,7 @@ func (s *S3Store) StoreFile(fileName string, file multipart.File, header *multip
 // DeleteFile deletes a file from the S3 bucket using the provided file path.
 // It calls the DeleteFile method of the AwsManager client.
 // If an error occurs during the deletion, it logs the error and returns it.
-func (s *S3Store) DeleteFile(file *models.File, log *logger.Logger) error {
+func (s *S3Store) DeleteFile(file *fileModels.File, log *loggerTypes.Logger) error {
 	log.Warn().Interface("file", file).Msg("Deleting file from S3")
 	err := s.Client.DeleteFile(file.Path, log)
 	if err != nil {
@@ -116,16 +119,16 @@ func (s *S3Store) DeleteFile(file *models.File, log *logger.Logger) error {
 	return nil
 }
 
-func (s *S3Store) ListFiles(log *logger.Logger) ([]string, error) {
+func (s *S3Store) ListFiles(log *loggerTypes.Logger) ([]string, error) {
 	return s.Client.ListFiles(log)
 }
 
-func (s *S3Store) ReadFile(file *models.File, log *logger.Logger) ([]byte, error) {
+func (s *S3Store) ReadFile(file *fileModels.File, log *loggerTypes.Logger) ([]byte, error) {
 	return s.Client.DownloadFile(file.Path, log)
 }
 
-func (s *S3Store) GetFileInfo(file *models.File, log *logger.Logger) (*models.FileInfo, error) {
-	info := &models.FileInfo{
+func (s *S3Store) GetFileInfo(file *fileModels.File, log *loggerTypes.Logger) (*fileTypes.FileInfo, error) {
+	info := &fileTypes.FileInfo{
 		Name:        file.Name,
 		Size:        file.Size,
 		ContentType: file.MimeType,
@@ -149,17 +152,9 @@ func getFileBytes(file multipart.File) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-type S3Config struct {
-	Bucket    string
-	Region    string
-	AccessKey string
-	SecretKey string
-	Folder    string
-}
-
 // NewS3Store creates a new S3Store, which is used to store files in an AWS S3 bucket.
 // It returns an error if the AWS configuration is not ready.
-func NewS3Store(config *StoreConfig, awsConfig *S3Config) (*S3Store, error) {
+func NewS3Store(config *storeTypes.StoreConfig, awsConfig *storeTypes.S3Config) (*S3Store, error) {
 
 	if awsConfig == nil {
 		return nil, fmt.Errorf("config is nil")
@@ -201,7 +196,7 @@ func NewS3Store(config *StoreConfig, awsConfig *S3Config) (*S3Store, error) {
 		return nil, fmt.Errorf("supported mime types is empty")
 	}
 
-	client := clients.AwsManager{
+	client := cliPkg.AwsManager{
 		Bucket:    awsConfig.Bucket,
 		Region:    awsConfig.Region,
 		AccessKey: awsConfig.AccessKey,

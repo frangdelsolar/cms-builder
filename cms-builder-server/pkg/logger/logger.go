@@ -7,35 +7,22 @@ import (
 	"strconv"
 
 	"github.com/rs/zerolog"
+
+	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 )
 
-// Logger wraps a zerolog.Logger instance with additional convenience methods
-type Logger struct {
-	*zerolog.Logger
-}
-
-var Default *Logger
+var Default *loggerTypes.Logger
 
 func init() {
-	log, _ := NewLogger(&LoggerConfig{
+	log, _ := NewLogger(&loggerTypes.LoggerConfig{
 		LogLevel: "debug",
 	})
 
 	Default = log
 }
 
-// LoggerConfig defines the configuration options for the logger
-type LoggerConfig struct {
-	// LogLevel defines the desired logging level (e.g., "debug", "info", "warn", "error")
-	LogLevel string
-	// WriteToFile specifies whether logs should be written to a file
-	WriteToFile bool
-	// LogFilePath defines the path to the log file
-	LogFilePath string
-}
-
 // NewLogger creates a new zerolog.Logger instance based on the provided configuration.
-func NewLogger(config *LoggerConfig) (*Logger, error) {
+func NewLogger(config *loggerTypes.LoggerConfig) (*loggerTypes.Logger, error) {
 
 	// Handle nil config by providing a default configuration
 	if config == nil {
@@ -72,7 +59,7 @@ func NewLogger(config *LoggerConfig) (*Logger, error) {
 			Timestamp().
 			Logger()
 
-		return &Logger{&logger}, nil
+		return &loggerTypes.Logger{&logger}, nil
 	}
 
 	// FILE MODE (if WriteToFile is true)
@@ -106,5 +93,5 @@ func NewLogger(config *LoggerConfig) (*Logger, error) {
 		Timestamp().
 		Logger()
 
-	return &Logger{&logger}, nil
+	return &loggerTypes.Logger{&logger}, nil
 }

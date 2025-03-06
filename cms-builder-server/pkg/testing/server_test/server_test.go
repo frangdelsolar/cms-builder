@@ -3,12 +3,13 @@ package server_test
 import (
 	"testing"
 
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing/server_test"
 	"github.com/stretchr/testify/assert"
+
+	testPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing"
 )
 
 func TestNewServer(t *testing.T) {
-	bed := SetupServerTestBed()
+	bed := testPkg.SetupServerTestBed()
 
 	// Check the bed is complete
 	assert.NotNil(t, bed.Server)

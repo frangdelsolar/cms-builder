@@ -5,14 +5,15 @@ import (
 	"os"
 	"testing"
 
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	loggerPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestNewLogger_NoConfig(t *testing.T) {
-	// Call NewLogger with nil config (default will be used)
-	logger, err := NewLogger(nil)
+	// Call loggerPkg.NewLogger with nil config (default will be used)
+	logger, err := loggerPkg.NewLogger(nil)
 
 	// Assert that no error occurred
 	assert.Error(t, err, "expected error but got nil")
@@ -22,14 +23,14 @@ func TestNewLogger_NoConfig(t *testing.T) {
 
 func TestNewLogger_ValidConfig(t *testing.T) {
 	// Define a valid configuration
-	testConfig := &LoggerConfig{
+	testConfig := &loggerTypes.LoggerConfig{
 		LogLevel:    "info",
 		WriteToFile: true,
 		LogFilePath: "test.log",
 	}
 
-	// Call NewLogger with the test config
-	logger, err := NewLogger(testConfig)
+	// Call loggerPkg.NewLogger with the test config
+	logger, err := loggerPkg.NewLogger(testConfig)
 
 	// Assert that no error occurred
 	assert.NoError(t, err)
@@ -44,14 +45,14 @@ func TestNewLogger_ValidConfig(t *testing.T) {
 
 func TestNewLogger_InvalidLogLevel(t *testing.T) {
 	// Define a config with invalid log level
-	testConfig := &LoggerConfig{
+	testConfig := &loggerTypes.LoggerConfig{
 		LogLevel:    "invalid_level",
 		WriteToFile: true,
 		LogFilePath: "test.log",
 	}
 
-	// Call NewLogger with the test config
-	logger, err := NewLogger(testConfig)
+	// Call loggerPkg.NewLogger with the test config
+	logger, err := loggerPkg.NewLogger(testConfig)
 
 	// Assert that an error occurred
 	assert.NoError(t, err)
@@ -66,14 +67,14 @@ func TestNewLogger_WriteToFile_Success(t *testing.T) {
 	defer os.Remove("test.log") // Clean up after the test
 
 	// Define a config for writing to a file
-	testConfig := &LoggerConfig{
+	testConfig := &loggerTypes.LoggerConfig{
 		LogLevel:    "debug",
 		WriteToFile: true,
 		LogFilePath: "test.log",
 	}
 
-	// Call NewLogger with the test config
-	logger, err := NewLogger(testConfig)
+	// Call loggerPkg.NewLogger with the test config
+	logger, err := loggerPkg.NewLogger(testConfig)
 
 	// Assert that no error occurred
 	assert.NoError(t, err)
@@ -94,14 +95,14 @@ func TestNewLogger_WriteToFile_Success(t *testing.T) {
 
 func TestNewLogger_WriteToFile_Error(t *testing.T) {
 	// Define a config with invalid file path
-	testConfig := &LoggerConfig{
+	testConfig := &loggerTypes.LoggerConfig{
 		LogLevel:    "debug",
 		WriteToFile: true,
 		LogFilePath: "/invalid/path/test.log",
 	}
 
-	// Call NewLogger with the test config
-	logger, err := NewLogger(testConfig)
+	// Call loggerPkg.NewLogger with the test config
+	logger, err := loggerPkg.NewLogger(testConfig)
 
 	// Assert that an error occurred
 	assert.Error(t, err)

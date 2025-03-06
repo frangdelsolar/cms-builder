@@ -3,17 +3,11 @@ package queries
 import (
 	"context"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
+	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 )
 
-type Pagination struct {
-	Total int64 `json:"total"`
-	Page  int   `json:"page"`
-	Limit int   `json:"limit"`
-}
-
-func FindMany(ctx context.Context, log *logger.Logger, db *database.Database, entitySlice interface{}, pagination *Pagination, order string, filters map[string]interface{}) error {
+func FindMany(ctx context.Context, log *loggerTypes.Logger, db *dbTypes.DatabaseConnection, entitySlice interface{}, pagination *dbTypes.Pagination, order string, filters map[string]interface{}) error {
 	if order == "" {
 		order = "id desc"
 	}

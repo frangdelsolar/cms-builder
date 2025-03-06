@@ -3,9 +3,9 @@ package database_test
 import (
 	"testing"
 
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	queries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
+	authModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/models"
+	dbPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 )
 
 type TestStruct struct {
@@ -16,16 +16,16 @@ type TestStruct struct {
 func TestNewDatabaseLogEntry(t *testing.T) {
 	tests := []struct {
 		name       string
-		action     CRUDAction
-		user       User
+		action     dbTypes.CRUDAction
+		user       authModels.User
 		object     interface{}
 		wantErr    bool
 		wantDetail string
 	}{
 		{
 			name:   "success",
-			action: CreateCRUDAction,
-			user: User{
+			action: dbTypes.CreateCRUDAction,
+			user: authModels.User{
 				ID:    uint(1),
 				Name:  "Test User",
 				Email: "YHs7r@example.com",
@@ -36,8 +36,8 @@ func TestNewDatabaseLogEntry(t *testing.T) {
 		},
 		{
 			name:   "marshal error",
-			action: CreateCRUDAction,
-			user: User{
+			action: dbTypes.CreateCRUDAction,
+			user: authModels.User{
 				ID:    uint(1),
 				Name:  "Test User",
 				Email: "YHs7r@example.com",
@@ -48,8 +48,8 @@ func TestNewDatabaseLogEntry(t *testing.T) {
 		},
 		{
 			name:   "unmarshal error",
-			action: CreateCRUDAction,
-			user: User{
+			action: dbTypes.CreateCRUDAction,
+			user: authModels.User{
 				ID:    uint(1),
 				Name:  "Test User",
 				Email: "YHs7r@example.com",
@@ -60,8 +60,8 @@ func TestNewDatabaseLogEntry(t *testing.T) {
 		},
 		{
 			name:   "no ID",
-			action: CreateCRUDAction,
-			user: User{
+			action: dbTypes.CreateCRUDAction,
+			user: authModels.User{
 				ID:    uint(1),
 				Name:  "Test User",
 				Email: "YHs7r@example.com",
@@ -74,7 +74,7 @@ func TestNewDatabaseLogEntry(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := queries.NewDatabaseLogEntry(tt.action, &tt.user, tt.object, nil, "23")
+			got, err := dbPkg.NewDatabaseLogEntry(tt.action, &tt.user, tt.object, nil, "23")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewLogHistoryEntry() error = %v, wantErr %v", err, tt.wantErr)
 				return

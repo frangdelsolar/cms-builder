@@ -7,9 +7,10 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
+	orc "github.com/frangdelsolar/cms-builder/cms-builder-server"
+	authModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/models"
+	dbModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/models"
+	rlModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/request-logger/models"
 )
 
 func TestMain(m *testing.M) {
@@ -23,13 +24,13 @@ func TestMain(m *testing.M) {
 }
 
 func TestNewOrchestrator(t *testing.T) {
-	o, err := NewOrchestrator()
+	o, err := orc.NewOrchestrator()
 	assert.NoError(t, err)
 	assert.NotNil(t, o.Config)
 
 	// Config Reader
 	config := o.Config
-	appName := config.GetString(EnvKeys.AppName)
+	appName := config.GetString(orc.EnvKeys.AppName)
 	assert.Equal(t, "test", appName)
 
 	// Logger
@@ -50,17 +51,17 @@ func TestNewOrchestrator(t *testing.T) {
 	assert.NotNil(t, resourceManager)
 
 	// Auth
-	userResource, err := resourceManager.GetResource(models.User{})
+	userResource, err := resourceManager.GetResource(authModels.User{})
 	assert.NoError(t, err)
 	assert.NotNil(t, userResource)
 
 	// Database Logger
-	dbResource, err := resourceManager.GetResource(database.DatabaseLog{})
+	dbResource, err := resourceManager.GetResource(dbModels.DatabaseLog{})
 	assert.NoError(t, err)
 	assert.NotNil(t, dbResource)
 
 	// Request Logger
-	reqResource, err := resourceManager.GetResource(models.RequestLog{})
+	reqResource, err := resourceManager.GetResource(rlModels.RequestLog{})
 	assert.NoError(t, err)
 	assert.NotNil(t, reqResource)
 

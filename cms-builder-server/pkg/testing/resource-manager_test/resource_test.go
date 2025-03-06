@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
+	rmTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager/types"
 )
 
 type TestModel struct {
@@ -15,7 +15,7 @@ type TestModel struct {
 }
 
 func TestGetSlice(t *testing.T) {
-	r := &Resource{Model: TestModel{}}
+	r := &rmTypes.Resource{Model: TestModel{}}
 	slice, err := r.GetSlice()
 
 	assert.NoError(t, err)
@@ -27,7 +27,7 @@ func TestGetSlice(t *testing.T) {
 }
 
 func TestGetOne(t *testing.T) {
-	r := &Resource{Model: TestModel{}}
+	r := &rmTypes.Resource{Model: TestModel{}}
 	instance := r.GetOne()
 
 	instanceType := reflect.TypeOf(instance)
@@ -93,8 +93,8 @@ func TestResource_GetKeys(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create a Resource instance with the test model
-			resource := &Resource{
+			// Create a rmTypes.Resource instance with the test model
+			resource := &rmTypes.Resource{
 				Model: tt.model,
 			}
 

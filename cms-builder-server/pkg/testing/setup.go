@@ -1,14 +1,18 @@
 package testing
 
 import (
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
-	mgr "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/scheduler"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store"
 	"github.com/joho/godotenv"
+
+	authModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/models"
+	dbPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
+	loggerPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
+	rmPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
+	rmTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager/types"
+	scheduler "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/scheduler"
+	serverTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/types"
+	storeTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store/types"
 )
 
 func init() {
@@ -16,33 +20,30 @@ func init() {
 }
 
 type TestUtils struct {
-	Db          *database.Database
-	Logger      *logger.Logger
-	Mgr         *mgr.ResourceManager
-	Src         *mgr.Resource
-	AdminUser   *models.User
-	VisitorUser *models.User
-	NoRoleUser  *models.User
-
+	Db            *dbTypes.DatabaseConnection
+	Logger        *loggerTypes.Logger
+	Mgr           *rmPkg.ResourceManager
+	Src           *rmTypes.Resource
+	AdminUser     *authModels.User
+	VisitorUser   *authModels.User
+	NoRoleUser    *authModels.User
 	Scheduler     *scheduler.Scheduler
-	SchedulerUser *models.User
-
-	Server *server.Server
-
-	Store store.Store
+	SchedulerUser *authModels.User
+	Server        *serverTypes.Server
+	Store         storeTypes.Store
 }
 
-func NewTestDB() *database.Database {
+func NewTestDB() *dbTypes.DatabaseConnection {
 
 	dbPath := "test.db"
 
-	testConfig := &database.DBConfig{
+	testConfig := &dbTypes.DatabaseConfig{
 		Driver: "sqlite",
 		Path:   dbPath,
 		URL:    "not empty",
 	}
 
-	db, err := database.LoadDB(testConfig, logger.Default)
+	db, err := dbPkg.NewDatabaseConnection(testConfig, loggerPkg.Default)
 	if err != nil {
 		panic(err)
 	}
@@ -50,6 +51,6 @@ func NewTestDB() *database.Database {
 	return db
 }
 
-func NewTestLogger() *logger.Logger {
-	return logger.Default
+func NewTestLogger() *loggerTypes.Logger {
+	return loggerPkg.Default
 }

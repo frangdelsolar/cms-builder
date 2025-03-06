@@ -3,13 +3,13 @@ package queries
 import (
 	"context"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
+	authModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/models"
+	dbPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
+	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 )
 
-func Update(ctx context.Context, log *logger.Logger, db *database.Database, entity interface{}, user *models.User, differences interface{}, requestId string) error {
+func Update(ctx context.Context, log *loggerTypes.Logger, db *dbTypes.DatabaseConnection, entity interface{}, user *authModels.User, differences interface{}, requestId string) error {
 	// Update the entity
 	result := db.DB.WithContext(ctx).Save(entity)
 	if result.Error != nil {
@@ -21,7 +21,7 @@ func Update(ctx context.Context, log *logger.Logger, db *database.Database, enti
 	}
 
 	// Log the update action
-	historyEntry, err := NewDatabaseLogEntry(UpdateCRUDAction, user, entity, differences, requestId)
+	historyEntry, err := dbPkg.NewDatabaseLogEntry(dbTypes.UpdateCRUDAction, user, entity, differences, requestId)
 	if err != nil {
 		log.Error().
 			Interface("differences", differences).

@@ -22,7 +22,7 @@ package database_test
 // 	differences := map[string]interface{}{"field1": "Updated Field 1"}
 
 // 	// Call the Update function
-// 	result := queries.Update(db, &instance, user, differences, "test-request-id")
+// 	result := dbQueries.Update(db, &instance, user, differences, "test-request-id")
 
 // 	// Assertions
 // 	assert.NoError(t, result.Error)
@@ -34,8 +34,8 @@ package database_test
 // 	assert.Equal(t, "Updated Field 1", updatedInstance.Field1)
 
 // 	// Verify that a history entry was created
-// 	var historyEntry database.DatabaseLog
-// 	err = db.DB.Where("action = ? AND resource_id = ?", database.UpdateCRUDAction, instance.ID).First(&historyEntry).Error
+// 	var historyEntry dbModels.DatabaseLog
+// 	err = db.DB.Where("action = ? AND resource_id = ?", database.dbTypes.UpdateCRUDAction, instance.ID).First(&historyEntry).Error
 // 	assert.NoError(t, err)
 // 	assert.Equal(t, user.StringID(), historyEntry.UserId)
 // 	assert.Equal(t, "test-request-id", historyEntry.TraceId)
@@ -62,7 +62,7 @@ package database_test
 // 	differences := map[string]interface{}{"field1": "Updated Field 1"}
 
 // 	// Call the Update function
-// 	result := queries.Update(db, &instance, user, differences, "test-request-id")
+// 	result := dbQueries.Update(db, &instance, user, differences, "test-request-id")
 
 // 	// Assertions
 // 	assert.Error(t, result.Error)

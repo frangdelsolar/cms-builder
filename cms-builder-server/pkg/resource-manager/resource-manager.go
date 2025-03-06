@@ -4,36 +4,22 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
+	authTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/types"
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
+	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
+	rmHandlers "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager/handlers"
+	rmTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager/types"
+	svrTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/types"
+	utilsPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
 )
 
 type ResourceManager struct {
-	Resources map[string]*Resource
-	DB        *database.Database
-	Logger    *logger.Logger
+	Resources map[string]*rmTypes.Resource
+	DB        *dbTypes.DatabaseConnection
+	Logger    *loggerTypes.Logger
 }
 
-func NewResourceManager(db *database.Database, log *logger.Logger) *ResourceManager {
-	return &ResourceManager{
-		Resources: make(map[string]*Resource),
-		DB:        db,
-		Logger:    log,
-	}
-}
-
-type ResourceConfig struct {
-	Model           interface{}
-	Handlers        *ApiHandlers
-	SkipUserBinding bool
-	Validators      ValidatorsMap
-	Permissions     server.RolePermissionMap
-	Routes          []server.Route
-}
-
-func (r *ResourceManager) GetResourceByName(name string) (*Resource, error) {
+func (r *ResourceManager) GetResourceByName(name string) (*rmTypes.Resource, error) {
 	if resource, ok := r.Resources[name]; ok {
 		return resource, nil
 	}
@@ -41,8 +27,8 @@ func (r *ResourceManager) GetResourceByName(name string) (*Resource, error) {
 	return nil, fmt.Errorf("resource with name %s not found", name)
 }
 
-func (r *ResourceManager) GetResource(input interface{}) (*Resource, error) {
-	name, err := utils.GetInterfaceName(input)
+func (r *ResourceManager) GetResource(input interface{}) (*rmTypes.Resource, error) {
+	name, err := utilsPkg.GetInterfaceName(input)
 	if err != nil {
 		return nil, err
 	}
@@ -54,16 +40,37 @@ func (r *ResourceManager) GetResource(input interface{}) (*Resource, error) {
 	return nil, fmt.Errorf("resource with name %s not found", name)
 }
 
-func (r *ResourceManager) AddResource(input *ResourceConfig) (*Resource, error) {
+func (r *ResourceManager) GetRoutes(apiBaseUrl string) []svrTypes.Route {
 
-	resource := &Resource{
+	routes := []svrTypes.Route{
+		{
+			Path:         "/api",
+			Handler:      rmHandlers.ApiHandler(r.Resources, apiBaseUrl),
+			Name:         "api",
+			RequiresAuth: false,
+			Methods:      []string{http.MethodGet},
+		},
+	}
+
+	for _, resource := range r.Resources {
+		for _, route := range resource.Routes {
+			routes = append(routes, route)
+		}
+	}
+
+	return routes
+}
+
+func (r *ResourceManager) AddResource(input *rmTypes.ResourceConfig) (*rmTypes.Resource, error) {
+
+	resource := &rmTypes.Resource{
 		Model:           input.Model,
 		Api:             InitializeHandlers(input.Handlers),
 		SkipUserBinding: input.SkipUserBinding,
-		Permissions:     make(server.RolePermissionMap),
-		Validators:      make(ValidatorsMap),
-		Routes:          map[string]server.Route{},
-		ResourceNames:   ResourceNames{},
+		Permissions:     make(authTypes.RolePermissionMap),
+		Validators:      make(rmTypes.ValidatorsMap),
+		Routes:          map[string]svrTypes.Route{},
+		ResourceNames:   rmTypes.ResourceNames{},
 		JsonSchema:      nil,
 	}
 
@@ -112,26 +119,4 @@ func (r *ResourceManager) AddResource(input *ResourceConfig) (*Resource, error) 
 	}
 
 	return resource, nil
-}
-
-func (r *ResourceManager) GetRoutes(apiBaseUrl string) []server.Route {
-
-	routes := []server.Route{
-		{
-			Path:         "/api",
-			Handler:      ApiHandler(r, apiBaseUrl),
-			Name:         "api",
-			RequiresAuth: false,
-			Methods:      []string{http.MethodGet},
-		},
-	}
-
-	for _, resource := range r.Resources {
-
-		for _, route := range resource.Routes {
-			routes = append(routes, route)
-		}
-	}
-
-	return routes
 }

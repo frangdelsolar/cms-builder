@@ -8,8 +8,9 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing"
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing/server_test"
+	svrPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
+	testPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/testing"
+	"github.com/joho/godotenv"
 )
 
 // StressTestReport holds the results of the stress test
@@ -30,7 +31,20 @@ type StressTestReport struct {
 }
 
 func TestStressTest(t *testing.T) {
-	bed := SetupServerTestBed()
+
+	environment := os.Getenv("ENVIRONMENT")
+
+	if environment == "" {
+		godotenv.Load(".test.env")
+		environment = os.Getenv("ENVIRONMENT")
+	}
+
+	if environment == "cicd" {
+		t.Skip("Skipping stress test due to environment")
+		return
+	}
+
+	bed := testPkg.SetupServerTestBed()
 	apiBaseUrl := "http://localhost:8080"
 
 	routes := bed.Mgr.GetRoutes(apiBaseUrl)
@@ -38,7 +52,7 @@ func TestStressTest(t *testing.T) {
 
 	// Start the server in a goroutine
 	go func() {
-		bed.Server.Run(bed.Mgr.GetRoutes, apiBaseUrl)
+		svrPkg.RunServer(bed.Server, bed.Mgr.GetRoutes, apiBaseUrl)
 	}()
 
 	// Wait for the server to start
@@ -81,7 +95,7 @@ func TestStressTest(t *testing.T) {
 				requestStartTime := time.Now()
 
 				// Hit the endpoint
-				rr := HitEndpoint(
+				rr := testPkg.HitEndpoint(
 					t,
 					bed.Server.Root.ServeHTTP, // Handler function
 					"POST",                    // HTTP method
@@ -142,11 +156,11 @@ func TestStressTest(t *testing.T) {
 	report.Throughput = float64(report.TotalRequests) / totalTime.Seconds()
 
 	// Write the report to a file with a timestamp
-	writeCompleteReportToFile(t, report, totalTime, averageResponseTime, numUsers, numRequests)
+	writeCompleteReportToFile(t, report, totalTime, averageResponseTime, numUsers, numRequests, environment)
 }
 
 // writeCompleteReportToFile writes the stress test report to a file with a timestamp
-func writeCompleteReportToFile(t *testing.T, report StressTestReport, totalTime time.Duration, averageResponseTime time.Duration, numUsers int, numRequests int) {
+func writeCompleteReportToFile(t *testing.T, report StressTestReport, totalTime time.Duration, averageResponseTime time.Duration, numUsers int, numRequests int, environment string) {
 	err := os.MkdirAll("test-reports", os.ModePerm)
 	if err != nil {
 		t.Fatalf("Failed to create test-reports directory: %v", err)
@@ -164,6 +178,7 @@ func writeCompleteReportToFile(t *testing.T, report StressTestReport, totalTime 
 	fmt.Fprintf(file, "Stress Test Report\n")
 	fmt.Fprintf(file, "=================\n")
 	fmt.Fprintf(file, "Timestamp: %s\n", time.Now().Format("2006-01-02 15:04:05"))
+	fmt.Fprintf(file, "Environment: %s\n", environment)
 	fmt.Fprintf(file, "Total time taken: %v\n", totalTime)
 	fmt.Fprintf(file, "Total requests: %d\n", report.TotalRequests)
 	fmt.Fprintf(file, "Requests per user: %d\n", numRequests)

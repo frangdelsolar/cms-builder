@@ -4,13 +4,13 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
+	svrTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/types"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestLocalResponseWriter_Header(t *testing.T) {
 	// Create a LocalResponseWriter instance
-	writer := &server.LocalResponseWriter{}
+	writer := &svrTypes.LocalResponseWriter{}
 
 	// Call the Header method
 	header := writer.Header()
@@ -21,7 +21,7 @@ func TestLocalResponseWriter_Header(t *testing.T) {
 
 func TestLocalResponseWriter_Write(t *testing.T) {
 	// Create a LocalResponseWriter instance
-	writer := &server.LocalResponseWriter{}
+	writer := &svrTypes.LocalResponseWriter{}
 
 	// Data to write
 	data := []byte("test data")
@@ -37,7 +37,7 @@ func TestLocalResponseWriter_Write(t *testing.T) {
 
 func TestLocalResponseWriter_WriteHeader(t *testing.T) {
 	// Create a LocalResponseWriter instance
-	writer := &server.LocalResponseWriter{}
+	writer := &svrTypes.LocalResponseWriter{}
 
 	// Call the WriteHeader method
 	writer.WriteHeader(http.StatusOK)
@@ -49,7 +49,7 @@ func TestLocalResponseWriter_WriteHeader(t *testing.T) {
 
 func TestLocalResponseWriter_GetWrittenData(t *testing.T) {
 	// Create a LocalResponseWriter instance
-	writer := &server.LocalResponseWriter{}
+	writer := &svrTypes.LocalResponseWriter{}
 
 	// Write some data to the buffer
 	writer.Write([]byte("test data 1"))

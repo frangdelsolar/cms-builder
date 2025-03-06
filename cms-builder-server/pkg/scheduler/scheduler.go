@@ -4,42 +4,28 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
 	"github.com/go-co-op/gocron/v2"
 	"github.com/google/uuid"
-)
 
-const (
-	TaskStatusRunning TaskStatus = "running" // Task is currently running.
-	TaskStatusFailed  TaskStatus = "failed"  // Task failed during execution.
-	TaskStatusDone    TaskStatus = "done"    // Task completed successfully.
+	authModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/models"
+	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
+	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
+	schConstants "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/scheduler/constants"
+	schInterfaces "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/scheduler/interfaces"
+	schModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/scheduler/models"
+	schTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/scheduler/types"
+	schUtils "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/scheduler/utils"
 )
-
-const (
-	JobFrequencyTypeImmediate JobFrequencyType = "immediate" // Job runs immediately.
-	JobFrequencyTypeScheduled JobFrequencyType = "scheduled" // Job runs at a specific time.
-	JobFrequencyTypeCron      JobFrequencyType = "cron"      // Job runs based on a cron expression.
-)
-
-// GoCronScheduler is an interface for interacting with the gocron scheduler.
-type GoCronScheduler interface {
-	// NewJob creates a new job with the given frequency, task, and event listeners.
-	NewJob(frequency gocron.JobDefinition, task gocron.Task, eventListeners ...gocron.JobOption) (gocron.Job, error)
-	// Shutdown stops the scheduler.
-	Shutdown() error
-}
 
 // Scheduler is the main struct for managing scheduled jobs.
 type Scheduler struct {
-	Cron        GoCronScheduler    // Instance of the gocron scheduler.
-	User        *models.User       // User associated with the scheduler.
-	DB          *database.Database // Database connection for persisting job data.
-	Logger      *logger.Logger     // Logger for logging scheduler events.
-	TaskManager TaskManager        // Thread-safe map for storing job results.
-	JobRegistry JobRegistry        // Registry of task functions and their parameters.
+	Cron        schInterfaces.GoCronScheduler // Instance of the gocron scheduler.
+	User        *authModels.User              // User associated with the scheduler.
+	DB          *dbTypes.DatabaseConnection   // Database connection for persisting job data.
+	Logger      *loggerTypes.Logger           // Logger for logging scheduler events.
+	TaskManager schTypes.TaskManager          // Thread-safe map for storing job results.
+	JobRegistry schTypes.JobRegistry          // Registry of task functions and their parameters.
 }
 
 // RegisterTask registers a task function with the scheduler.
@@ -47,39 +33,19 @@ type Scheduler struct {
 //   - taskName: Name of the task.
 //   - taskFunction: Function to execute for the task.
 //   - parameters: Parameters for the task function.
-func (s *Scheduler) RegisterTask(taskName string, taskFunction SchedulerTaskFunc, parameters ...any) {
-	s.JobRegistry.Jobs[taskName] = TaskDefinition{
+func (s *Scheduler) RegisterTask(taskName string, taskFunction schTypes.SchedulerTaskFunc, parameters ...any) {
+	s.JobRegistry.Jobs[taskName] = schTypes.JobRegistryTaskDefinition{
 		Function:   taskFunction,
 		Parameters: parameters,
 	}
 	s.Logger.Info().Str("TaskName", taskName).Msg("Task registered with parameters")
 }
 
-// NewScheduler initializes a new scheduler instance.
-// Parameters:
-//   - db: Database connection.
-//   - schedulerUser: User associated with the scheduler.
-//   - log: Logger instance.
-//
+// Shutdown stops the scheduler.
 // Returns:
-//   - *Scheduler: Initialized scheduler instance.
-//   - error: Error if initialization fails.
-func NewScheduler(db *database.Database, schedulerUser *models.User, log *logger.Logger) (*Scheduler, error) {
-	log.Info().Msg("Initializing scheduler")
-
-	s, err := gocron.NewScheduler()
-	if err != nil {
-		return nil, err
-	}
-	s.Start()
-	return &Scheduler{
-		Cron:        s,
-		User:        schedulerUser,
-		DB:          db,
-		Logger:      log,
-		TaskManager: TaskManager{Tasks: map[string]string{}},
-		JobRegistry: JobRegistry{Jobs: map[string]TaskDefinition{}},
-	}, nil
+//   - error: Error if shutdown fails.
+func (s *Scheduler) Shutdown() error {
+	return s.Cron.Shutdown()
 }
 
 // RegisterJob registers a new job with the scheduler.
@@ -90,17 +56,17 @@ func NewScheduler(db *database.Database, schedulerUser *models.User, log *logger
 //
 // Returns:
 //   - error: Error if job registration fails.
-func (s *Scheduler) RegisterJob(jdInput SchedulerJobDefinition, jobFunction SchedulerTaskFunc, jobParameters ...any) error {
+func (s *Scheduler) RegisterSchedulerJob(jdInput schModels.SchedulerJobDefinition, jobFunction schTypes.SchedulerTaskFunc, jobParameters ...any) error {
 
 	s.Logger.Info().Interface("JobDefinition", jdInput).Msg("Registering job")
 
-	jobDefinition, err := getOrCreateJobDefinition(s.DB, s.Logger, s.User, jdInput)
+	jobDefinition, err := schUtils.GetOrCreateJobDefinition(s.DB, s.Logger, s.User, jdInput)
 	if err != nil {
 		s.Logger.Error().Err(err).Msg("Error creating job")
 		return err
 	}
 
-	frequencyDefinition, err := getFrequencyDefinition(jobDefinition)
+	frequencyDefinition, err := schUtils.GetFrequencyDefinition(jobDefinition)
 	if err != nil {
 		s.Logger.Error().Err(err).Msg("Error creating frequency definition")
 		return err
@@ -118,12 +84,6 @@ func (s *Scheduler) RegisterJob(jdInput SchedulerJobDefinition, jobFunction Sche
 	return nil
 }
 
-// ResultsCollectorFunc is a callback function to collect job results.
-type ResultsCollectorFunc func(jobName string, results string)
-
-// SchedulerTaskFunc is a function to execute a job.
-type SchedulerTaskFunc func(jobParameters ...any) (string, error) // results, error
-
 // createCronJobInstance creates a new cron job instance.
 // Parameters:
 //   - frequency: Job frequency definition.
@@ -134,7 +94,7 @@ type SchedulerTaskFunc func(jobParameters ...any) (string, error) // results, er
 // Returns:
 //   - gocron.Job: Created job instance.
 //   - error: Error if job creation fails.
-func (s *Scheduler) createCronJobInstance(frequency gocron.JobDefinition, jobDefinition *SchedulerJobDefinition, taskFunction SchedulerTaskFunc, taskParameters ...any) (gocron.Job, error) {
+func (s *Scheduler) createCronJobInstance(frequency gocron.JobDefinition, jobDefinition *schModels.SchedulerJobDefinition, taskFunction schTypes.SchedulerTaskFunc, taskParameters ...any) (gocron.Job, error) {
 
 	// wrappedTaskFunction wraps the original taskFunction to include logging and error handling.
 	wrappedTaskFunction := func() {
@@ -179,23 +139,23 @@ func (s *Scheduler) createCronJobInstance(frequency gocron.JobDefinition, jobDef
 //
 // Returns:
 //   - func(jobID uuid.UUID, jobName string): Function to execute before the job runs.
-func (s *Scheduler) Before(jobDefinition *SchedulerJobDefinition) func(jobID uuid.UUID, jobName string) {
+func (s *Scheduler) Before(jobDefinition *schModels.SchedulerJobDefinition) func(jobID uuid.UUID, jobName string) {
 	return func(jobID uuid.UUID, jobName string) {
 
 		s.Logger.Info().Interface("JobDefinition", jobDefinition).Msg("Starting task job")
 
-		task := SchedulerTask{
-			SystemData: &models.SystemData{
+		task := schModels.SchedulerTask{
+			SystemData: &authModels.SystemData{
 				CreatedByID: s.User.ID,
 				UpdatedByID: s.User.ID,
 			},
 			JobDefinitionName: jobDefinition.Name,
-			Status:            TaskStatusRunning,
+			Status:            schConstants.TaskStatusRunning,
 			CronJobId:         jobID.String(),
 		}
 
 		requestId := getRequestIdForCronJob(jobID)
-		err := queries.Create(context.Background(), s.Logger, s.DB, &task, s.User, requestId)
+		err := dbQueries.Create(context.Background(), s.Logger, s.DB, &task, s.User, requestId)
 		if err != nil {
 			s.Logger.Error().Err(err).Msg("Error saving task")
 		}
@@ -217,7 +177,7 @@ func (s *Scheduler) Before(jobDefinition *SchedulerJobDefinition) func(jobID uui
 //
 // Returns:
 //   - func(jobID uuid.UUID, jobName string, jobError error): Function to execute if the job fails.
-func (s *Scheduler) WithErrors(jobDefinition *SchedulerJobDefinition) func(jobID uuid.UUID, jobName string, jobError error) {
+func (s *Scheduler) WithErrors(jobDefinition *schModels.SchedulerJobDefinition) func(jobID uuid.UUID, jobName string, jobError error) {
 	return func(jobID uuid.UUID, jobName string, jobError error) {
 
 		s.Logger.Error().Err(jobError).Msgf("Task Job %s failed", jobDefinition.Name)
@@ -231,7 +191,7 @@ func (s *Scheduler) WithErrors(jobDefinition *SchedulerJobDefinition) func(jobID
 
 		requestId := getRequestIdForCronJob(jobID)
 
-		err := updateTaskStatus(s.Logger, s.DB, s.User, jobID.String(), TaskStatusFailed, jobError.Error(), requestId, results)
+		err := schUtils.UpdateTaskStatus(s.Logger, s.DB, s.User, jobID.String(), schConstants.TaskStatusFailed, jobError.Error(), requestId, results)
 		if err != nil {
 			s.Logger.Error().Err(err).Msg("Error updating task status")
 		}
@@ -247,7 +207,7 @@ func (s *Scheduler) WithErrors(jobDefinition *SchedulerJobDefinition) func(jobID
 //
 // Returns:
 //   - func(jobID uuid.UUID, jobName string): Function to execute after the job completes.
-func (s *Scheduler) After(jobDefinition *SchedulerJobDefinition) func(jobID uuid.UUID, jobName string) {
+func (s *Scheduler) After(jobDefinition *schModels.SchedulerJobDefinition) func(jobID uuid.UUID, jobName string) {
 	return func(jobID uuid.UUID, jobName string) {
 
 		s.Logger.Info().Interface("JobDefinition", jobDefinition).Msg("Task Job Succeded")
@@ -261,7 +221,7 @@ func (s *Scheduler) After(jobDefinition *SchedulerJobDefinition) func(jobID uuid
 
 		requestId := getRequestIdForCronJob(jobID)
 
-		err := updateTaskStatus(s.Logger, s.DB, s.User, jobID.String(), TaskStatusDone, "", requestId, results)
+		err := schUtils.UpdateTaskStatus(s.Logger, s.DB, s.User, jobID.String(), schConstants.TaskStatusDone, "", requestId, results)
 		if err != nil {
 			s.Logger.Error().Err(err).Msg("Error updating task status")
 		}
@@ -269,13 +229,6 @@ func (s *Scheduler) After(jobDefinition *SchedulerJobDefinition) func(jobID uuid
 		// Reset the task
 		s.TaskManager.Delete(jobDefinition.Name)
 	}
-}
-
-// Shutdown stops the scheduler.
-// Returns:
-//   - error: Error if shutdown fails.
-func (s *Scheduler) Shutdown() error {
-	return s.Cron.Shutdown()
 }
 
 // getRequestIdForCronJob generates a unique request ID for a cron job.

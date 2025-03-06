@@ -4,28 +4,30 @@ import (
 	"os"
 	"testing"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	fileModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/file/models"
+	loggerPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	storePkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store"
+	storeTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store/types"
 )
 
 // Helper function to create a new S3 for testing
-func createS3Store(t *testing.T) *store.S3Store {
+func createS3Store(t *testing.T) *storePkg.S3Store {
 
 	if os.Getenv("AWS_BUCKET") == "" {
 		godotenv.Load(".test.env")
 	}
 
-	config := &store.StoreConfig{
+	config := &storeTypes.StoreConfig{
 		MediaFolder:        "test_media",
 		MaxSize:            1024 * 1024, // 1MB
 		SupportedMimeTypes: []string{"image/jpeg", "image/png"},
 	}
 
-	awsConfig := &store.S3Config{
+	awsConfig := &storeTypes.S3Config{
 		Bucket:    os.Getenv("AWS_BUCKET"),
 		Region:    os.Getenv("AWS_REGION"),
 		AccessKey: os.Getenv("AWS_ACCESS_KEY_ID"),
@@ -33,18 +35,18 @@ func createS3Store(t *testing.T) *store.S3Store {
 		Folder:    config.MediaFolder,
 	}
 
-	s3, err := store.NewS3Store(config, awsConfig)
+	s3, err := storePkg.NewS3Store(config, awsConfig)
 	require.NoError(t, err)
 	return s3
 }
 
 // Helper function to create a test file in the test media folder
-func createS3TestFile(t *testing.T, s3 *store.S3Store, fileName string, content []byte) *models.File {
+func createS3TestFile(t *testing.T, s3 *storePkg.S3Store, fileName string, content []byte) *fileModels.File {
 
 	// Create a test file
 	file, fileHeader := createMultipartFile(t, fileName, content)
 
-	fileData, err := s3.StoreFile(fileHeader.Filename, file, fileHeader, logger.Default)
+	fileData, err := s3.StoreFile(fileHeader.Filename, file, fileHeader, loggerPkg.Default)
 	assert.NoError(t, err)
 	assert.NotNil(t, fileData)
 
@@ -52,8 +54,8 @@ func createS3TestFile(t *testing.T, s3 *store.S3Store, fileName string, content 
 }
 
 // Helper function to clean up the test media folder
-func cleanupS3TestMedia(t *testing.T, s3 *store.S3Store, file *models.File) {
-	log := logger.Default
+func cleanupS3TestMedia(t *testing.T, s3 *storePkg.S3Store, file *fileModels.File) {
+	log := loggerPkg.Default
 	err := s3.Client.DeleteFile(file.Path, log)
 	assert.NoError(t, err)
 }
@@ -68,7 +70,7 @@ func TestNewS3Store(t *testing.T) {
 
 	// Test invalid configuration
 	t.Run("Invalid Configuration", func(t *testing.T) {
-		_, err := store.NewS3Store(nil, nil)
+		_, err := storePkg.NewS3Store(nil, nil)
 		assert.Error(t, err)
 	})
 
@@ -82,7 +84,7 @@ func TestS3StoreFile(t *testing.T) {
 
 	// Test storing a file
 	t.Run("Store File Successfully", func(t *testing.T) {
-		log := logger.Default
+		log := loggerPkg.Default
 		fileData, err := s3.StoreFile(fileHeader.Filename, file, fileHeader, log)
 		assert.NoError(t, err)
 		assert.NotNil(t, fileData)
@@ -95,7 +97,7 @@ func TestS3StoreFile(t *testing.T) {
 		unsupportedFileContent := []byte("unsupported file content")
 		unsupportedFile, unsupportedFileHeader := createMultipartFile(t, "testfile.txt", unsupportedFileContent)
 
-		log := logger.Default
+		log := loggerPkg.Default
 		_, err := s3.StoreFile(unsupportedFileHeader.Filename, unsupportedFile, unsupportedFileHeader, log)
 		assert.Error(t, err)
 	})
@@ -110,7 +112,7 @@ func TestAwsDeleteFile(t *testing.T) {
 
 	// Test deleting a file
 	t.Run("Delete File Successfully", func(t *testing.T) {
-		log := logger.Default
+		log := loggerPkg.Default
 		err := s3.DeleteFile(fileData, log)
 		assert.NoError(t, err)
 	})
@@ -121,7 +123,7 @@ func TestAwsListFiles(t *testing.T) {
 
 	// Create test files
 	fileNames := []string{"file1.jpg", "file2.jpg"}
-	createdFiles := make([]models.File, 0)
+	createdFiles := make([]fileModels.File, 0)
 	for _, fileName := range fileNames {
 		fileData := createS3TestFile(t, s3, fileName, jpegFileContent)
 		createdFiles = append(createdFiles, *fileData)
@@ -129,7 +131,7 @@ func TestAwsListFiles(t *testing.T) {
 
 	// Test listing files
 	t.Run("List Files Successfully", func(t *testing.T) {
-		log := logger.Default
+		log := loggerPkg.Default
 		listed, err := s3.ListFiles(log)
 		require.NoError(t, err)
 		assert.GreaterOrEqual(t, len(listed), len(createdFiles))
@@ -149,7 +151,7 @@ func TestAwsReadFile(t *testing.T) {
 
 	// Test reading a file
 	t.Run("Read File Successfully", func(t *testing.T) {
-		log := logger.Default
+		log := loggerPkg.Default
 
 		content, err := s3.ReadFile(fileData, log)
 		require.NoError(t, err)
@@ -168,7 +170,7 @@ func TestAwsGetFileInfo(t *testing.T) {
 
 	// Test getting file info
 	t.Run("Get File Info Successfully", func(t *testing.T) {
-		log := logger.Default
+		log := loggerPkg.Default
 
 		fileInfo, err := s3.GetFileInfo(fileData, log)
 		assert.NoError(t, err)

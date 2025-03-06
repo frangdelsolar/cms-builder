@@ -13,7 +13,7 @@ jobs:
 
     env:
       APP_NAME: test
-      ENVIRONMENT: test
+      ENVIRONMENT: cicd
       LOG_LEVEL: debug
       LOG_WRITE_TO_FILE: false
       DB_FILE: ${{ github.workspace }}/cicd.db
@@ -47,7 +47,7 @@ jobs:
 
       - name: Run tests
         working-directory: cms-builder-server
-        run: go test -v -race -covermode atomic -coverprofile=covprofile ./...
+        run: go test -v ./...
         if: always()
 
       - name: Install goveralls

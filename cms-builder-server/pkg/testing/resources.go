@@ -1,19 +1,20 @@
 package testing
 
 import (
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
-	mgr "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
-
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
+	authConstants "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/constants"
+	authModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/models"
+	authTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/types"
+	rmTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager/types"
+	rmValidators "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager/validators"
 )
 
 const (
-	AllAllowedRole models.Role = "all-allowed"
-	JustReadRole   models.Role = "just-read"
+	AllAllowedRole authTypes.Role = "all-allowed"
+	JustReadRole   authTypes.Role = "just-read"
 )
 
 type MockStruct struct {
-	models.SystemData
+	authModels.SystemData
 	Field1 string `json:"field1"`
 	Field2 string `json:"field2"`
 }
@@ -24,7 +25,7 @@ func CreateMockResourceInstance(createdByID uint) *MockStruct {
 	}
 
 	return &MockStruct{
-		SystemData: models.SystemData{
+		SystemData: authModels.SystemData{
 			CreatedByID: createdByID,
 			UpdatedByID: createdByID,
 		},
@@ -33,19 +34,19 @@ func CreateMockResourceInstance(createdByID uint) *MockStruct {
 	}
 }
 
-func SetupMockResource() *mgr.ResourceConfig {
+func SetupMockResource() *rmTypes.ResourceConfig {
 
-	permissions := server.RolePermissionMap{
-		AllAllowedRole:     server.AllAllowedAccess,
-		models.AdminRole:   server.AllAllowedAccess,
-		models.VisitorRole: []server.CrudOperation{server.OperationRead},
+	permissions := authTypes.RolePermissionMap{
+		AllAllowedRole:            authConstants.AllAllowedAccess,
+		authConstants.AdminRole:   authConstants.AllAllowedAccess,
+		authConstants.VisitorRole: []authTypes.CrudOperation{authConstants.OperationRead},
 	}
 
-	validators := mgr.ValidatorsMap{
-		"Field1": mgr.ValidatorsList{mgr.RequiredValidator},
+	validators := rmTypes.ValidatorsMap{
+		"Field1": rmTypes.ValidatorsList{rmValidators.RequiredValidator},
 	}
 
-	config := &mgr.ResourceConfig{
+	config := &rmTypes.ResourceConfig{
 		Model:           MockStruct{},
 		SkipUserBinding: false,
 		Validators:      validators,

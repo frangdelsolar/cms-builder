@@ -7,11 +7,14 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/file/models"
+	loggerPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
+	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store"
+	storePkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store"
+	storeTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store/types"
 )
 
 // Helper type to wrap bytes.Reader and implement multipart.File
@@ -25,14 +28,14 @@ func (bf *bytesFile) Close() error {
 }
 
 // Helper function to create a new LocalStore for testing
-func createLocalStore(t *testing.T) store.LocalStore {
-	config := &store.StoreConfig{
+func createLocalStore(t *testing.T) storePkg.LocalStore {
+	config := &storeTypes.StoreConfig{
 		MediaFolder:        "test_media",
 		MaxSize:            1024 * 1024, // 1MB
 		SupportedMimeTypes: []string{"image/jpeg", "image/png"},
 	}
 
-	ls, err := store.NewLocalStore(config, "test_media", "http://localhost:8080")
+	ls, err := storePkg.NewLocalStore(config, "test_media", "http://localhost:8080")
 	require.NoError(t, err)
 	return ls
 }
@@ -88,7 +91,7 @@ func TestStoreFile(t *testing.T) {
 
 	// Test storing a file
 	t.Run("Store File Successfully", func(t *testing.T) {
-		log := logger.Default
+		log := loggerPkg.Default
 		fileData, err := ls.StoreFile(fileHeader.Filename, file, fileHeader, log)
 		assert.NoError(t, err)
 		assert.NotNil(t, fileData)
@@ -100,7 +103,7 @@ func TestStoreFile(t *testing.T) {
 		unsupportedFileContent := []byte("unsupported file content")
 		unsupportedFile, unsupportedFileHeader := createMultipartFile(t, "testfile.txt", unsupportedFileContent)
 
-		log := logger.Default
+		log := loggerPkg.Default
 		_, err := ls.StoreFile(unsupportedFileHeader.Filename, unsupportedFile, unsupportedFileHeader, log)
 		assert.Error(t, err)
 	})
@@ -118,7 +121,7 @@ func TestDeleteFile(t *testing.T) {
 
 	// Test deleting a file
 	t.Run("Delete File Successfully", func(t *testing.T) {
-		log := logger.Default
+		log := loggerPkg.Default
 		file := &models.File{
 			Name: "testfile.jpg",
 			Path: filePath,
@@ -144,7 +147,7 @@ func TestListFiles(t *testing.T) {
 
 	// Test listing files
 	t.Run("List Files Successfully", func(t *testing.T) {
-		log := logger.Default
+		log := loggerPkg.Default
 		files, err := ls.ListFiles(log)
 		require.NoError(t, err)
 		assert.Len(t, files, len(fileNames))
@@ -163,7 +166,7 @@ func TestReadFile(t *testing.T) {
 
 	// Test reading a file
 	t.Run("Read File Successfully", func(t *testing.T) {
-		log := logger.Default
+		log := loggerPkg.Default
 		file := &models.File{
 			Name: "testfile.jpg",
 			Path: filePath,
@@ -186,7 +189,7 @@ func TestGetFileInfo(t *testing.T) {
 
 	// Test getting file info
 	t.Run("Get File Info Successfully", func(t *testing.T) {
-		log := logger.Default
+		log := loggerPkg.Default
 		file := &models.File{
 			Name: "testfile.jpg",
 			Path: filePath,

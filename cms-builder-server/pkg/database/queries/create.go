@@ -3,13 +3,13 @@ package queries
 import (
 	"context"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
+	authModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/models"
+	dbPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
+	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
+	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 )
 
-func Create(ctx context.Context, log *logger.Logger, db *database.Database, instance interface{}, user *models.User, requestId string) error {
+func Create(ctx context.Context, log *loggerTypes.Logger, db *dbTypes.DatabaseConnection, instance interface{}, user *authModels.User, requestId string) error {
 	// Create the instance
 	result := db.DB.WithContext(ctx).Create(instance)
 	if result.Error != nil {
@@ -21,7 +21,7 @@ func Create(ctx context.Context, log *logger.Logger, db *database.Database, inst
 	}
 
 	// Log the create action
-	historyEntry, err := NewDatabaseLogEntry(CreateCRUDAction, user, instance, "", requestId)
+	historyEntry, err := dbPkg.NewDatabaseLogEntry(dbTypes.CreateCRUDAction, user, instance, "", requestId)
 	if err != nil {
 		log.Error().
 			Err(err).
