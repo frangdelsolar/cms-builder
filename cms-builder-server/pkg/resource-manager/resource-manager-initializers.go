@@ -1,4 +1,4 @@
-package types
+package resourcemanager
 
 import (
 	"fmt"
@@ -6,16 +6,17 @@ import (
 
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	rmHandlers "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager/handlers"
+	rmTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager/types"
 	svrTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/types"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
 	"github.com/rs/zerolog/log"
 )
 
-func InitializeResourceNames(r *Resource) (ResourceNames, error) {
+func InitializeResourceNames(r *rmTypes.Resource) (rmTypes.ResourceNames, error) {
 
 	singular, err := utils.GetInterfaceName(r.Model)
 	if err != nil {
-		return ResourceNames{}, err
+		return rmTypes.ResourceNames{}, err
 	}
 
 	plural := utils.Pluralize(singular)
@@ -24,7 +25,7 @@ func InitializeResourceNames(r *Resource) (ResourceNames, error) {
 	snake := utils.SnakeCase(singular)
 	snakes := utils.SnakeCase(plural)
 
-	return ResourceNames{
+	return rmTypes.ResourceNames{
 		Singular:      singular,
 		Plural:        plural,
 		SnakeSingular: snake,
@@ -34,7 +35,7 @@ func InitializeResourceNames(r *Resource) (ResourceNames, error) {
 	}, nil
 }
 
-func InitializeRoutes(r *Resource, input []svrTypes.Route, db *dbTypes.DatabaseConnection) error {
+func InitializeRoutes(r *rmTypes.Resource, input []svrTypes.Route, db *dbTypes.DatabaseConnection) error {
 	baseRoute := "/api/" + r.ResourceNames.KebabPlural
 
 	routes := []svrTypes.Route{
@@ -101,7 +102,7 @@ func InitializeRoutes(r *Resource, input []svrTypes.Route, db *dbTypes.DatabaseC
 
 // InitializeValidators adds validators to the given resource.
 // It loops through the given map of validators and adds each one to the resource's Validators map.
-func InitializeValidators(r *Resource, input *ValidatorsMap) error {
+func InitializeValidators(r *rmTypes.Resource, input *rmTypes.ValidatorsMap) error {
 	for fieldName, validators := range *input {
 		for _, validator := range validators {
 			err := r.AddValidator(fieldName, validator)
@@ -116,8 +117,8 @@ func InitializeValidators(r *Resource, input *ValidatorsMap) error {
 
 // InitializeHandlers returns a new ApiHandlers struct with default handlers.
 // If the given input is not nil, it overwrites the default handlers with the given functions.
-func InitializeHandlers(input *ApiHandlers) *ApiHandlers {
-	handlers := &ApiHandlers{
+func InitializeHandlers(input *rmTypes.ApiHandlers) *rmTypes.ApiHandlers {
+	handlers := &rmTypes.ApiHandlers{
 		List:   rmHandlers.DefaultListHandler,
 		Detail: rmHandlers.DefaultDetailHandler,
 		Create: rmHandlers.DefaultCreateHandler,

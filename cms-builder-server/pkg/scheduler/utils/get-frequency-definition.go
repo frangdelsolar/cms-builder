@@ -1,25 +1,27 @@
-package scheduler
+package utils
 
 import (
 	"fmt"
 
+	schConstants "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/scheduler/constants"
+	schModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/scheduler/models"
 	"github.com/go-co-op/gocron/v2"
 )
 
-func getFrequencyDefinition(jobDefinition *SchedulerJobDefinition) (gocron.JobDefinition, error) {
+func GetFrequencyDefinition(jobDefinition *schModels.SchedulerJobDefinition) (gocron.JobDefinition, error) {
 
 	switch jobDefinition.FrequencyType {
-	case JobFrequencyTypeImmediate:
+	case schConstants.JobFrequencyTypeImmediate:
 		return gocron.OneTimeJob(
 			gocron.OneTimeJobStartImmediately(),
 		), nil
 
-	case JobFrequencyTypeScheduled:
+	case schConstants.JobFrequencyTypeScheduled:
 		return gocron.OneTimeJob(
 			gocron.OneTimeJobStartDateTimes(jobDefinition.AtTime),
 		), nil
 
-	case JobFrequencyTypeCron:
+	case schConstants.JobFrequencyTypeCron:
 		if jobDefinition.CronExpr == "" {
 			return nil, fmt.Errorf("cron expression is required")
 		}

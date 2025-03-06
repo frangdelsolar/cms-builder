@@ -9,11 +9,12 @@ import (
 	dbModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/models"
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
+	rmPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	rmTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager/types"
 	svrTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/types"
 )
 
-func SetupDBLoggerResource(resourceManager *rmTypes.ResourceManager, db *dbTypes.DatabaseConnection, log *loggerTypes.Logger) *rmTypes.ResourceConfig {
+func SetupDBLoggerResource(resourceManager *rmPkg.ResourceManager, db *dbTypes.DatabaseConnection, log *loggerTypes.Logger) *rmTypes.ResourceConfig {
 
 	log.Info().Msg("Initializing Database Logger resource")
 

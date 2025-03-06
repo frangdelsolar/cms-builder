@@ -9,11 +9,11 @@ import (
 	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	rlModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/request-logger/models"
-	rmTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager/types"
+	rmPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	svrUtils "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/utils"
 )
 
-func RequestLogHandler(mgr *rmTypes.ResourceManager, db *dbTypes.DatabaseConnection) http.HandlerFunc {
+func RequestLogHandler(mgr *rmPkg.ResourceManager, db *dbTypes.DatabaseConnection) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		requestCtx := svrUtils.GetRequestContext(r)

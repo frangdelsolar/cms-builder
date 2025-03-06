@@ -3,15 +3,20 @@ package scheduler
 import (
 	"net/http"
 
+	authConstants "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/constants"
+	authUtils "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/utils"
 	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
-	mgr "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
+	rmPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
+	schPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/scheduler"
+	schModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/scheduler/models"
+	schTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/scheduler/types"
+	svrUtils "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/utils"
 )
 
 // DefaultCreateHandler handles the creation of a new resource.
 // SchedulerJobDefinition
-var RunSchedulerTaskHandler = func(manager *mgr.ResourceManager, db *dbTypes.DatabaseConnection, s JobRegistry) http.HandlerFunc {
+var RunSchedulerTaskHandler = func(manager *rmPkg.ResourceManager, db *dbTypes.DatabaseConnection, s schTypes.JobRegistry) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		requestCtx := svrUtils.GetRequestContext(r)
 		log := requestCtx.Logger
@@ -25,7 +30,7 @@ var RunSchedulerTaskHandler = func(manager *mgr.ResourceManager, db *dbTypes.Dat
 			return
 		}
 
-		a, err := manager.GetResource(&SchedulerJobDefinition{})
+		a, err := manager.GetResource(&schModels.SchedulerJobDefinition{})
 		if err != nil {
 			log.Error().Err(err).Msgf("Error getting resource")
 			svrUtils.SendJsonResponse(w, http.StatusInternalServerError, nil, "Error getting resource")
@@ -52,16 +57,16 @@ var RunSchedulerTaskHandler = func(manager *mgr.ResourceManager, db *dbTypes.Dat
 			return
 		}
 
-		jd := instance.(*SchedulerJobDefinition)
+		jd := instance.(*schModels.SchedulerJobDefinition)
 
-		_, err = s.RunJob(jd, requestId, user, log, db)
+		_, err = schPkg.RunJobRegistryJob(&s, jd, requestId, user, log, db)
 		if err != nil {
 			log.Error().Err(err).Msg("Error running task")
 			svrUtils.SendJsonResponse(w, http.StatusInternalServerError, nil, "Error running task")
 			return
 		}
 
-		var task SchedulerTask
+		var task schModels.SchedulerTask
 		err = db.DB.Where("job_definition_name = ?", jd.Name).Order("created_at DESC").First(&task).Error
 		if err != nil {
 			log.Error().Err(err).Msg("Error finding task")

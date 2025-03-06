@@ -3,20 +3,25 @@ package orchestrator
 import (
 	"fmt"
 
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/clients"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/config"
+	authModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/models"
+	auth "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/resources"
+	cliPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/clients"
+	configPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/config"
 	dbPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	dbResources "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/resources"
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/file"
+	file "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/file/resources"
 	loggerPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
-	requestLogger "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/request-logger"
-	manager "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/scheduler"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store"
+	rlResources "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/request-logger/resources"
+	rmPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
+	schPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/scheduler"
+	schResources "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/scheduler/resources"
+	svrPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
+	svrTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/types"
+	storePkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store"
+	storeConstants "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store/constants"
+	storeTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store/types"
 )
 
 const orchestratorVersion = "1.6.3"
@@ -29,15 +34,15 @@ type OrchestratorUsers struct {
 }
 
 type Orchestrator struct {
-	Config          *config.ConfigReader
+	Config          *configPkg.ConfigReader
 	DB              *dbTypes.DatabaseConnection
-	FirebaseClient  *clients.FirebaseManager
+	FirebaseClient  *cliPkg.FirebaseManager
 	Logger          *loggerTypes.Logger
 	LoggerConfig    *loggerTypes.LoggerConfig
-	ResourceManager *manager.ResourceManager
-	Scheduler       *scheduler.Scheduler
-	Server          *server.Server
-	Store           store.Store
+	ResourceManager *rmPkg.ResourceManager
+	Scheduler       *schPkg.Scheduler
+	Server          *svrTypes.Server
+	Store           storeTypes.Store
 	Users           *OrchestratorUsers
 }
 
@@ -83,7 +88,7 @@ func (o *Orchestrator) init() error {
 }
 
 func (o *Orchestrator) InitConfigReader() error {
-	config, err := config.NewConfigReader(&config.ReaderConfig{
+	config, err := configPkg.NewConfigReader(&configPkg.ReaderConfig{
 		ReadEnv:  true,
 		ReadFile: false,
 	})
@@ -128,10 +133,10 @@ func (o *Orchestrator) InitDatabase() error {
 }
 
 func (o *Orchestrator) InitFirebase() error {
-	cfg := &clients.FirebaseConfig{
+	cfg := &cliPkg.FirebaseConfig{
 		Secret: o.Config.GetString(EnvKeys.FirebaseSecret),
 	}
-	fb, err := clients.NewFirebaseAdmin(cfg)
+	fb, err := cliPkg.NewFirebaseAdmin(cfg)
 	if err != nil {
 		return fmt.Errorf("error initializing firebase: %w", err)
 	}
@@ -143,7 +148,7 @@ func (o *Orchestrator) InitFirebase() error {
 
 func (o *Orchestrator) InitResourceManager() error {
 	o.Logger.Info().Msg("Initializing resource manager")
-	o.ResourceManager = manager.NewResourceManager(o.DB, o.Logger)
+	o.ResourceManager = rmPkg.NewResourceManager(o.DB, o.Logger)
 	return nil
 }
 
@@ -165,7 +170,7 @@ func (o *Orchestrator) InitDatabaseLogger() error {
 }
 
 func (o *Orchestrator) InitRequestLogger() error {
-	resourceConfig := requestLogger.SetupRequestLoggerResource(o.ResourceManager, o.DB, o.Logger)
+	resourceConfig := rlResources.SetupRequestLoggerResource(o.ResourceManager, o.DB, o.Logger)
 	_, err := o.ResourceManager.AddResource(resourceConfig)
 	return err
 }
@@ -189,7 +194,7 @@ func (o *Orchestrator) InitUsers() error {
 }
 
 func (o *Orchestrator) InitServer() error {
-	config := &server.ServerConfig{
+	config := &svrTypes.ServerConfig{
 		Host:           o.Config.GetString(EnvKeys.ServerHost),
 		Port:           o.Config.GetString(EnvKeys.ServerPort),
 		CsrfToken:      o.Config.GetString(EnvKeys.CsrfToken),
@@ -201,7 +206,7 @@ func (o *Orchestrator) InitServer() error {
 		LoggerConfig:   o.LoggerConfig,
 	}
 
-	server, err := server.NewServer(config, o.DB, o.Logger)
+	server, err := svrPkg.NewServer(config, o.DB, o.Logger)
 	if err != nil {
 		return fmt.Errorf("error initializing server: %w", err)
 	}
@@ -215,7 +220,7 @@ func (o *Orchestrator) InitStore() error {
 	folder := "media/" + o.Config.GetString(EnvKeys.AppName)
 	baseUrl := o.Config.GetString(EnvKeys.BaseUrl)
 
-	storeConfig := &store.StoreConfig{
+	storeConfig := &storeTypes.StoreConfig{
 		MaxSize:            o.Config.GetInt64(EnvKeys.StoreMaxSize),
 		SupportedMimeTypes: o.Config.GetStringSlice(EnvKeys.StoreSupportedMime),
 		MediaFolder:        folder,
@@ -223,21 +228,21 @@ func (o *Orchestrator) InitStore() error {
 
 	o.Logger.Info().Interface("storeConfig", storeConfig).Msg("Initializing store")
 
-	var s store.Store
+	var s storeTypes.Store
 	var err error
 
 	switch storeType {
-	case string(store.StoreS3):
-		s3Config := &store.S3Config{
+	case string(storeConstants.StoreS3):
+		s3Config := &storeTypes.S3Config{
 			Bucket:    o.Config.GetString(EnvKeys.AwsBucket),
 			Region:    o.Config.GetString(EnvKeys.AwsRegion),
 			AccessKey: o.Config.GetString(EnvKeys.AwsAccessKeyId),
 			SecretKey: o.Config.GetString(EnvKeys.AwsSecretAccessKey),
 			Folder:    folder,
 		}
-		s, err = store.NewS3Store(storeConfig, s3Config)
-	case string(store.StoreLocal):
-		s, err = store.NewLocalStore(storeConfig, folder, baseUrl)
+		s, err = storePkg.NewS3Store(storeConfig, s3Config)
+	case string(storeConstants.StoreLocal):
+		s, err = storePkg.NewLocalStore(storeConfig, folder, baseUrl)
 	default:
 		return fmt.Errorf("unknown store type: %s", storeType)
 	}
@@ -251,23 +256,28 @@ func (o *Orchestrator) InitStore() error {
 }
 
 func (o *Orchestrator) InitScheduler() error {
-	taskConfig := scheduler.SetupSchedulerTaskResource()
-	o.ResourceManager.AddResource(taskConfig)
+	taskConfig := schResources.SetupSchedulerTaskResource()
+	_, err := o.ResourceManager.AddResource(taskConfig)
+	if err != nil {
+		return fmt.Errorf("error adding scheduler task resource: %w", err)
+	}
 
-	sch, err := scheduler.NewScheduler(o.DB, o.Users.Scheduler, o.Logger)
+	sch, err := schPkg.NewScheduler(o.DB, o.Users.Scheduler, o.Logger)
 	if err != nil {
 		return fmt.Errorf("error initializing scheduler: %w", err)
 	}
 	o.Scheduler = sch
 
-	jobConfig := scheduler.SetupSchedulerJobDefinitionResource(o.ResourceManager, o.DB, sch.JobRegistry)
-	o.ResourceManager.AddResource(jobConfig)
-
+	jobConfig := schResources.SetupSchedulerJobDefinitionResource(o.ResourceManager, o.DB, sch.JobRegistry)
+	_, err = o.ResourceManager.AddResource(jobConfig)
+	if err != nil {
+		return fmt.Errorf("error adding scheduler job definition resource: %w", err)
+	}
 	return nil
 }
 
 func (o *Orchestrator) Run() error {
 	o.Logger.Info().Msg("Starting Server")
 
-	return o.Server.Run(o.ResourceManager.GetRoutes, o.Config.GetString(EnvKeys.BaseUrl))
+	return svrPkg.RunServer(o.Server, o.ResourceManager.GetRoutes, o.Config.GetString(EnvKeys.BaseUrl))
 }

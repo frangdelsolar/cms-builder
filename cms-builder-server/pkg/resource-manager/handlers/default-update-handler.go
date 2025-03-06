@@ -1,24 +1,26 @@
-package resourcemanager
+package handlers
 
 import (
 	"encoding/json"
 	"fmt"
 	"net/http"
 
+	authConstants "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/constants"
+	authUtils "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/utils"
 	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/models"
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
+	rmTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager/types"
+	svrUtils "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/utils"
 	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
 )
 
-var DefaultUpdateHandler ApiFunction = func(a *Resource, db *dbTypes.DatabaseConnection) http.HandlerFunc {
+var DefaultUpdateHandler rmTypes.ApiFunction = func(a *rmTypes.Resource, db *dbTypes.DatabaseConnection) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		requestCtx := svrUtils.GetRequestContext(r)
 		log := requestCtx.Logger
 		user := requestCtx.User
 		requestId := requestCtx.RequestId
-		isAdmin := user.HasRole(models.AdminRole)
+		isAdmin := user.HasRole(authConstants.AdminRole)
 
 		// 1. Validate Request Method
 		err := svrUtils.ValidateRequestMethod(r, http.MethodPut)
@@ -28,19 +30,19 @@ var DefaultUpdateHandler ApiFunction = func(a *Resource, db *dbTypes.DatabaseCon
 		}
 
 		// 2. Check Permissions
-		if !authUtils.UserIsAllowed(a.Permissions, user.GetRoles(), OperationRead, a.ResourceNames.Singular, log) {
+		if !authUtils.UserIsAllowed(a.Permissions, user.GetRoles(), authConstants.OperationRead, a.ResourceNames.Singular, log) {
 			svrUtils.SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to access this resource")
 			return
 		}
 
-		if !authUtils.UserIsAllowed(a.Permissions, user.GetRoles(), OperationUpdate, a.ResourceNames.Singular, log) {
+		if !authUtils.UserIsAllowed(a.Permissions, user.GetRoles(), authConstants.OperationUpdate, a.ResourceNames.Singular, log) {
 			svrUtils.SendJsonResponse(w, http.StatusForbidden, nil, "User is not allowed to update this resource")
 			return
 		}
 
 		// 3. Construct Query (User Binding)
 		filters := map[string]interface{}{
-			"id": GetUrlParam("id", r),
+			"id": svrUtils.GetUrlParam("id", r),
 		}
 
 		if !(a.SkipUserBinding || isAdmin) {

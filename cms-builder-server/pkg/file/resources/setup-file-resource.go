@@ -9,13 +9,14 @@ import (
 	fileHandlers "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/file/handlers"
 	fileModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/file/models"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
+	rmPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	rmTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager/types"
 	rmValidators "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager/validators"
 	svrTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/types"
 	storeTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store/types"
 )
 
-func SetupFileResource(resourceManager *rmTypes.ResourceManager, db *dbTypes.DatabaseConnection, st storeTypes.Store, log *loggerTypes.Logger, apiBaseUrl string) *rmTypes.ResourceConfig {
+func SetupFileResource(resourceManager *rmPkg.ResourceManager, db *dbTypes.DatabaseConnection, st storeTypes.Store, log *loggerTypes.Logger, apiBaseUrl string) *rmTypes.ResourceConfig {
 
 	log.Info().Msg("Initializing File resource")
 

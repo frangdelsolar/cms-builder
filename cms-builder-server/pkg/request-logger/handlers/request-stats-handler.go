@@ -8,11 +8,11 @@ import (
 	authUtils "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/utils"
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	rlModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/request-logger/models"
-	manager "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager/types"
+	rmPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	svrUtils "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/utils"
 )
 
-func RequestStatsHandler(mgr *manager.ResourceManager, db *dbTypes.DatabaseConnection) http.HandlerFunc {
+func RequestStatsHandler(mgr *rmPkg.ResourceManager, db *dbTypes.DatabaseConnection) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		requestCtx := svrUtils.GetRequestContext(r)

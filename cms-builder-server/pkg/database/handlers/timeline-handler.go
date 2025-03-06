@@ -8,11 +8,11 @@ import (
 	dbModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/models"
 	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
-	rmTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager/types"
+	rmPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	svrUtils "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/utils"
 )
 
-func TimelineHandler(m *rmTypes.ResourceManager, db *dbTypes.DatabaseConnection) http.HandlerFunc {
+func TimelineHandler(m *rmPkg.ResourceManager, db *dbTypes.DatabaseConnection) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		requestCtx := svrUtils.GetRequestContext(r)
 		log := requestCtx.Logger

@@ -11,12 +11,12 @@ import (
 	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	fileModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/file/models"
-	rmTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager/types"
+	rmPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	svrUtils "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/utils"
 	storeTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store/types"
 )
 
-func DownloadStoredFileHandler(mgr *rmTypes.ResourceManager, db *dbTypes.DatabaseConnection, st storeTypes.Store) http.HandlerFunc {
+func DownloadStoredFileHandler(mgr *rmPkg.ResourceManager, db *dbTypes.DatabaseConnection, st storeTypes.Store) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 

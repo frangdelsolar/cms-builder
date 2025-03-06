@@ -20,7 +20,7 @@ import (
 type S3Store struct {
 	Client    *cliPkg.AwsManager
 	Config    *storeTypes.StoreConfig
-	AwsConfig *S3Config
+	AwsConfig *storeTypes.S3Config
 }
 
 func (s *S3Store) GetConfig() *storeTypes.StoreConfig {
@@ -152,17 +152,9 @@ func getFileBytes(file multipart.File) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-type S3Config struct {
-	Bucket    string
-	Region    string
-	AccessKey string
-	SecretKey string
-	Folder    string
-}
-
 // NewS3Store creates a new S3Store, which is used to store files in an AWS S3 bucket.
 // It returns an error if the AWS configuration is not ready.
-func NewS3Store(config *storeTypes.StoreConfig, awsConfig *S3Config) (*S3Store, error) {
+func NewS3Store(config *storeTypes.StoreConfig, awsConfig *storeTypes.S3Config) (*S3Store, error) {
 
 	if awsConfig == nil {
 		return nil, fmt.Errorf("config is nil")

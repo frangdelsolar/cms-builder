@@ -1,4 +1,4 @@
-package scheduler
+package utils
 
 import (
 	"context"
@@ -8,15 +8,15 @@ import (
 	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
-	"github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
+	schModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/scheduler/models"
 	"github.com/google/uuid"
 )
 
-func getOrCreateJobDefinition(db *dbTypes.DatabaseConnection, log *loggerTypes.Logger, schedulerUser *authModels.User, jdInput SchedulerJobDefinition) (*SchedulerJobDefinition, error) {
+func GetOrCreateJobDefinition(db *dbTypes.DatabaseConnection, log *loggerTypes.Logger, schedulerUser *authModels.User, jdInput schModels.SchedulerJobDefinition) (*schModels.SchedulerJobDefinition, error) {
 
 	// If there is a job definition with the same name, return it
 	// Name must be unique
-	var instance SchedulerJobDefinition
+	var instance schModels.SchedulerJobDefinition
 
 	filters := map[string]interface{}{
 		"name":           jdInput.Name,
@@ -37,7 +37,7 @@ func getOrCreateJobDefinition(db *dbTypes.DatabaseConnection, log *loggerTypes.L
 	}
 
 	// If there is no job definition with the same name, create it
-	instance = SchedulerJobDefinition{
+	instance = schModels.SchedulerJobDefinition{
 		SystemData: &authModels.SystemData{
 			CreatedByID: schedulerUser.ID,
 			UpdatedByID: schedulerUser.ID,
@@ -58,31 +58,4 @@ func getOrCreateJobDefinition(db *dbTypes.DatabaseConnection, log *loggerTypes.L
 	}
 
 	return &instance, nil
-}
-
-func updateTaskStatus(log *loggerTypes.Logger, db *dbTypes.DatabaseConnection, schedulerUser *authModels.User, cronJobId string, status TaskStatus, errMsg string, requestId string, results string) error {
-	task := GetSchedulerTask(log, db, cronJobId)
-	task.SystemData.UpdatedByID = schedulerUser.ID
-	task.Status = status
-	task.Error = errMsg
-	task.Results = results
-
-	previousState := GetSchedulerTask(log, db, cronJobId)
-	differences := utils.CompareInterfaces(previousState, task)
-	return dbQueries.Update(context.Background(), log, db, task, schedulerUser, differences, requestId)
-}
-
-func GetSchedulerTask(log *loggerTypes.Logger, db *dbTypes.DatabaseConnection, cronJobId string) *SchedulerTask {
-	var task SchedulerTask
-
-	filters := map[string]interface{}{
-		"cron_job_id": cronJobId,
-	}
-
-	err := dbQueries.FindOne(context.Background(), log, db, &task, filters)
-	if err != nil {
-		return nil
-	}
-
-	return &task
 }

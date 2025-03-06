@@ -16,7 +16,7 @@ var filterKeys = map[string]bool{
 }
 
 // DefaultCreateHandler handles the creation of a new resource.
-var UserCreateHandler mgr.ApiFunction = func(a *mgr.Resource, db *dbTypes.DatabaseConnection) http.HandlerFunc {
+var UserCreateHandler mgr.rmTypes.ApiFunction = func(a *mgr.Resource, db *dbTypes.DatabaseConnection) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		requestCtx := svrUtils.GetRequestContext(r)
 		log := requestCtx.Logger

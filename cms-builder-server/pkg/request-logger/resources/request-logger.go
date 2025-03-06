@@ -9,11 +9,12 @@ import (
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	rmHandlers "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/request-logger/handlers"
 	rmModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/request-logger/models"
+	rmPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	rmTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager/types"
 	svrTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/types"
 )
 
-func SetupRequestLoggerResource(resourceManager *rmTypes.ResourceManager, db *dbTypes.DatabaseConnection, log *loggerTypes.Logger) *rmTypes.ResourceConfig {
+func SetupRequestLoggerResource(resourceManager *rmPkg.ResourceManager, db *dbTypes.DatabaseConnection, log *loggerTypes.Logger) *rmTypes.ResourceConfig {
 
 	log.Info().Msg("Initializing Request Logger resource")
 

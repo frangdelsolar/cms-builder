@@ -1,13 +1,15 @@
-package resourcemanager
+package handlers
 
 import (
 	"net/http"
 
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
 	"github.com/invopop/jsonschema"
+
+	rmTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager/types"
+	svrUtils "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/utils"
 )
 
-func DefaultSchemaHandler(app *Resource) http.HandlerFunc {
+func DefaultSchemaHandler(app *rmTypes.Resource) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		err := svrUtils.ValidateRequestMethod(r, http.MethodGet)

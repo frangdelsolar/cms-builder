@@ -8,18 +8,13 @@ import (
 	dbQueries "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/queries"
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
+	schConstants "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/scheduler/constants"
+	schModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/scheduler/models"
+	schTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/scheduler/types"
+	schUtils "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/scheduler/utils"
 )
 
-type TaskDefinition struct {
-	Function   SchedulerTaskFunc // The task function to execute.
-	Parameters []any             // Parameters for the task function.
-}
-
-type JobRegistry struct {
-	Jobs map[string]TaskDefinition
-}
-
-func (jr *JobRegistry) RunJob(jd *SchedulerJobDefinition, requestId string, user *authModels.User, log *loggerTypes.Logger, db *dbTypes.DatabaseConnection) (string, error) {
+func RunJobRegistryJob(jr *schTypes.JobRegistry, jd *schModels.SchedulerJobDefinition, requestId string, user *authModels.User, log *loggerTypes.Logger, db *dbTypes.DatabaseConnection) (string, error) {
 	log.Info().Str("Job", jd.Name).Msg("Running task")
 
 	// Look up the task definition in the registry
@@ -55,16 +50,16 @@ func (jr *JobRegistry) RunJob(jd *SchedulerJobDefinition, requestId string, user
 	return results, nil
 }
 
-func before(jobDefinition *SchedulerJobDefinition, db *dbTypes.DatabaseConnection, user *authModels.User, requestId string, log *loggerTypes.Logger) (string, error) {
+func before(jobDefinition *schModels.SchedulerJobDefinition, db *dbTypes.DatabaseConnection, user *authModels.User, requestId string, log *loggerTypes.Logger) (string, error) {
 	log.Info().Interface("JobDefinition", jobDefinition).Msg("Starting task job")
 
-	task := SchedulerTask{
+	task := schModels.SchedulerTask{
 		SystemData: &authModels.SystemData{
 			CreatedByID: user.ID,
 			UpdatedByID: user.ID,
 		},
 		JobDefinitionName: jobDefinition.Name,
-		Status:            TaskStatusRunning,
+		Status:            schConstants.TaskStatusRunning,
 		CronJobId:         "user-triggered::" + requestId,
 	}
 
@@ -79,7 +74,7 @@ func before(jobDefinition *SchedulerJobDefinition, db *dbTypes.DatabaseConnectio
 
 func success(jobId string, db *dbTypes.DatabaseConnection, user *authModels.User, requestId string, log *loggerTypes.Logger, results string) error {
 	log.Info().Interface("jobId", jobId).Msg("Task Job Succeded")
-	err := updateTaskStatus(log, db, user, jobId, TaskStatusDone, "", requestId, results)
+	err := schUtils.UpdateTaskStatus(log, db, user, jobId, schConstants.TaskStatusDone, "", requestId, results)
 	if err != nil {
 		log.Error().Err(err).Msg("Error updating task status")
 		return err
@@ -89,7 +84,7 @@ func success(jobId string, db *dbTypes.DatabaseConnection, user *authModels.User
 
 func fail(jobId string, db *dbTypes.DatabaseConnection, user *authModels.User, requestId string, log *loggerTypes.Logger, jobError string, results string) error {
 	log.Error().Interface("jobId", jobId).Msg("Task Job Failed")
-	err := updateTaskStatus(log, db, user, jobId, TaskStatusFailed, jobError, requestId, results)
+	err := schUtils.UpdateTaskStatus(log, db, user, jobId, schConstants.TaskStatusFailed, jobError, requestId, results)
 	if err != nil {
 		log.Error().Err(err).Msg("Error updating task status")
 		return err

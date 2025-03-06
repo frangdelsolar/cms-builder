@@ -1,9 +1,10 @@
-package resourcemanager
+package handlers
 
 import (
 	"net/http"
 
-	. "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server"
+	rmTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager/types"
+	svrUtils "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/utils"
 )
 
 type Endpoint struct {
@@ -20,7 +21,7 @@ type appInfo struct {
 	Endpoints   map[string]Endpoint `json:"endpoints"`
 }
 
-func ApiHandler(mgr *ResourceManager, apiBaseUrl string) http.HandlerFunc {
+func ApiHandler(resources map[string]*rmTypes.Resource, apiBaseUrl string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		err := svrUtils.ValidateRequestMethod(r, http.MethodGet)
@@ -31,7 +32,7 @@ func ApiHandler(mgr *ResourceManager, apiBaseUrl string) http.HandlerFunc {
 
 		output := make([]appInfo, 0)
 
-		for _, rsc := range mgr.Resources {
+		for _, rsc := range resources {
 
 			url := apiBaseUrl + "/api/" + rsc.ResourceNames.KebabPlural + "/schema"
 
