@@ -14,6 +14,7 @@ import (
 	rmPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/resource-manager"
 	svrUtils "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/utils"
 	storeTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store/types"
+	utilsPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/utils"
 )
 
 func DownloadStoredFileHandler(mgr *rmPkg.ResourceManager, db *dbTypes.DatabaseConnection, st storeTypes.Store) http.HandlerFunc {
@@ -62,6 +63,19 @@ func DownloadStoredFileHandler(mgr *rmPkg.ResourceManager, db *dbTypes.DatabaseC
 		if err != nil {
 			log.Error().Err(err).Msgf("Instance not found")
 			svrUtils.SendJsonResponse(w, http.StatusNotFound, nil, "Instance not found")
+			return
+		}
+
+		previousState := a.GetOne()
+		_ = dbQueries.FindOne(r.Context(), log, db, &previousState, filters)
+
+		// Update download count
+		instance.DownloadCount++
+		differences := utilsPkg.CompareInterfaces(previousState, instance)
+		err = dbQueries.Update(r.Context(), log, db, &instance, user, differences, requestCtx.RequestId)
+		if err != nil {
+			log.Error().Err(err).Msg("Error updating instance")
+			svrUtils.SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
 			return
 		}
 

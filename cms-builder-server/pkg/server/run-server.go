@@ -11,9 +11,9 @@ import (
 	svrTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/types"
 )
 
-func RunServer(s *svrTypes.Server, getRoutes svrTypes.GetRoutesFunc, apiBaseUrl string) error {
+func RunServer(s *svrTypes.Server, getRoutes svrTypes.GetRoutesFunc) error {
 
-	routes := getRoutes(apiBaseUrl)
+	routes := getRoutes(s.BaseUrl)
 
 	routes = append(routes,
 		svrTypes.Route{

@@ -7,6 +7,7 @@ import (
 )
 
 type ServerConfig struct {
+	BaseUrl        string
 	Host           string
 	Port           string
 	CsrfToken      string
