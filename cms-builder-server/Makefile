@@ -1,7 +1,7 @@
 test: 
 	$(MAKE) logs
 	$(MAKE) fix 
-	go test  $(go list ./...) -v ./... > test.log 2>&1
+	go test -v -race -covermode atomic -coverprofile=covprofile ./... > test.log 2>&1
 
 coverage:
 	go tool cover -html=coverage.out

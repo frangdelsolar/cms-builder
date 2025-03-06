@@ -47,7 +47,7 @@ jobs:
 
       - name: Run tests
         working-directory: cms-builder-server
-        run: go test -v ./...
+        run: go test -v -race -covermode atomic -coverprofile=covprofile ./...
         if: always()
 
       - name: Install goveralls
