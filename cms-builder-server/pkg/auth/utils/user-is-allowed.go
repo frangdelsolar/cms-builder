@@ -1,4 +1,4 @@
-package utils
+package auth
 
 import (
 	authTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/types"

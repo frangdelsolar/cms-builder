@@ -1,4 +1,4 @@
-package types
+package auth
 
 // RegisterUser registers a new user in Firebase with the given name, email, and password.
 //

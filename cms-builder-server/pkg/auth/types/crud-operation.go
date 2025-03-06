@@ -1,3 +1,3 @@
-package types
+package auth
 
 type CrudOperation string

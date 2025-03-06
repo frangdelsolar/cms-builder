@@ -1,4 +1,4 @@
-package validators
+package resourcemanager
 
 import (
 	"fmt"
