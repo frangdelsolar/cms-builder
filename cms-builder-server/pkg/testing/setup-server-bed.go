@@ -50,13 +50,13 @@ func SetupServerTestBed() TestUtils {
 	}
 
 	serverConfig := svrTypes.ServerConfig{
-		Host:      "localhost",
-		Port:      "8080",
-		CsrfToken: "secret",
+		Host:      os.Getenv("SERVER_HOST"),
+		Port:      os.Getenv("SERVER_PORT"),
+		CsrfToken: os.Getenv("CSRF_TOKEN"),
 		AllowedOrigins: []string{
 			"*",
 		},
-		GodToken: "secret",
+		GodToken: os.Getenv("GOD_TOKEN"),
 		GodUser:  CreateGodUser(),
 		SystemUser: &authModels.User{
 			Email: "system",
