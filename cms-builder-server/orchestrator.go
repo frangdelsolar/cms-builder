@@ -280,5 +280,11 @@ func (o *Orchestrator) InitScheduler() error {
 func (o *Orchestrator) Run() error {
 	o.Logger.Info().Msg("Starting Server")
 
-	return svrPkg.RunServer(o.Server, o.ResourceManager.GetRoutes)
+	return svrPkg.RunServer(o.Server, o.ResourceManager.GetRoutes, nil)
+}
+
+func (o *Orchestrator) RunWithCertificate(cert *svrTypes.TLSCertificateConfig) error {
+	o.Logger.Info().Msg("Starting Server")
+
+	return svrPkg.RunServer(o.Server, o.ResourceManager.GetRoutes, cert)
 }

@@ -48,6 +48,7 @@ func (s *S3Store) StoreFile(fileName string, file multipart.File, header *multip
 		return fileData, fmt.Errorf("file is empty")
 	}
 
+	// TODO update this logic -> at least define what maxsize unit is
 	if len(fileBytes) > int(s.GetConfig().MaxSize) {
 		return fileData, fmt.Errorf("file is too large")
 	}

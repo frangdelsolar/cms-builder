@@ -11,7 +11,7 @@ import (
 	svrTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/types"
 )
 
-func RunServer(s *svrTypes.Server, getRoutes svrTypes.GetRoutesFunc) error {
+func RunServer(s *svrTypes.Server, getRoutes svrTypes.GetRoutesFunc, certificates *svrTypes.TLSCertificateConfig) error {
 
 	routes := getRoutes(s.BaseUrl)
 
@@ -31,6 +31,7 @@ func RunServer(s *svrTypes.Server, getRoutes svrTypes.GetRoutesFunc) error {
 	publicRouter.Use(
 		svrMiddlewares.RecoveryMiddleware,
 		authMiddlewares.AuthMiddleware(s.GodToken, s.GodUser, s.Firebase, s.DB, s.SystemUser),
+		authMiddlewares.UserCookieMiddleware,
 		rlMiddlewares.RequestLoggerMiddleware(s.DB),
 		svrMiddlewares.LoggingMiddleware(s.LoggerConfig),
 		svrMiddlewares.CorsMiddleware(s.AllowedOrigins),
@@ -76,5 +77,10 @@ func RunServer(s *svrTypes.Server, getRoutes svrTypes.GetRoutesFunc) error {
 	}
 
 	s.Logger.Info().Msgf("Running server on port %s", s.Addr)
-	return s.ListenAndServe()
+
+	if certificates == nil {
+		return s.ListenAndServe()
+	}
+
+	return s.ListenAndServeTLS(certificates.CertFile, certificates.KeyFile)
 }

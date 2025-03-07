@@ -42,6 +42,11 @@ func CorsMiddleware(allowedOrigins []string) func(next http.Handler) http.Handle
 				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 
+				// Allow credentials (cookies)
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
+
+				// log.Debug().Interface("headers", r.Header).Interface("allowedOrigins", allowedOrigins).Interface("origin", origin).Msg("CORS")
+
 				// Handle OPTIONS requests
 				if r.Method == "OPTIONS" {
 					w.WriteHeader(http.StatusOK)
