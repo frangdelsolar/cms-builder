@@ -2,9 +2,7 @@ package file
 
 import (
 	"fmt"
-	"io"
 	"net/http"
-	"os"
 
 	authConstants "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/constants"
 	authUtils "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/utils"
@@ -75,30 +73,22 @@ func DownloadStoredFileHandler(mgr *rmPkg.ResourceManager, db *dbTypes.DatabaseC
 		err = dbQueries.Update(r.Context(), log, db, &instance, user, differences, requestCtx.RequestId)
 		if err != nil {
 			log.Error().Err(err).Msg("Error updating instance")
-			svrUtils.SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+			svrUtils.SendJsonResponse(w, http.StatusInternalServerError, nil, "Error updating instance")
 			return
 		}
 
 		// Open the file
-		file, err := os.Open(instance.Path)
+		content, err := st.ReadFile(&instance, log)
 		if err != nil {
-			log.Error().Err(err).Msg("Error opening file")
-			svrUtils.SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
+			log.Error().Err(err).Msg("Error streaming file to response")
+			svrUtils.SendJsonResponse(w, http.StatusInternalServerError, nil, "Error reading file")
 			return
 		}
-		defer file.Close()
 
 		// Set headers for file download
 		w.Header().Set("Content-Type", instance.MimeType)
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", instance.Name))
-
-		// Stream the file to the response writer
-		_, err = io.Copy(w, file)
-		if err != nil {
-			log.Error().Err(err).Msg("Error streaming file to response")
-			svrUtils.SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())
-			return
-		}
-
+		w.Header().Set("Content-Length", fmt.Sprintf("%d", instance.Size))
+		w.Write(content)
 	}
 }
