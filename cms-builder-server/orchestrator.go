@@ -222,7 +222,7 @@ func (o *Orchestrator) InitStore() error {
 	baseUrl := o.Config.GetString(EnvKeys.BaseUrl)
 
 	storeConfig := &storeTypes.StoreConfig{
-		MaxSize:            o.Config.GetInt64(EnvKeys.StoreMaxSize),
+		MaxSize:            o.Config.GetInt64(EnvKeys.StoreMaxSize) * 1024 * 1024,
 		SupportedMimeTypes: o.Config.GetStringSlice(EnvKeys.StoreSupportedMime),
 		MediaFolder:        folder,
 	}
