@@ -4,11 +4,11 @@ import (
 	"context"
 	"net/http"
 
+	authConstants "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/constants"
 	authModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/models"
 	authUtils "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/utils"
 	cliPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/clients"
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
-	svrConstants "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/constants"
 	svrUtils "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/utils"
 )
 
@@ -47,8 +47,8 @@ func AuthMiddleware(envGodToken string, godUser *authModels.User, firebase *cliP
 
 				// Create a new context with both values
 				ctx := r.Context()
-				ctx = context.WithValue(ctx, svrConstants.CtxRequestIsAuth, true)
-				ctx = context.WithValue(ctx, svrConstants.CtxRequestUser, localUser)
+				ctx = context.WithValue(ctx, authConstants.CtxRequestIsAuth, true)
+				ctx = context.WithValue(ctx, authConstants.CtxRequestUser, localUser)
 
 				// Update the request with the new context
 				r = r.WithContext(ctx)

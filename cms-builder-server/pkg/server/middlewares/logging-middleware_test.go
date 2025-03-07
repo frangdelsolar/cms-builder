@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	authConstants "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/constants"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	svrConstants "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/constants"
 	svrMiddlewares "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/middlewares"
@@ -43,8 +44,8 @@ func TestLoggingMiddleware_LogsRequest(t *testing.T) {
 	requestId := "test-request-id"
 
 	ctx := req.Context()
-	ctx = context.WithValue(ctx, svrConstants.CtxRequestIsAuth, true)
-	ctx = context.WithValue(ctx, svrConstants.CtxRequestUser, mockUser)
+	ctx = context.WithValue(ctx, authConstants.CtxRequestIsAuth, true)
+	ctx = context.WithValue(ctx, authConstants.CtxRequestUser, mockUser)
 	ctx = context.WithValue(ctx, svrConstants.CtxTraceId, requestId)
 	req = req.WithContext(ctx)
 

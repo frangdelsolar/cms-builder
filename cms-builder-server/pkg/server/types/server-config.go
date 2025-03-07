@@ -1,4 +1,4 @@
-package types
+package server
 
 import (
 	authModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/models"

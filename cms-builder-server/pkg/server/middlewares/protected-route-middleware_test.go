@@ -8,8 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	authConstants "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/constants"
 	authModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/models"
-	svrConstants "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/constants"
 	svrMiddlewares "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/middlewares"
 )
 
@@ -66,8 +66,8 @@ func TestProtectedRouteMiddleware(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 			// Add context values to the request
-			ctx := context.WithValue(req.Context(), svrConstants.CtxRequestIsAuth, tt.auth)
-			ctx = context.WithValue(ctx, svrConstants.CtxRequestUser, tt.user)
+			ctx := context.WithValue(req.Context(), authConstants.CtxRequestIsAuth, tt.auth)
+			ctx = context.WithValue(ctx, authConstants.CtxRequestUser, tt.user)
 			req = req.WithContext(ctx)
 
 			// Record the response

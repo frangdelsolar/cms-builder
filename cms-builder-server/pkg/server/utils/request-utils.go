@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	authConstants "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/constants"
 	authModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/models"
 	loggerPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
@@ -54,7 +55,7 @@ func GetRequestLogger(r *http.Request) *loggerTypes.Logger {
 }
 
 func GetRequestUser(r *http.Request) *authModels.User {
-	ctxUser := r.Context().Value(svrConstants.CtxRequestUser)
+	ctxUser := r.Context().Value(authConstants.CtxRequestUser)
 	user, ok := ctxUser.(*authModels.User)
 	if !ok {
 		return nil
@@ -63,7 +64,7 @@ func GetRequestUser(r *http.Request) *authModels.User {
 }
 
 func GetRequestIsAuth(r *http.Request) bool {
-	ctxIsAuth := r.Context().Value(svrConstants.CtxRequestIsAuth)
+	ctxIsAuth := r.Context().Value(authConstants.CtxRequestIsAuth)
 	isAuth, ok := ctxIsAuth.(bool)
 	if !ok {
 		return false

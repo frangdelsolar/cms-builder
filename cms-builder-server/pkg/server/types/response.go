@@ -1,6 +1,9 @@
-package types
+package server
 
 import (
+	"encoding/json"
+	"fmt"
+
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 )
 
@@ -13,4 +16,20 @@ type Response struct {
 	Data       interface{}         `json:"data"`
 	Message    string              `json:"message"`
 	Pagination *dbTypes.Pagination `json:"pagination"`
+}
+
+func (r *Response) ParseResponseData(dataStruct any) error {
+	// Convert the Data map to JSON bytes
+	dataBytes, err := json.Marshal(r.Data)
+	if err != nil {
+		return fmt.Errorf("failed to marshal Data map: %v", err)
+	}
+
+	// Unmarshal the JSON bytes into the provided struct
+	err = json.Unmarshal(dataBytes, dataStruct)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal into struct: %v", err)
+	}
+
+	return nil
 }

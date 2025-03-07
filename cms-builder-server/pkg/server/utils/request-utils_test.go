@@ -12,6 +12,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 
+	authConstants "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/constants"
 	authModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/models"
 	loggerPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
@@ -206,7 +207,7 @@ func TestGetRequestUser(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 			// Add the context value to the request
-			ctx := context.WithValue(req.Context(), svrConstants.CtxRequestUser, tt.contextValue)
+			ctx := context.WithValue(req.Context(), authConstants.CtxRequestUser, tt.contextValue)
 			req = req.WithContext(ctx)
 
 			// Call the function
@@ -248,7 +249,7 @@ func TestGetRequestIsAuth(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 			// Add the context value to the request
-			ctx := context.WithValue(req.Context(), svrConstants.CtxRequestIsAuth, tt.contextValue)
+			ctx := context.WithValue(req.Context(), authConstants.CtxRequestIsAuth, tt.contextValue)
 			req = req.WithContext(ctx)
 
 			// Call the function
@@ -267,8 +268,8 @@ func TestGetRequestContext(t *testing.T) {
 
 	// Add context values to the request
 	ctx := context.WithValue(req.Context(), svrConstants.CtxTraceId, "test-request-id")
-	ctx = context.WithValue(ctx, svrConstants.CtxRequestIsAuth, true)
-	ctx = context.WithValue(ctx, svrConstants.CtxRequestUser, &authModels.User{ID: 1, Name: "John Doe"})
+	ctx = context.WithValue(ctx, authConstants.CtxRequestIsAuth, true)
+	ctx = context.WithValue(ctx, authConstants.CtxRequestUser, &authModels.User{ID: 1, Name: "John Doe"})
 	ctx = context.WithValue(ctx, svrConstants.CtxRequestLogger, &zerolog.Logger{})
 	req = req.WithContext(ctx)
 

@@ -1,4 +1,4 @@
-package types
+package server
 
 type QueryParams struct {
 	Limit int               `json:"limit"`

@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	authConstants "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/constants"
 	authModels "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/auth/models"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 	svrConstants "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/constants"
@@ -26,8 +27,8 @@ func CreateTestRequest(t *testing.T, method, path, body string, isAuth bool, use
 	ctx := req.Context()
 
 	if user != (*authModels.User)(nil) {
-		ctx = context.WithValue(ctx, svrConstants.CtxRequestIsAuth, isAuth)
-		ctx = context.WithValue(ctx, svrConstants.CtxRequestUser, user)
+		ctx = context.WithValue(ctx, authConstants.CtxRequestIsAuth, isAuth)
+		ctx = context.WithValue(ctx, authConstants.CtxRequestUser, user)
 	}
 
 	ctx = context.WithValue(ctx, svrConstants.CtxRequestLogger, log)
@@ -68,8 +69,8 @@ func CreateGodRequestWithIp(t *testing.T, method, path, body string, isAuth bool
 	req.Body = io.NopCloser(bytes.NewBufferString(body))
 
 	ctx := req.Context()
-	ctx = context.WithValue(ctx, svrConstants.CtxRequestIsAuth, isAuth)
-	ctx = context.WithValue(ctx, svrConstants.CtxRequestUser, user)
+	ctx = context.WithValue(ctx, authConstants.CtxRequestIsAuth, isAuth)
+	ctx = context.WithValue(ctx, authConstants.CtxRequestUser, user)
 	ctx = context.WithValue(ctx, svrConstants.CtxRequestLogger, log)
 
 	return req.WithContext(ctx)

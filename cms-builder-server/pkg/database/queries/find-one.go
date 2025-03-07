@@ -21,7 +21,7 @@ func FindOne(ctx context.Context, log *loggerTypes.Logger, db *dbTypes.DatabaseC
 	}
 
 	// Execute the query and populate the entity
-	if err := query.Debug().First(entity).Error; err != nil {
+	if err := query.First(entity).Error; err != nil {
 		log.Error().
 			Err(err).
 			Interface("filters", filters).

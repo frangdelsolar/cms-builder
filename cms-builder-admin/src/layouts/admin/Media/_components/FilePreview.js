@@ -132,6 +132,10 @@ const FilePreview = (props) => {
               <Typography variant="subtitle1">Content Type:</Typography>
               <Typography>{file.mimeType || "N/A"}</Typography>
             </Grid>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="subtitle1">Downloads:</Typography>
+              <Typography>{file.downloadCount || "N/A"}</Typography>
+            </Grid>
           </Grid>
         </Paper>
 

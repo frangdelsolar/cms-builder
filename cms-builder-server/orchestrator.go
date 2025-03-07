@@ -222,7 +222,7 @@ func (o *Orchestrator) InitStore() error {
 	baseUrl := o.Config.GetString(EnvKeys.BaseUrl)
 
 	storeConfig := &storeTypes.StoreConfig{
-		MaxSize:            o.Config.GetInt64(EnvKeys.StoreMaxSize),
+		MaxSize:            o.Config.GetInt64(EnvKeys.StoreMaxSize) * 1024 * 1024,
 		SupportedMimeTypes: o.Config.GetStringSlice(EnvKeys.StoreSupportedMime),
 		MediaFolder:        folder,
 	}
@@ -280,5 +280,11 @@ func (o *Orchestrator) InitScheduler() error {
 func (o *Orchestrator) Run() error {
 	o.Logger.Info().Msg("Starting Server")
 
-	return svrPkg.RunServer(o.Server, o.ResourceManager.GetRoutes)
+	return svrPkg.RunServer(o.Server, o.ResourceManager.GetRoutes, nil)
+}
+
+func (o *Orchestrator) RunWithCertificate(cert *svrTypes.TLSCertificateConfig) error {
+	o.Logger.Info().Msg("Starting Server")
+
+	return svrPkg.RunServer(o.Server, o.ResourceManager.GetRoutes, cert)
 }
