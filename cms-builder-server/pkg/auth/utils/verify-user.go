@@ -2,10 +2,7 @@ package auth
 
 import (
 	"context"
-	"errors"
 	"fmt"
-
-	"gorm.io/gorm"
 
 	firebaseAuth "firebase.google.com/go/auth"
 
@@ -32,14 +29,8 @@ func VerifyUser(userIdToken string, firebase *cliPkg.FirebaseManager, db *dbType
 
 	err = dbQueries.FindOne(context.Background(), log, db, &localUser, filters)
 	if err != nil {
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			// Need
-			log.Warn().Msg("User is firebase user but not in database")
-			return RegisterFirebaseUserInDatabase(accessToken, firebase, db, systemUser, requestId, log)
-		} else {
-			log.Error().Err(err).Msg("Error finding user in database")
-			return nil, err
-		}
+		log.Warn().Msg("User is firebase user but not in database")
+		return RegisterFirebaseUserInDatabase(accessToken, firebase, db, systemUser, requestId, log)
 	}
 
 	return &localUser, nil
@@ -69,12 +60,24 @@ func RegisterFirebaseUserInDatabase(accessToken *firebaseAuth.Token, firebase *c
 		Roles: roles, // Assign roles if applicable
 	}
 
-	// Save the user to the database
-	err := dbQueries.Create(context.Background(), log, db, localUser, systemUser, requestId)
+	err := getOrCreateLocalUser(context.Background(), localUser, log, db, systemUser, requestId)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create user")
 		return nil, err
 	}
 
 	return localUser, nil
+}
+
+func getOrCreateLocalUser(ctx context.Context, localUser *authModels.User, log *loggerTypes.Logger, db *dbTypes.DatabaseConnection, systemUser *authModels.User, requestId string) error {
+	filters := map[string]interface{}{
+		"email": localUser.Email,
+	}
+
+	err := dbQueries.FindOne(ctx, log, db, localUser, filters)
+	if err != nil {
+		return dbQueries.Create(ctx, log, db, localUser, systemUser, requestId)
+	}
+
+	return nil
 }
