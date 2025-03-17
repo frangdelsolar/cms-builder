@@ -189,7 +189,7 @@ func TestUserUpdateHandler(t *testing.T) {
 				instance = tt.setup()
 				path = "/user/" + instance.StringID()
 				if tt.overrideBody {
-					body = `{"name": "` + instance.Name + `", "email": "` + instance.Email + `"}`
+					body = `{"name": "` + instance.FirstName + `", "email": "` + instance.Email + `"}`
 				}
 
 				t.Log("Instance:", instance)
@@ -265,7 +265,7 @@ func TestUserCannotUpdateRestrictedFields(t *testing.T) {
 			var updatedInstance authModels.User
 			bed.Db.DB.First(&updatedInstance, instance.ID)
 			assert.Equal(t, instance.ID, updatedInstance.ID)
-			assert.NotEqual(t, instance.Name, updatedInstance.Name)
+			assert.NotEqual(t, instance.FirstName, updatedInstance.FirstName)
 		})
 	}
 }

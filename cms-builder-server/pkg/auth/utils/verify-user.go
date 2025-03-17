@@ -55,9 +55,9 @@ func RegisterFirebaseUserInDatabase(accessToken *firebaseAuth.Token, firebase *c
 
 	// Create a local user object
 	localUser := &authModels.User{
-		Name:  name,
-		Email: email,
-		Roles: roles, // Assign roles if applicable
+		FirstName: name,
+		Email:     email,
+		Roles:     roles, // Assign roles if applicable
 	}
 
 	err := getOrCreateLocalUser(context.Background(), localUser, log, db, systemUser, requestId)

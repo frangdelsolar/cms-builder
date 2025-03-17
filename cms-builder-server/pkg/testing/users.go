@@ -38,10 +38,10 @@ func CreateUser(name string, roles string) *authModels.User {
 	name += " - " + RandomString(4)
 
 	return &authModels.User{
-		ID:    RandomUint(), // assing a random ID if we don't actually write the user to the database
-		Name:  name,
-		Email: RandomEmail(),
-		Roles: roles,
+		ID:        RandomUint(), // assing a random ID if we don't actually write the user to the database
+		FirstName: name,
+		Email:     RandomEmail(),
+		Roles:     roles,
 	}
 
 }
