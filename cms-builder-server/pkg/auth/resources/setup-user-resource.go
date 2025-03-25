@@ -27,8 +27,8 @@ func SetupUserResource(firebase *cliPkg.FirebaseManager, db *dbTypes.DatabaseCon
 	}
 
 	validators := rmTypes.ValidatorsMap{
-		"Email": rmTypes.ValidatorsList{rmValidators.RequiredValidator, rmValidators.EmailValidator},
-		"Name":  rmTypes.ValidatorsList{rmValidators.RequiredValidator},
+		"Email":     rmTypes.ValidatorsList{rmValidators.RequiredValidator, rmValidators.EmailValidator},
+		"FirstName": rmTypes.ValidatorsList{rmValidators.RequiredValidator},
 	}
 
 	handlers := &rmTypes.ApiHandlers{

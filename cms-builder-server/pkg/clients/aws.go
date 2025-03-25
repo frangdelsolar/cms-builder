@@ -56,7 +56,6 @@ func (a *AwsManager) GetClient() (*s3.Client, error) {
 }
 
 func AllowWrite(file string) bool {
-
 	// If the file is in the filterFiles map, return false
 	var filterFiles = map[string]bool{
 		"cors.json": true,

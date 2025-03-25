@@ -186,8 +186,8 @@ func TestGetRequestUser(t *testing.T) {
 	}{
 		{
 			name:         "user exists in context",
-			contextValue: &authModels.User{ID: 1, Name: "John Doe"},
-			expectedUser: &authModels.User{ID: 1, Name: "John Doe"},
+			contextValue: &authModels.User{ID: 1, FirstName: "John Doe"},
+			expectedUser: &authModels.User{ID: 1, FirstName: "John Doe"},
 		},
 		{
 			name:         "user does not exist in context",
@@ -269,7 +269,7 @@ func TestGetRequestContext(t *testing.T) {
 	// Add context values to the request
 	ctx := context.WithValue(req.Context(), svrConstants.CtxTraceId, "test-request-id")
 	ctx = context.WithValue(ctx, authConstants.CtxRequestIsAuth, true)
-	ctx = context.WithValue(ctx, authConstants.CtxRequestUser, &authModels.User{ID: 1, Name: "John Doe"})
+	ctx = context.WithValue(ctx, authConstants.CtxRequestUser, &authModels.User{ID: 1, FirstName: "John Doe"})
 	ctx = context.WithValue(ctx, svrConstants.CtxRequestLogger, &zerolog.Logger{})
 	req = req.WithContext(ctx)
 
@@ -279,7 +279,7 @@ func TestGetRequestContext(t *testing.T) {
 	// Verify the result
 	assert.Equal(t, "test-request-id", requestContext.RequestId, "Unexpected request ID")
 	assert.True(t, requestContext.IsAuthenticated, "Expected authenticated")
-	assert.Equal(t, &authModels.User{ID: 1, Name: "John Doe"}, requestContext.User, "Unexpected user")
+	assert.Equal(t, &authModels.User{ID: 1, FirstName: "John Doe"}, requestContext.User, "Unexpected user")
 	assert.NotNil(t, requestContext.Logger, "Expected a non-nil logger")
 }
 

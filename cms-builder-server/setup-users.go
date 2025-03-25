@@ -64,11 +64,11 @@ func (o *Orchestrator) SetupOrchestratorUsers() error {
 			return err
 		}
 
-		if user.Name == "Scheduler" {
+		if user.FirstName == "Scheduler" {
 			o.Users.Scheduler = user
-		} else if user.Name == "God" {
+		} else if user.FirstName == "God" {
 			o.Users.God = user
-		} else if user.Name == "Admin" {
+		} else if user.FirstName == "Admin" {
 			o.Users.Admin = user
 		}
 	}
@@ -79,9 +79,9 @@ func (o *Orchestrator) SetupOrchestratorUsers() error {
 func (o *Orchestrator) GetOrCreateSystemUser(requestId string) (*authModels.User, error) {
 
 	systemUser := authModels.User{
-		Name:  "System",
-		Email: "system@" + o.Config.GetString(EnvKeys.Domain),
-		Roles: "admin",
+		FirstName: "System",
+		Email:     "system@" + o.Config.GetString(EnvKeys.Domain),
+		Roles:     "admin",
 	}
 
 	filters := map[string]interface{}{

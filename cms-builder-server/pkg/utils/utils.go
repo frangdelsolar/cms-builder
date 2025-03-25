@@ -146,3 +146,55 @@ func CompareInterfaces(a, b interface{}) interface{} {
 
 	return res
 }
+
+func Deepcopy(a interface{}) interface{} {
+	if a == nil {
+		return nil
+	}
+
+	original := reflect.ValueOf(a)
+	if !original.IsValid() { // Check if the reflect.Value is valid.
+		return nil
+	}
+
+	originalType := original.Type()
+
+	// Handle pointers by copying the underlying value
+	if originalType.Kind() == reflect.Ptr {
+		if original.IsNil() { // Check if the pointer is nil.
+			return nil
+		}
+		original = original.Elem()
+		originalType = original.Type()
+	}
+
+	switch originalType.Kind() {
+	case reflect.Slice, reflect.Array:
+		newSlice := reflect.MakeSlice(originalType, original.Len(), original.Cap())
+		reflect.Copy(newSlice, original)
+		return newSlice.Interface()
+	case reflect.Map:
+		newMap := reflect.MakeMap(originalType)
+		for _, key := range original.MapKeys() {
+			originalValue := original.MapIndex(key)
+			// Recursively copy map values.
+			newMap.SetMapIndex(key, reflect.ValueOf(Deepcopy(originalValue.Interface())))
+		}
+		return newMap.Interface()
+	case reflect.Struct:
+		newStruct := reflect.New(originalType).Elem()
+		for i := 0; i < original.NumField(); i++ {
+			field := original.Field(i)
+			// Recursively copy struct fields.
+			newStruct.Field(i).Set(reflect.ValueOf(Deepcopy(field.Interface())))
+		}
+		return newStruct.Interface()
+	case reflect.Ptr:
+		//This case should not be reached due to the initial pointer handling.
+		// However, it is included for completeness.
+		return Deepcopy(original.Interface())
+	default:
+		// For basic types, just return the original value.
+		return a
+	}
+}

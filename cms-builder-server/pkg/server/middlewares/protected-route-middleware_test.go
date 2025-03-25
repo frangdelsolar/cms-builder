@@ -25,7 +25,7 @@ func TestProtectedRouteMiddleware(t *testing.T) {
 		{
 			name:           "authorized request",
 			auth:           true,
-			user:           &authModels.User{ID: 1, Name: "John Doe"},
+			user:           &authModels.User{ID: 1, FirstName: "John Doe"},
 			expectedStatus: http.StatusOK,
 			expectedBody:   "",
 		},
@@ -46,7 +46,7 @@ func TestProtectedRouteMiddleware(t *testing.T) {
 		{
 			name:           "unauthorized request - invalid user",
 			auth:           true,
-			user:           &authModels.User{ID: 0, Name: "Invalid User"},
+			user:           &authModels.User{ID: 0, FirstName: "Invalid User"},
 			expectedStatus: http.StatusUnauthorized,
 			expectedBody:   `{"data":null,"message":"Unauthorized","pagination":null,"success":false}`,
 		},
