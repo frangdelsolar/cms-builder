@@ -23,7 +23,7 @@ type bytesFile struct {
 }
 
 func (bf *bytesFile) Close() error {
-	// No-op, since bytes.Reader doesn't need to be closed
+	// No-op, since  bytes.Reader doesn't need to be closed
 	return nil
 }
 
