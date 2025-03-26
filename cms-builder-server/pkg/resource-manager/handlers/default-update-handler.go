@@ -63,7 +63,6 @@ var DefaultUpdateHandler rmTypes.ApiFunction = func(a *rmTypes.Resource, db *dbT
 		// 5. Format Request Body and Filter Keys
 		body, err := svrUtils.FormatRequestBody(r, filterKeys)
 		if err != nil {
-			fmt.Printf("Error formatting request body: %v\n", err)
 			log.Error().Err(err).Msg("Error formatting request body")
 			svrUtils.SendJsonResponse(w, http.StatusBadRequest, nil, "Invalid request body")
 			return
