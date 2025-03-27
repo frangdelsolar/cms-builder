@@ -35,21 +35,21 @@ func (o *Orchestrator) SetupOrchestratorUsers() error {
 
 	usersData := []authTypes.RegisterUserInput{
 		{
-			Name:             "God",
+			FirstName:        "God",
 			Email:            "god@" + o.Config.GetString(EnvKeys.Domain),
 			Password:         uuid.New().String(),
 			Roles:            []authTypes.Role{authConstants.AdminRole},
 			RegisterFirebase: false,
 		},
 		{
-			Name:             o.Config.GetString(EnvKeys.AdminName),
+			FirstName:        o.Config.GetString(EnvKeys.AdminName),
 			Email:            o.Config.GetString(EnvKeys.AdminEmail),
 			Password:         o.Config.GetString(EnvKeys.AdminPassword),
 			Roles:            []authTypes.Role{authConstants.AdminRole},
 			RegisterFirebase: true,
 		},
 		{
-			Name:             "Scheduler",
+			FirstName:        "Scheduler",
 			Email:            "scheduler@" + o.Config.GetString(EnvKeys.Domain),
 			Password:         uuid.New().String(),
 			Roles:            []authTypes.Role{authConstants.SchedulerRole},

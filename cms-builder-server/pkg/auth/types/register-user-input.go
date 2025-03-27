@@ -11,7 +11,8 @@ package auth
 // - *auth.UserRecord: the user record of the newly created user.
 // - error: an error if the user creation fails.
 type RegisterUserInput struct {
-	Name             string `json:"name"`
+	FirstName        string `json:"firstName"`
+	LastName         string `json:"lastName"`
 	Email            string `json:"email"`
 	Password         string `json:"password"`
 	Roles            []Role `json:"roles"`

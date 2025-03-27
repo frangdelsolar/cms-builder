@@ -57,6 +57,7 @@ func RegisterVisitorController(firebase *cliPkg.FirebaseManager, db *dbTypes.Dat
 		input.Roles = []authTypes.Role{
 			authConstants.VisitorRole,
 		}
+		input.RegisterFirebase = true
 
 		systemUser := getSystemUser()
 		if systemUser == nil {

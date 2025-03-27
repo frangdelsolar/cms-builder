@@ -48,7 +48,8 @@ func CreateUserWithRole(input authTypes.RegisterUserInput, firebase *cliPkg.Fire
 
 	// Create the user in the database
 	newUser := authModels.User{
-		FirstName:  input.Name,
+		FirstName:  input.FirstName,
+		LastName:   input.LastName,
 		Email:      input.Email,
 		FirebaseId: fbUserId,
 		Roles:      roles,
@@ -73,7 +74,7 @@ func registerOrGetFirebaseUser(ctx context.Context, firebase *cliPkg.FirebaseMan
 
 	firebaseInput := cliPkg.FirebaseUserInput{
 		Email:    input.Email,
-		Name:     input.Name,
+		Name:     input.FirstName + " " + input.LastName,
 		Password: input.Password,
 	}
 

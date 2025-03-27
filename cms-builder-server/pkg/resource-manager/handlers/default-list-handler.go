@@ -58,7 +58,7 @@ var DefaultListHandler rmTypes.ApiFunction = func(a *rmTypes.Resource, db *dbTyp
 		filters := map[string]interface{}{}
 
 		if !(a.SkipUserBinding || isAdmin) {
-			filters["created_by_id"] = user.FirebaseId
+			filters["created_by_id"] = user.ID
 		}
 		err = dbQueries.FindMany(r.Context(), log, db, instances, pagination, order, filters)
 		if err != nil {
