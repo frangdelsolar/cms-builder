@@ -41,9 +41,18 @@ func CreateUserWithRole(input authTypes.RegisterUserInput, firebase *cliPkg.Fire
 		return nil, fmt.Errorf("failed to check existing user by email: %w", err)
 	}
 
-	// If the user exists, update Firebase ID if necessary and return
+	// Handle existing user (including soft-deleted ones)
 	if existingUser != nil {
-		return handleExistingUser(existingUser, fbUserId, db, systemUser, requestId, log)
+		if existingUser.DeletedAt.Valid {
+			// Permanently delete the soft-deleted user first
+			if err := dbQueries.HardDelete(context.Background(), log, db, existingUser, systemUser, requestId); err != nil {
+				return nil, fmt.Errorf("failed to permanently delete previous user: %w", err)
+			}
+			// Then proceed to create new user
+		} else {
+			// Active user exists - handle normally
+			return handleExistingUser(existingUser, fbUserId, db, systemUser, requestId, log)
+		}
 	}
 
 	// Create the user in the database
@@ -91,14 +100,26 @@ func registerOrGetFirebaseUser(ctx context.Context, firebase *cliPkg.FirebaseMan
 // Helper function to find a user by email
 func findUserByEmail(db *dbTypes.DatabaseConnection, email string, log *loggerTypes.Logger) (*authModels.User, error) {
 	var user authModels.User
-	if err := db.DB.Where("email = ?", email).First(&user).Error; err != nil {
+
+	// Use Unscoped() to include soft-deleted records in the query
+	err := db.DB.Unscoped().Where("email = ?", email).First(&user).Error
+
+	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil // User not found
+			return nil, nil // User not found at all
 		}
 		log.Error().Err(err).Msg("Failed to query user from database")
 		return nil, fmt.Errorf("failed to query user from database: %w", err)
 	}
 
+	// Check if the user is soft-deleted
+	if user.DeletedAt.Valid {
+		log.Debug().Str("email", email).Time("deleted_at", user.DeletedAt.Time).
+			Msg("Found soft-deleted user with this email")
+		return &user, nil
+	}
+
+	// User exists and is not deleted
 	return &user, nil
 }
 

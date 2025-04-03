@@ -101,34 +101,32 @@ func CompareInterfaces(a, b interface{}) interface{} {
 			// If the values are not equal, add the difference to the result map
 			if !reflect.DeepEqual(va, vb) {
 
-				// Accont for time fields
-				if reflect.TypeOf(va).Kind() == reflect.String && reflect.TypeOf(vb).Kind() == reflect.String {
-					timeA, errA := time.Parse(time.RFC3339Nano, va.(string)) // Parse with nanosecond precision
-					timeB, errB := time.Parse(time.RFC3339Nano, vb.(string))
+				// Handle time fields with proper nil checks
+				if va != nil && vb != nil {
+					vaStr, aIsStr := va.(string)
+					vbStr, bIsStr := vb.(string)
+					if aIsStr && bIsStr {
+						timeA, errA := time.Parse(time.RFC3339Nano, vaStr)
+						timeB, errB := time.Parse(time.RFC3339Nano, vbStr)
 
-					if errA == nil && errB == nil { // Both are valid times
-						if !timeA.Equal(timeB) { // Use time.Equal for time comparison
-							res[k] = []interface{}{va, vb}
+						if errA == nil && errB == nil { // Both are valid times
+							if !timeA.Equal(timeB) {
+								res[k] = []interface{}{va, vb}
+							}
+							continue
 						}
-					} else { // Handle parsing errors or non-time strings
-						if !reflect.DeepEqual(va, vb) { //Fallback to DeepEqual
-							res[k] = []interface{}{va, vb}
-						}
-					}
-				} else {
-					// If the values are both maps, recursively call GetDiff
-					// Add nil map checks here
-					if va != nil && vb != nil && reflect.TypeOf(va).Kind() == reflect.Map && reflect.TypeOf(vb).Kind() == reflect.Map {
-						nestedDiff := CompareInterfaces(va, vb)
-						// Add interface{} nil check
-						if len(nestedDiff.(map[string]interface{})) > 0 {
-							res[k] = nestedDiff
-						}
-					} else {
-						res[k] = []interface{}{va, vb}
 					}
 				}
 
+				// If the values are both maps, recursively call CompareInterfaces
+				if va != nil && vb != nil && reflect.TypeOf(va).Kind() == reflect.Map && reflect.TypeOf(vb).Kind() == reflect.Map {
+					nestedDiff := CompareInterfaces(va, vb)
+					if nestedMap, ok := nestedDiff.(map[string]interface{}); ok && len(nestedMap) > 0 {
+						res[k] = nestedDiff
+					}
+				} else {
+					res[k] = []interface{}{va, vb}
+				}
 			}
 		} else {
 			// If the key is not present in the second map, add the value from the first map to the result map

@@ -133,18 +133,47 @@ func TestCompareInterfaces(t *testing.T) {
 			b:        map[string]interface{}{"key": map[string]interface{}{"nestedKey": "differentNestedValue"}},
 			expected: map[string]interface{}{"key": map[string]interface{}{"nestedKey": []interface{}{"nestedValue", "differentNestedValue"}}},
 		},
+		{
+			name: "Time comparison with one nil",
+			a:    map[string]interface{}{"timestamp": nil},
+			b:    map[string]interface{}{"timestamp": "1970-01-01T00:00:00Z"},
+			expected: map[string]interface{}{
+				"timestamp": []interface{}{nil, "1970-01-01T00:00:00Z"},
+			},
+		},
+		{
+			name: "Different times",
+			a:    map[string]interface{}{"timestamp": "2025-04-03T14:01:58.606034-03:00"},
+			b:    map[string]interface{}{"timestamp": "2025-04-03T15:01:58.606034-03:00"},
+			expected: map[string]interface{}{
+				"timestamp": []interface{}{"2025-04-03T14:01:58.606034-03:00", "2025-04-03T15:01:58.606034-03:00"},
+			},
+		},
+		{
+			name:     "Equal times",
+			a:        map[string]interface{}{"timestamp": "2025-04-03T14:01:58.606034-03:00"},
+			b:        map[string]interface{}{"timestamp": "2025-04-03T14:01:58.606034-03:00"},
+			expected: map[string]interface{}{},
+		},
+		{
+			name: "Nil vs zero time",
+			a:    map[string]interface{}{"adFreeUntil": nil},
+			b:    map[string]interface{}{"adFreeUntil": "1970-01-01T00:00:00Z"},
+			expected: map[string]interface{}{
+				"adFreeUntil": []interface{}{nil, "1970-01-01T00:00:00Z"},
+			},
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result := CompareInterfaces(tc.a, tc.b)
 			if !reflect.DeepEqual(result, tc.expected) {
-				t.Errorf("Expected %v, got %v", tc.expected, result)
+				t.Errorf("Test case '%s' failed.\nExpected: %v\nGot:      %v", tc.name, tc.expected, result)
 			}
 		})
 	}
 }
-
 func TestDeepcopyInt(t *testing.T) {
 	original := 42
 	copied := Deepcopy(original).(int)
