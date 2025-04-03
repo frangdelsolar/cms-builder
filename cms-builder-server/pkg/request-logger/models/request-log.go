@@ -15,7 +15,7 @@ type RequestLog struct {
 	Ip         string           `json:"ip"`
 	Origin     string           `json:"origin"`
 	Referer    string           `json:"referrer"`
-	UserId     string           `gorm:"foreignKey:UserId" json:"userId"`
+	UserId     *string          `gorm:"foreignKey:UserId" json:"userId"`
 	UserLabel  string           `json:"userLabel"`
 	User       *authModels.User `json:"user,omitempty"`
 	Roles      string           `json:"roles"`

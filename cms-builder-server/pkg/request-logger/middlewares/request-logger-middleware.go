@@ -72,6 +72,9 @@ func RequestLoggerMiddleware(db *dbTypes.DatabaseConnection) func(next http.Hand
 				if user != nil {
 					userID = user.StringID()
 					roles = user.Roles
+				} else {
+					userID = ""
+					roles = ""
 				}
 
 				headersJSON, marshalErr := json.Marshal(requestHeaders)
@@ -82,7 +85,7 @@ func RequestLoggerMiddleware(db *dbTypes.DatabaseConnection) func(next http.Hand
 				logEntry := rmModels.RequestLog{
 					Timestamp:  start,
 					Ip:         r.RemoteAddr,
-					UserId:     userID,
+					UserId:     &userID,
 					UserLabel:  user.Email,
 					Roles:      roles,
 					Method:     r.Method,
