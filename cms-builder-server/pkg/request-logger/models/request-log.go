@@ -14,7 +14,7 @@ type RequestLog struct {
 	Ip         string    `json:"ip"`
 	Origin     string    `json:"origin"`
 	Referer    string    `json:"referrer"`
-	UserId     string    `json:"userId"`
+	UserId     uint      `gorm:"type:bigint,default:0" json:"userId"`
 	UserLabel  string    `json:"userLabel"`
 	Roles      string    `json:"roles"`
 	Method     string    `json:"method"`
