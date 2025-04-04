@@ -7,7 +7,7 @@ import (
 
 type DatabaseLog struct {
 	gorm.Model
-	UserId       uint               `json:"userId"`
+	UserId       uint               `gorm:"type:bigint,default:0" json:"userId"`
 	Username     string             `json:"username"`
 	Action       dbTypes.CRUDAction `json:"action"`
 	ResourceName string             `json:"resourceName"`

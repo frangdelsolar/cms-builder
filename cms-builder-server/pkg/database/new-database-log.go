@@ -52,9 +52,14 @@ func NewDatabaseLogEntry(action dbTypes.CRUDAction, user *authModels.User, objec
 		detail = string(differenceJSON)
 	}
 
+	userId := uint(0)
+	if user.ID != 0 {
+		userId = user.ID
+	}
+
 	historyEntry := &dbModels.DatabaseLog{
 		Action:       action,
-		UserId:       user.ID,
+		UserId:       userId,
 		Username:     user.Email,
 		ResourceId:   resourceId,
 		ResourceName: name,
