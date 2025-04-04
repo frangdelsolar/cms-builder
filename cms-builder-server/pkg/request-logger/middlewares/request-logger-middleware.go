@@ -66,12 +66,10 @@ func RequestLoggerMiddleware(db *dbTypes.DatabaseConnection) func(next http.Hand
 				}
 
 				user := svrUtils.GetRequestUser(r)
-				userID := ""
 				userLabel := "Anonymous"
 				roles := ""
 
 				if user.ID != 0 {
-					userID = user.StringID()
 					userLabel = user.Email
 					roles = user.Roles
 				}
@@ -84,7 +82,7 @@ func RequestLoggerMiddleware(db *dbTypes.DatabaseConnection) func(next http.Hand
 				logEntry := rmModels.RequestLog{
 					Timestamp:  start,
 					Ip:         r.RemoteAddr,
-					UserId:     userID,
+					UserId:     user.ID,
 					UserLabel:  userLabel,
 					Roles:      roles,
 					Method:     r.Method,

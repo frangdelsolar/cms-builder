@@ -54,7 +54,7 @@ func NewDatabaseLogEntry(action dbTypes.CRUDAction, user *authModels.User, objec
 
 	historyEntry := &dbModels.DatabaseLog{
 		Action:       action,
-		UserId:       user.StringID(),
+		UserId:       user.ID,
 		Username:     user.Email,
 		ResourceId:   resourceId,
 		ResourceName: name,
