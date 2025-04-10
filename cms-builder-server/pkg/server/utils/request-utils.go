@@ -58,7 +58,7 @@ func GetRequestUser(r *http.Request) *authModels.User {
 	ctxUser := r.Context().Value(authConstants.CtxRequestUser)
 	user, ok := ctxUser.(*authModels.User)
 	if !ok {
-		return nil
+		return &authModels.User{}
 	}
 	return user
 }
