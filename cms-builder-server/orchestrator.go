@@ -24,7 +24,7 @@ import (
 	storeTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store/types"
 )
 
-const orchestratorVersion = "1.6.11"
+const orchestratorVersion = "1.6.46"
 
 type OrchestratorUsers struct {
 	God       *authModels.User
@@ -242,6 +242,16 @@ func (o *Orchestrator) InitStore() error {
 			Folder:    folder,
 		}
 		s, err = storePkg.NewS3Store(storeConfig, s3Config)
+	case string(storeConstants.StoreFilebase):
+		filebaseConfig := &storeTypes.S3Config{
+			Bucket:    o.Config.GetString(EnvKeys.AwsBucket),
+			Region:    o.Config.GetString(EnvKeys.AwsRegion),
+			Endpoint:  o.Config.GetString(EnvKeys.AwsEndpoint),
+			AccessKey: o.Config.GetString(EnvKeys.AwsAccessKeyId),
+			SecretKey: o.Config.GetString(EnvKeys.AwsSecretAccessKey),
+			Folder:    folder,
+		}
+		s, err = storePkg.NewFilebaseStore(storeConfig, filebaseConfig)
 	case string(storeConstants.StoreLocal):
 		s, err = storePkg.NewLocalStore(storeConfig, folder, baseUrl)
 	default:

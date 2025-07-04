@@ -25,6 +25,7 @@ type ConfigKeys struct {
 	StoreSupportedMime string `json:"storeSupportedMime"` // Supported mime types for uploaded files
 	StoreType          string `json:"storeType"`          // Uploader store type
 	AwsBucket          string `json:"awsBucket"`          // AWS bucket
+	AwsEndpoint        string `json:"awsEndpoint"`        // AWS endpoint
 	AwsRegion          string `json:"awsRegion"`          // AWS region
 	AwsSecretAccessKey string `json:"awsSecretAccessKey"` // AWS secret access key
 	AwsAccessKeyId     string `json:"awsAccessKeyId"`     // AWS access key id
@@ -57,6 +58,7 @@ var EnvKeys = ConfigKeys{
 	StoreType:          "STORE_TYPE",
 	AwsBucket:          "AWS_BUCKET",
 	AwsRegion:          "AWS_REGION",
+	AwsEndpoint:        "AWS_ENDPOINT",
 	AwsSecretAccessKey: "AWS_SECRET_ACCESS_KEY",
 	AwsAccessKeyId:     "AWS_ACCESS_KEY_ID",
 	BaseUrl:            "BASE_URL",
