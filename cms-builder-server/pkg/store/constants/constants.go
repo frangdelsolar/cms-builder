@@ -5,6 +5,7 @@ import (
 )
 
 const (
-	StoreLocal storeTypes.StoreType = "local"
-	StoreS3    storeTypes.StoreType = "s3"
+	StoreLocal    storeTypes.StoreType = "local"
+	StoreS3       storeTypes.StoreType = "s3"
+	StoreFilebase storeTypes.StoreType = "filebase"
 )

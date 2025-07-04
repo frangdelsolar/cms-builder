@@ -6,4 +6,5 @@ type S3Config struct {
 	AccessKey string
 	SecretKey string
 	Folder    string
+	Endpoint  string
 }
