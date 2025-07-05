@@ -71,12 +71,14 @@ func CreateStoredFilesHandler(db *dbTypes.DatabaseConnection, st storeTypes.Stor
 			// Run validations
 			validationErrors := a.Validate(fileData, log)
 			if len(validationErrors.Errors) > 0 {
+				log.Error().Interface("errors", validationErrors.Errors).Msg("Validation failed")
 				svrUtils.SendJsonResponse(w, http.StatusBadRequest, validationErrors, "Validation failed")
 				return
 			}
 
 			err = dbQueries.Create(r.Context(), log, db, fileData, user, requestId)
 			if err != nil {
+				log.Error().Err(err).Msg("Error creating " + a.ResourceNames.Singular)
 				svrUtils.SendJsonResponse(w, http.StatusInternalServerError, nil, "Error creating "+a.ResourceNames.Singular)
 				return
 			}
@@ -89,9 +91,12 @@ func CreateStoredFilesHandler(db *dbTypes.DatabaseConnection, st storeTypes.Stor
 
 			err = dbQueries.Update(r.Context(), log, db, fileData, user, differences, requestId)
 			if err != nil {
+				log.Error().Err(err).Msg("Error updating " + a.ResourceNames.Singular)
 				svrUtils.SendJsonResponse(w, http.StatusInternalServerError, nil, "Error updating "+a.ResourceNames.Singular)
 				return
 			}
+
+			log.Debug().Interface("File", fileData).Msg("Success on CreateStoredFilesHandler")
 
 			svrUtils.SendJsonResponse(w, http.StatusCreated, &fileData, a.ResourceNames.Singular+" created")
 		}
