@@ -48,7 +48,7 @@ func (a *FilebaseManager) GetClient() (*s3.S3, error) {
 }
 
 func (a *FilebaseManager) UploadFile(filePath string, file []byte, log *loggerTypes.Logger) (string, error) {
-	log.Debug().Str("fileName", filePath).Msg("Uploading file to S3.")
+	log.Debug().Str("fileName", filePath).Msg("Uploading file to Filebase.")
 
 	if filePath == "" {
 		return "", fmt.Errorf("file name is required")
@@ -68,7 +68,7 @@ func (a *FilebaseManager) UploadFile(filePath string, file []byte, log *loggerTy
 		Key:    objectKey,
 	})
 	if err != nil {
-		log.Error().Err(err).Msg("Error uploading file to S3")
+		log.Error().Err(err).Msg("Error uploading file to Filebase")
 		return "", err
 	}
 
@@ -76,7 +76,7 @@ func (a *FilebaseManager) UploadFile(filePath string, file []byte, log *loggerTy
 }
 
 func (a *FilebaseManager) DeleteFile(fileName string, log *loggerTypes.Logger) error {
-	log.Info().Str("fileName", fileName).Msg("Deleting file from S3.")
+	log.Info().Str("fileName", fileName).Msg("Deleting file from Filebase.")
 
 	if fileName == "" {
 		return fmt.Errorf("file name is required")
@@ -100,7 +100,7 @@ func (a *FilebaseManager) DeleteFile(fileName string, log *loggerTypes.Logger) e
 		Key:    objectKey,
 	})
 	if err != nil {
-		log.Error().Err(err).Msg("Error deleting file from S3")
+		log.Error().Err(err).Msg("Error deleting file from Filebase")
 		return err
 	}
 
@@ -126,7 +126,7 @@ func (a *FilebaseManager) DownloadFile(fileName string, log *loggerTypes.Logger)
 		Key:    objectKey,
 	})
 	if err != nil {
-		log.Error().Err(err).Msg("Error downloading file from S3")
+		log.Error().Err(err).Msg("Error downloading file from Filebase")
 		return nil, err
 	}
 
@@ -134,7 +134,7 @@ func (a *FilebaseManager) DownloadFile(fileName string, log *loggerTypes.Logger)
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Error().Err(err).Msg("Error reading file from S3")
+		log.Error().Err(err).Msg("Error reading file from Filebase")
 		return nil, err
 	}
 
@@ -153,7 +153,7 @@ func (a *FilebaseManager) ListFiles(log *loggerTypes.Logger) ([]string, error) {
 		Bucket: aws.String(a.Bucket),
 	})
 	if err != nil {
-		log.Error().Err(err).Msg("Error listing files from S3")
+		log.Error().Err(err).Msg("Error listing files from Filebase")
 		return output, err
 	}
 
@@ -185,7 +185,7 @@ func (a *FilebaseManager) GetFileInfo(fileName string, log *loggerTypes.Logger) 
 		Key:    aws.String(fileName),
 	})
 	if err != nil {
-		log.Error().Err(err).Str("fileName", fileName).Msg("Error getting file info from S3")
+		log.Error().Err(err).Str("fileName", fileName).Msg("Error getting file info from Filebase")
 		return nil, err
 	}
 
