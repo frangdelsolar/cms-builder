@@ -29,7 +29,7 @@ func TestFindOne_Success(t *testing.T) {
 		"id": instance.ID,
 	}
 
-	err := dbQueries.FindOne(context.Background(), testBed.Logger, db, &foundInstance, filters)
+	err := dbQueries.FindOne(context.Background(), testBed.Logger, db, &foundInstance, filters, []string{})
 
 	// Assertions
 	assert.NoError(t, err)
@@ -48,7 +48,7 @@ func TestFindOne_ResourceNotFound(t *testing.T) {
 	filters := map[string]interface{}{
 		"id": 99999,
 	}
-	err := dbQueries.FindOne(context.Background(), testBed.Logger, db, &foundInstance, filters)
+	err := dbQueries.FindOne(context.Background(), testBed.Logger, db, &foundInstance, filters, []string{})
 
 	// Assertions
 	assert.Error(t, err)

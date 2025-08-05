@@ -49,7 +49,7 @@ func DeleteStoredFilesHandler(db *dbTypes.DatabaseConnection, st storeTypes.Stor
 			}
 
 			instance := fileModels.File{}
-			err = dbQueries.FindOne(r.Context(), log, db, &instance, filters)
+			err = dbQueries.FindOne(r.Context(), log, db, &instance, filters, []string{})
 			if err != nil {
 				log.Error().Err(err).Msgf("Instance not found")
 				svrUtils.SendJsonResponse(w, http.StatusInternalServerError, nil, "Instance not found")

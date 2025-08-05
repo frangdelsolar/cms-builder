@@ -31,7 +31,7 @@ func TestFindMany_Success(t *testing.T) {
 		Page:  1,
 		Limit: 10,
 	}
-	err := dbQueries.FindMany(context.Background(), testBed.Logger, db, &instances, pagination, "id desc", map[string]interface{}{})
+	err := dbQueries.FindMany(context.Background(), testBed.Logger, db, &instances, pagination, "id desc", map[string]interface{}{}, []string{})
 
 	// Assertions
 	assert.NoError(t, err)
@@ -55,7 +55,7 @@ func TestFindMany_NoPagination(t *testing.T) {
 
 	// Call the FindMany function without pagination
 	var instances []testPkg.MockStruct
-	err := dbQueries.FindMany(context.Background(), testBed.Logger, db, &instances, nil, "id desc", map[string]interface{}{})
+	err := dbQueries.FindMany(context.Background(), testBed.Logger, db, &instances, nil, "id desc", map[string]interface{}{}, []string{})
 
 	// Assertions
 	assert.NoError(t, err)

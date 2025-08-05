@@ -7,13 +7,20 @@ import (
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
 )
 
-func FindMany(ctx context.Context, log *loggerTypes.Logger, db *dbTypes.DatabaseConnection, entitySlice interface{}, pagination *dbTypes.Pagination, order string, filters map[string]interface{}) error {
+func FindMany(ctx context.Context, log *loggerTypes.Logger, db *dbTypes.DatabaseConnection, entitySlice interface{}, pagination *dbTypes.Pagination, order string, filters map[string]interface{}, preload []string) error {
 	if order == "" {
 		order = "id desc"
 	}
 
 	// Build the query
 	query := db.DB.Model(entitySlice).WithContext(ctx)
+
+	// Preload associations
+	for _, association := range preload {
+		query = query.Preload(association)
+	}
+
+	// Apply filters
 	for key, value := range filters {
 		query = query.Where(key, value)
 	}

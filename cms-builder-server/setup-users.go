@@ -90,7 +90,7 @@ func (o *Orchestrator) GetOrCreateSystemUser(requestId string) (*authModels.User
 
 	ctx := context.Background()
 
-	err := dbQueries.FindOne(ctx, o.Logger, o.DB, &systemUser, filters)
+	err := dbQueries.FindOne(ctx, o.Logger, o.DB, &systemUser, filters, []string{})
 	if err != nil {
 		o.Logger.Warn().Err(err).Msg("System User not found")
 	}

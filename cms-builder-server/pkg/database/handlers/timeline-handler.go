@@ -81,7 +81,7 @@ func TimelineHandler(m *rmPkg.ResourceManager, db *dbTypes.DatabaseConnection) h
 			"resource_name": resourceName,
 		}
 
-		err = dbQueries.FindMany(r.Context(), log, db, instances, pagination, queryParams.Order, filters)
+		err = dbQueries.FindMany(r.Context(), log, db, instances, pagination, queryParams.Order, filters, []string{})
 		if err != nil {
 			svrUtils.SendJsonResponse(w, http.StatusNotFound, nil, "Instance not found")
 			return

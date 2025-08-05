@@ -51,7 +51,7 @@ var RunSchedulerTaskHandler = func(manager *rmPkg.ResourceManager, db *dbTypes.D
 			"name": jobDefinitionName,
 		}
 
-		err = dbQueries.FindOne(r.Context(), log, db, instance, filters)
+		err = dbQueries.FindOne(r.Context(), log, db, instance, filters, []string{})
 		if err != nil {
 			svrUtils.SendJsonResponse(w, http.StatusNotFound, nil, "Instance not found")
 			return

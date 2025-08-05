@@ -65,7 +65,7 @@ var UserListHandler rmTypes.ApiFunction = func(a *rmTypes.Resource, db *dbTypes.
 			filters["firebase_id"] = fbId
 		}
 
-		err = dbQueries.FindMany(r.Context(), log, db, instances, pagination, order, filters)
+		err = dbQueries.FindMany(r.Context(), log, db, instances, pagination, order, filters, []string{})
 		if err != nil {
 			log.Error().Err(err).Msgf("Error finding instances")
 			svrUtils.SendJsonResponse(w, http.StatusInternalServerError, nil, err.Error())

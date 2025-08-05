@@ -52,7 +52,7 @@ var UserUpdateHandler rmTypes.ApiFunction = func(a *rmTypes.Resource, db *dbType
 		}
 
 		instance := a.GetOne()
-		err = dbQueries.FindOne(r.Context(), log, db, &instance, filters)
+		err = dbQueries.FindOne(r.Context(), log, db, &instance, filters, []string{})
 		if err != nil {
 			log.Error().Err(err).Msgf("Instance not found")
 			svrUtils.SendJsonResponse(w, http.StatusNotFound, nil, "Instance not found")
@@ -60,7 +60,7 @@ var UserUpdateHandler rmTypes.ApiFunction = func(a *rmTypes.Resource, db *dbType
 		}
 
 		previousState := a.GetOne()
-		_ = dbQueries.FindOne(r.Context(), log, db, &previousState, filters)
+		_ = dbQueries.FindOne(r.Context(), log, db, &previousState, filters, []string{})
 
 		// 5. Format Request Body and Filter Keys
 		body, err := svrUtils.FormatRequestBody(r, filterKeys)

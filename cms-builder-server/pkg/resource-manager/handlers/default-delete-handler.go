@@ -47,7 +47,7 @@ var DefaultDeleteHandler rmTypes.ApiFunction = func(a *rmTypes.Resource, db *dbT
 		}
 
 		instance := a.GetOne()
-		err = dbQueries.FindOne(r.Context(), log, db, &instance, filters)
+		err = dbQueries.FindOne(r.Context(), log, db, &instance, filters, []string{})
 		if err != nil {
 			log.Error().Err(err).Msgf("Instance not found")
 			svrUtils.SendJsonResponse(w, http.StatusNotFound, nil, "Instance not found")
