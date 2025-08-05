@@ -204,7 +204,7 @@ func NewS3Store(config *storeTypes.StoreConfig, awsConfig *storeTypes.S3Config) 
 		SecretKey: awsConfig.SecretKey,
 	}
 
-	// FIXME
+	// TODO
 	// if !client.IsReady() {
 	// 	return nil, fmt.Errorf("AWS not ready")
 	// }

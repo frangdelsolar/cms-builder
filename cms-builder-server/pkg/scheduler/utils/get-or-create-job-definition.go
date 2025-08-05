@@ -26,7 +26,7 @@ func GetOrCreateJobDefinition(db *dbTypes.DatabaseConnection, log *loggerTypes.L
 		"with_seconds":   jdInput.WithSeconds,
 	}
 
-	err := dbQueries.FindOne(context.Background(), log, db, &instance, filters)
+	err := dbQueries.FindOne(context.Background(), log, db, &instance, filters, []string{})
 	if err != nil {
 		log.Error().Err(err).Interface("filters", filters).Msg("Failed to find job definition")
 		// return nil, err

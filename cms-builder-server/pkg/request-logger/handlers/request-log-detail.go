@@ -49,7 +49,7 @@ func RequestLogHandler(mgr *rmPkg.ResourceManager, db *dbTypes.DatabaseConnectio
 			"trace_id": itemId,
 		}
 
-		err = dbQueries.FindOne(r.Context(), log, db, &instance, filters)
+		err = dbQueries.FindOne(r.Context(), log, db, &instance, filters, []string{})
 		if err != nil {
 			log.Error().Err(err).Msgf("Instance not found")
 			svrUtils.SendJsonResponse(w, http.StatusInternalServerError, nil, "Instance not found")
@@ -75,7 +75,7 @@ func RequestLogHandler(mgr *rmPkg.ResourceManager, db *dbTypes.DatabaseConnectio
 			"database_logs.trace_id": itemId, // join condition
 		}
 
-		err = dbQueries.FindMany(r.Context(), log, db, &databaseLogs, nil, "", filters)
+		err = dbQueries.FindMany(r.Context(), log, db, &databaseLogs, nil, "", filters, []string{})
 		if err != nil {
 			log.Warn().Err(err).Msgf("Error finding instance")
 		}

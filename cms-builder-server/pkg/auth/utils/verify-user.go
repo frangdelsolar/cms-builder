@@ -27,7 +27,7 @@ func VerifyUser(userIdToken string, firebase *cliPkg.FirebaseManager, db *dbType
 		"firebase_id": accessToken.UID,
 	}
 
-	err = dbQueries.FindOne(context.Background(), log, db, &localUser, filters)
+	err = dbQueries.FindOne(context.Background(), log, db, &localUser, filters, []string{})
 	if err != nil {
 		log.Warn().Msg("User is firebase user but not in database")
 		return RegisterFirebaseUserInDatabase(accessToken, firebase, db, systemUser, requestId, log)
@@ -74,7 +74,7 @@ func getOrCreateLocalUser(ctx context.Context, localUser *authModels.User, log *
 		"email": localUser.Email,
 	}
 
-	err := dbQueries.FindOne(ctx, log, db, localUser, filters)
+	err := dbQueries.FindOne(ctx, log, db, localUser, filters, []string{})
 	if err != nil {
 		return dbQueries.Create(ctx, log, db, localUser, systemUser, requestId)
 	}

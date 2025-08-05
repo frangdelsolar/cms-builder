@@ -16,7 +16,7 @@ func GetSchedulerTask(log *loggerTypes.Logger, db *dbTypes.DatabaseConnection, c
 		"cron_job_id": cronJobId,
 	}
 
-	err := dbQueries.FindOne(context.Background(), log, db, &task, filters)
+	err := dbQueries.FindOne(context.Background(), log, db, &task, filters, []string{})
 	if err != nil {
 		return nil
 	}
