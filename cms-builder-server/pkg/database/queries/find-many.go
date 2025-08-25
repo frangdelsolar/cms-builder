@@ -22,7 +22,12 @@ func FindMany(ctx context.Context, log *loggerTypes.Logger, db *dbTypes.Database
 
 	// Apply filters
 	for key, value := range filters {
-		query = query.Where(key, value)
+		// Handle special case where value is a slice (for multiple parameters)
+		if values, ok := value.([]interface{}); ok {
+			query = query.Where(key, values...)
+		} else {
+			query = query.Where(key, value)
+		}
 	}
 
 	// Retrieve total number of records
