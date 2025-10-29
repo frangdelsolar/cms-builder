@@ -30,6 +30,11 @@ func FindMany(ctx context.Context, log *loggerTypes.Logger, db *dbTypes.Database
 		}
 	}
 
+	// Log the filters for debugging
+	log.Info().
+		Interface("filters", filters).
+		Msg("Executing query with filters")
+
 	// Retrieve total number of records
 	if pagination != nil {
 		if err := query.Count(&pagination.Total).Error; err != nil {

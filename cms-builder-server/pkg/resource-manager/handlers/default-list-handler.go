@@ -11,6 +11,14 @@ import (
 	svrUtils "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/utils"
 )
 
+// excludedQueryKeys defines URL query parameters that should be ignored
+// and not applied as simple database equality filters.
+var excludedQueryKeys = map[string]bool{
+	"page":  true,
+	"limit": true,
+	"order": true,
+}
+
 // DefaultListHandler handles the retrieval of a list of resources.
 var DefaultListHandler rmTypes.ApiFunction = func(a *rmTypes.Resource, db *dbTypes.DatabaseConnection) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -57,9 +65,25 @@ var DefaultListHandler rmTypes.ApiFunction = func(a *rmTypes.Resource, db *dbTyp
 
 		filters := map[string]interface{}{}
 
+		// 6. Apply default user binding filter (unless skipped or user is Admin)
 		if !(a.SkipUserBinding || isAdmin) {
 			filters["created_by_id"] = user.ID
 		}
+
+		// 7. Apply simple query filters from URL, excluding pagination/ordering keys
+		for key, value := range queryParams.Query {
+			// Skip parameters already handled by pagination/ordering
+			if _, exists := excludedQueryKeys[key]; exists {
+				continue
+			}
+
+			// Apply filter by simple equality (key = value) if value is present
+			if value != "" {
+				filters[key] = value
+			}
+		}
+
+		// 8. Execute query
 		err = dbQueries.FindMany(r.Context(), log, db, instances, pagination, order, filters, []string{})
 		if err != nil {
 			log.Error().Err(err).Msgf("Error finding instances")
@@ -67,10 +91,10 @@ var DefaultListHandler rmTypes.ApiFunction = func(a *rmTypes.Resource, db *dbTyp
 			return
 		}
 
-		// 7. Generate Success Message
+		// 9. Generate Success Message
 		msg := a.ResourceNames.Plural + " List"
 
-		// 8. Send Paginated Response
+		// 10. Send Paginated Response
 		svrUtils.SendJsonResponseWithPagination(w, http.StatusOK, instances, msg, pagination)
 	}
 }
