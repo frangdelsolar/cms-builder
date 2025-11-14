@@ -31,15 +31,21 @@ var UserDetailHandler rmTypes.ApiFunction = func(a *rmTypes.Resource, db *dbType
 			return
 		}
 
+		idParam := svrUtils.GetUrlParam("id", r)
+
+		if idParam == "" || idParam == "undefined" || idParam == "null" || idParam == "me" {
+			idParam = user.StringID()
+		}
+
 		if !isAdmin {
-			if user.StringID() != svrUtils.GetUrlParam("id", r) {
+			if user.StringID() != idParam {
 				svrUtils.SendJsonResponse(w, http.StatusNotFound, nil, "Instance not found")
 				return
 			}
 		}
 
 		filters := map[string]interface{}{
-			"id": svrUtils.GetUrlParam("id", r),
+			"id": idParam,
 		}
 
 		instance := a.GetOne()
