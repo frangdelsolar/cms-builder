@@ -1,4 +1,4 @@
-# Orchestrator v1.6.50
+# Orchestrator v1.6.51
 
 Will initialize
 
@@ -123,11 +123,11 @@ func startServer(e *orc.Orchestrator) {
 
 This method retrieves the underlying `viper` instance used by the builder. You can then use the various methods provided by `viper` to access configuration values:
 
-- `Get(key string) interface{}`: Returns the value for the given key as an interface{}. You might need to type-cast it to the desired type.
-- `GetString(key string) string`: Returns the value for the given key as a string.
-- `GetInt(key string) int`: Returns the value for the given key as an integer.
-- `GetFloat64(key string) float64`: Returns the value for the given key as a float64.
-- `GetBool(key string) bool`: Returns the value for the given key as a bool.
+-   `Get(key string) interface{}`: Returns the value for the given key as an interface{}. You might need to type-cast it to the desired type.
+-   `GetString(key string) string`: Returns the value for the given key as a string.
+-   `GetInt(key string) int`: Returns the value for the given key as an integer.
+-   `GetFloat64(key string) float64`: Returns the value for the given key as a float64.
+-   `GetBool(key string) bool`: Returns the value for the given key as a bool.
 
 `environment.go` has a `EnvKeys` var that should contain the same keys in the environment.
 this assures safetu when getting the variables
