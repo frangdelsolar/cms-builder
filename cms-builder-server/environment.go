@@ -16,7 +16,12 @@ type ConfigKeys struct {
 	DbFile             string `json:"dbFile"`             // Database file
 	DbUrl              string `json:"dbUrl"`              // Database URL
 	ServerHost         string `json:"serverHost"`         // Server host
-	ServerPort         string `json:"serverPort"`         // Server port
+	ServerPort         string `json:"serverPort"`
+	SMTPHost           string `json:"smtpHost"`
+	SMTPPort           string `json:"smtpPort"`
+	SMTPUser           string `json:"smtpUser"`
+	SMTPPassword       string `json:"smtpPassword"`
+	SMTPSender         string `json:"smtpSender"`         // Server port
 	CsrfToken          string `json:"csrfToken"`          // CSRF token
 	FirebaseSecret     string `json:"firebaseSecret"`     // Firebase secret
 	FirebaseApiKey     string `json:"firebaseApiKey"`     // Firebase API key
@@ -53,6 +58,11 @@ var EnvKeys = ConfigKeys{
 	CsrfToken:          "CSRF_TOKEN",
 	FirebaseSecret:     "FIREBASE_SECRET",
 	FirebaseApiKey:     "FIREBASE_API_KEY",
+	SMTPHost:           "SMTP_HOST",
+	SMTPPort:           "SMTP_PORT",
+	SMTPUser:           "SMTP_USER",
+	SMTPPassword:       "SMTP_PASSWORD",
+	SMTPSender:         "SMTP_SENDER",
 	StoreMaxSize:       "STORE_MAX_SIZE",
 	StoreSupportedMime: "STORE_SUPPORTED_MIME_TYPES",
 	StoreType:          "STORE_TYPE",

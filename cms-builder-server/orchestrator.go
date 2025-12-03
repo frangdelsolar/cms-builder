@@ -10,6 +10,8 @@ import (
 	dbPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database"
 	dbResources "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/resources"
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
+	emailPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/email"
+	emailTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/email/types"
 	file "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/file/resources"
 	loggerPkg "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
@@ -24,7 +26,7 @@ import (
 	storeTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store/types"
 )
 
-const orchestratorVersion = "1.6.55"
+const orchestratorVersion = "1.6.56"
 
 type OrchestratorUsers struct {
 	God       *authModels.User
@@ -41,6 +43,8 @@ type Orchestrator struct {
 	LoggerConfig    *loggerTypes.LoggerConfig
 	ResourceManager *rmPkg.ResourceManager
 	Scheduler       *schPkg.Scheduler
+	SMTPConfig      *emailTypes.SMTPConfig
+	EmailSender     *emailPkg.EmailSender
 	Server          *svrTypes.Server
 	Store           storeTypes.Store
 	Users           *OrchestratorUsers
@@ -71,6 +75,7 @@ func (o *Orchestrator) init() error {
 		o.InitStore,
 		o.InitFiles,
 		o.InitScheduler,
+		o.InitSMTPConfig,
 	}
 
 	for _, init := range initializers {
@@ -284,6 +289,19 @@ func (o *Orchestrator) InitScheduler() error {
 	if err != nil {
 		return fmt.Errorf("error adding scheduler job definition resource: %w", err)
 	}
+	return nil
+}
+
+func (o *Orchestrator) InitSMTPConfig() error {
+	o.Logger.Info().Msg("Initializing SMTP Config")
+	o.SMTPConfig = &emailTypes.SMTPConfig{
+		Host:     o.Config.GetString(EnvKeys.SMTPHost),
+		Port:     o.Config.GetString(EnvKeys.SMTPPort),
+		User:     o.Config.GetString(EnvKeys.SMTPUser),
+		Password: o.Config.GetString(EnvKeys.SMTPPassword),
+		Sender:   o.Config.GetString(EnvKeys.SMTPSender),
+	}
+	o.EmailSender = emailPkg.NewEmailSender(o.SMTPConfig.Host, o.SMTPConfig.Port, o.SMTPConfig.User, o.SMTPConfig.Password, o.SMTPConfig.Sender)
 	return nil
 }
 
