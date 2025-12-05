@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"strings"
 
 	dbTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/database/types"
 	loggerTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/logger/types"
@@ -24,7 +25,12 @@ func FindMany(ctx context.Context, log *loggerTypes.Logger, db *dbTypes.Database
 	for key, value := range filters {
 		// Handle special case where value is a slice (for multiple parameters)
 		if values, ok := value.([]interface{}); ok {
-			query = query.Where(key, values...)
+			// For "id" field with multiple values, use IN clause
+			if key == "id" || strings.HasSuffix(key, ".id") {
+				query = query.Where(key+" IN (?)", values)
+			} else {
+				query = query.Where(key, values...)
+			}
 		} else {
 			query = query.Where(key, value)
 		}
