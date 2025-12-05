@@ -3,6 +3,7 @@ package email
 import (
 	"fmt"
 	"net/smtp"
+	"strings"
 )
 
 // EmailSender handles email sending configuration and operations.
@@ -35,14 +36,18 @@ func (s *EmailSender) SendEmail(to []string, subject, body string) error {
 	auth := smtp.PlainAuth("", s.User, s.Password, s.Host)
 	addr := fmt.Sprintf("%s:%s", s.Host, s.Port)
 
+	toHeader := strings.Join(to, ",")
+
 	msg := []byte(fmt.Sprintf(
-		"To: %s\r\n"+
+		"From: %s\r\n"+
+			"To: %s\r\n"+
 			"Subject: %s\r\n"+
 			"MIME-version: 1.0;\r\n"+
 			"Content-Type: text/html; charset=\"UTF-8\";\r\n"+
 			"\r\n"+
 			"%s\r\n",
-		to[0],
+		s.Sender,
+		toHeader,
 		subject,
 		body,
 	))
