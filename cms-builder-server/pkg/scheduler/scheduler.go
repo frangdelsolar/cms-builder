@@ -97,12 +97,8 @@ func (s *Scheduler) RegisterSchedulerJob(jdInput schModels.SchedulerJobDefinitio
 //   - error: Error if job creation fails.
 func (s *Scheduler) createCronJobInstance(frequency gocron.JobDefinition, jobDefinition *schModels.SchedulerJobDefinition, taskFunction schTypes.SchedulerTaskFunc, taskParameters ...any) (gocron.Job, error) {
 
-	s.Logger.Info().Bool("RunScheduler", s.RunScheduler).Msg("Creating job")
-
 	// wrappedTaskFunction wraps the original taskFunction to include logging and error handling.
 	wrappedTaskFunction := func() {
-		s.Logger.Info().Bool("RunScheduler", s.RunScheduler).Msg("Running job")
-
 		if !s.RunScheduler {
 
 			s.Logger.Info().
