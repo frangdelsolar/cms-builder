@@ -14,10 +14,9 @@ import (
 	schUtils "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/scheduler/utils"
 )
 
-func RunJobRegistryJob(jr *schTypes.JobRegistry, jd *schModels.SchedulerJobDefinition, requestId string, user *authModels.User, log *loggerTypes.Logger, db *dbTypes.DatabaseConnection) (string, error) {
+func RunJobRegistryJob(jr *schTypes.JobRegistry, jd *schModels.SchedulerJobDefinition, requestId string, user *authModels.User, log *loggerTypes.Logger, db *dbTypes.DatabaseConnection, runScheduler bool) (string, error) {
 	log.Info().Str("Job", jd.Name).Msg("Running task")
 
-	// Look up the task definition in the registry
 	taskDefinition, ok := jr.Jobs[jd.Name]
 	if !ok {
 		err := fmt.Errorf("task %s not found in registry", jd.Name)
@@ -30,7 +29,13 @@ func RunJobRegistryJob(jr *schTypes.JobRegistry, jd *schModels.SchedulerJobDefin
 		return "", err
 	}
 
-	// Execute the task function with its parameters
+	if !runScheduler {
+		msg := "Job was triggered but not executed because RunScheduler flag is false"
+		log.Info().Str("Job", jd.Name).Msg(msg)
+		err = success(traceId, db, user, requestId, log, msg)
+		return msg, err
+	}
+
 	results, jobError := taskDefinition.Function(taskDefinition.Parameters...)
 
 	if jobError == nil {

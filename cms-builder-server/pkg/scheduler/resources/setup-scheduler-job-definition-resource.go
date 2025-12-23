@@ -15,7 +15,7 @@ import (
 	svrTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/server/types"
 )
 
-func SetupSchedulerJobDefinitionResource(manager *rmPkg.ResourceManager, db *dbTypes.DatabaseConnection, jr schTypes.JobRegistry) *rmTypes.ResourceConfig {
+func SetupSchedulerJobDefinitionResource(manager *rmPkg.ResourceManager, db *dbTypes.DatabaseConnection, jr schTypes.JobRegistry, runScheduler bool) *rmTypes.ResourceConfig {
 
 	skipUserBinding := true // Scheduler Models don't have a created_by field
 
@@ -27,7 +27,7 @@ func SetupSchedulerJobDefinitionResource(manager *rmPkg.ResourceManager, db *dbT
 	routes := []svrTypes.Route{
 		{
 			Path:         "/job/run",
-			Handler:      schHandlers.RunSchedulerTaskHandler(manager, db, jr),
+			Handler:      schHandlers.RunSchedulerTaskHandler(manager, db, jr, runScheduler),
 			Name:         "job-run",
 			RequiresAuth: true,
 			Methods:      []string{http.MethodPost},

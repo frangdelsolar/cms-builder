@@ -35,6 +35,7 @@ type ConfigKeys struct {
 	AwsSecretAccessKey string `json:"awsSecretAccessKey"` // AWS secret access key
 	AwsAccessKeyId     string `json:"awsAccessKeyId"`     // AWS access key id
 	BaseUrl            string `json:"baseUrl"`            // where the app is running
+	RunScheduler       string `json:"runScheduler"`       // Run scheduler
 }
 
 // EnvKeys are the keys used in the configuration file
@@ -72,4 +73,5 @@ var EnvKeys = ConfigKeys{
 	AwsSecretAccessKey: "AWS_SECRET_ACCESS_KEY",
 	AwsAccessKeyId:     "AWS_ACCESS_KEY_ID",
 	BaseUrl:            "BASE_URL",
+	RunScheduler:       "RUN_SCHEDULER",
 }
