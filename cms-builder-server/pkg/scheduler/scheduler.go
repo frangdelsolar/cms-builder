@@ -20,12 +20,13 @@ import (
 
 // Scheduler is the main struct for managing scheduled jobs.
 type Scheduler struct {
-	Cron        schInterfaces.GoCronScheduler // Instance of the gocron scheduler.
-	User        *authModels.User              // User associated with the scheduler.
-	DB          *dbTypes.DatabaseConnection   // Database connection for persisting job data.
-	Logger      *loggerTypes.Logger           // Logger for logging scheduler events.
-	TaskManager schTypes.TaskManager          // Thread-safe map for storing job results.
-	JobRegistry schTypes.JobRegistry          // Registry of task functions and their parameters.
+	Cron         schInterfaces.GoCronScheduler // Instance of the gocron scheduler.
+	User         *authModels.User              // User associated with the scheduler.
+	DB           *dbTypes.DatabaseConnection   // Database connection for persisting job data.
+	Logger       *loggerTypes.Logger           // Logger for logging scheduler events.
+	TaskManager  schTypes.TaskManager          // Thread-safe map for storing job results.
+	JobRegistry  schTypes.JobRegistry          // Registry of task functions and their parameters.
+	RunScheduler bool                          // Flag to determine if the scheduler should run.
 }
 
 // RegisterTask registers a task function with the scheduler.
@@ -96,8 +97,19 @@ func (s *Scheduler) RegisterSchedulerJob(jdInput schModels.SchedulerJobDefinitio
 //   - error: Error if job creation fails.
 func (s *Scheduler) createCronJobInstance(frequency gocron.JobDefinition, jobDefinition *schModels.SchedulerJobDefinition, taskFunction schTypes.SchedulerTaskFunc, taskParameters ...any) (gocron.Job, error) {
 
+	s.Logger.Info().Bool("RunScheduler", s.RunScheduler).Msg("Creating job")
+
 	// wrappedTaskFunction wraps the original taskFunction to include logging and error handling.
 	wrappedTaskFunction := func() {
+		s.Logger.Info().Bool("RunScheduler", s.RunScheduler).Msg("Running job")
+
+		if !s.RunScheduler {
+
+			s.Logger.Info().
+				Str("JobName", jobDefinition.Name).
+				Msg("Job was triggered but not executed because RunScheduler flag is false")
+			return
+		}
 		// Execute the original task function
 		results, err := taskFunction(taskParameters...)
 		// Store the results in the TaskManager

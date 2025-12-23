@@ -17,7 +17,7 @@ import (
 // Returns:
 //   - *Scheduler: Initialized scheduler instance.
 //   - error: Error if initialization fails.
-func NewScheduler(db *dbTypes.DatabaseConnection, schedulerUser *authModels.User, log *loggerTypes.Logger) (*Scheduler, error) {
+func NewScheduler(db *dbTypes.DatabaseConnection, schedulerUser *authModels.User, log *loggerTypes.Logger, runScheduler bool) (*Scheduler, error) {
 	log.Info().Msg("Initializing scheduler")
 
 	s, err := gocron.NewScheduler()
@@ -26,11 +26,12 @@ func NewScheduler(db *dbTypes.DatabaseConnection, schedulerUser *authModels.User
 	}
 	s.Start()
 	return &Scheduler{
-		Cron:        s,
-		User:        schedulerUser,
-		DB:          db,
-		Logger:      log,
-		TaskManager: schTypes.TaskManager{Tasks: map[string]string{}},
-		JobRegistry: schTypes.JobRegistry{Jobs: map[string]schTypes.JobRegistryTaskDefinition{}},
+		Cron:         s,
+		User:         schedulerUser,
+		DB:           db,
+		Logger:       log,
+		TaskManager:  schTypes.TaskManager{Tasks: map[string]string{}},
+		JobRegistry:  schTypes.JobRegistry{Jobs: map[string]schTypes.JobRegistryTaskDefinition{}},
+		RunScheduler: runScheduler,
 	}, nil
 }

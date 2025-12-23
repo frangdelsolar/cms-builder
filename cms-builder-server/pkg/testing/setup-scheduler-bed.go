@@ -37,7 +37,7 @@ func SetupSchedulerTestBed() TestUtils {
 		panic(err)
 	}
 
-	scheduler, err := schPkg.NewScheduler(db, schedulerUser, log)
+	scheduler, err := schPkg.NewScheduler(db, schedulerUser, log, true)
 	if err != nil {
 		panic(err)
 	}

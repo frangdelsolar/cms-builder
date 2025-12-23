@@ -16,7 +16,7 @@ import (
 
 // DefaultCreateHandler handles the creation of a new resource.
 // SchedulerJobDefinition
-var RunSchedulerTaskHandler = func(manager *rmPkg.ResourceManager, db *dbTypes.DatabaseConnection, s schTypes.JobRegistry) http.HandlerFunc {
+var RunSchedulerTaskHandler = func(manager *rmPkg.ResourceManager, db *dbTypes.DatabaseConnection, s schTypes.JobRegistry, runScheduler bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		requestCtx := svrUtils.GetRequestContext(r)
 		log := requestCtx.Logger
@@ -59,7 +59,7 @@ var RunSchedulerTaskHandler = func(manager *rmPkg.ResourceManager, db *dbTypes.D
 
 		jd := instance.(*schModels.SchedulerJobDefinition)
 
-		_, err = schPkg.RunJobRegistryJob(&s, jd, requestId, user, log, db)
+		_, err = schPkg.RunJobRegistryJob(&s, jd, requestId, user, log, db, runScheduler)
 		if err != nil {
 			log.Error().Err(err).Msg("Error running task")
 			svrUtils.SendJsonResponse(w, http.StatusInternalServerError, nil, "Error running task")

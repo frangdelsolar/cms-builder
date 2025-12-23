@@ -26,7 +26,7 @@ import (
 	storeTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store/types"
 )
 
-const orchestratorVersion = "1.6.62"
+const orchestratorVersion = "1.6.63"
 
 type OrchestratorUsers struct {
 	God       *authModels.User
@@ -278,13 +278,16 @@ func (o *Orchestrator) InitScheduler() error {
 		return fmt.Errorf("error adding scheduler task resource: %w", err)
 	}
 
-	sch, err := schPkg.NewScheduler(o.DB, o.Users.Scheduler, o.Logger)
+	runScheduler := o.Config.GetBool(EnvKeys.RunScheduler)
+	o.Logger.Info().Bool("runScheduler", runScheduler).Msg("Initializing scheduler")
+
+	sch, err := schPkg.NewScheduler(o.DB, o.Users.Scheduler, o.Logger, runScheduler)
 	if err != nil {
 		return fmt.Errorf("error initializing scheduler: %w", err)
 	}
 	o.Scheduler = sch
 
-	jobConfig := schResources.SetupSchedulerJobDefinitionResource(o.ResourceManager, o.DB, sch.JobRegistry)
+	jobConfig := schResources.SetupSchedulerJobDefinitionResource(o.ResourceManager, o.DB, sch.JobRegistry, runScheduler)
 	_, err = o.ResourceManager.AddResource(jobConfig)
 	if err != nil {
 		return fmt.Errorf("error adding scheduler job definition resource: %w", err)
