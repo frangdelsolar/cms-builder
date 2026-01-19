@@ -6,37 +6,42 @@ import (
 	"strings"
 )
 
-// EmailSender handles email sending configuration and operations.
 type EmailSender struct {
 	Host     string
 	Port     string
 	User     string
 	Password string
 	Sender   string
+	FromName string
 }
 
-// NewEmailSender creates a new email sender instance.
-func NewEmailSender(host, port, user, password, sender string) *EmailSender {
+func NewEmailSender(host, port, user, password, sender, fromName string) *EmailSender {
 	return &EmailSender{
 		Host:     host,
 		Port:     port,
 		User:     user,
 		Password: password,
 		Sender:   sender,
+		FromName: fromName,
 	}
 }
 
-// SendEmail sends an HTML email to the specified recipients.
-// Returns an error if the recipient list is empty or if sending fails.
-func (s *EmailSender) SendEmail(to []string, subject, body string) error {
+func (s *EmailSender) SendEmail(to []string, subject, body string, fromNameOverride string) error {
 	if len(to) == 0 {
 		return fmt.Errorf("recipient list cannot be empty")
+	}
+
+	displayName := s.FromName
+	if fromNameOverride != "" {
+		displayName = fromNameOverride
 	}
 
 	auth := smtp.PlainAuth("", s.User, s.Password, s.Host)
 	addr := fmt.Sprintf("%s:%s", s.Host, s.Port)
 
 	toHeader := strings.Join(to, ",")
+
+	fromHeader := fmt.Sprintf("%s <%s>", displayName, s.Sender)
 
 	msg := []byte(fmt.Sprintf(
 		"From: %s\r\n"+
@@ -46,7 +51,7 @@ func (s *EmailSender) SendEmail(to []string, subject, body string) error {
 			"Content-Type: text/html; charset=\"UTF-8\";\r\n"+
 			"\r\n"+
 			"%s\r\n",
-		s.Sender,
+		fromHeader,
 		toHeader,
 		subject,
 		body,

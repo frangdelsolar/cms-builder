@@ -6,4 +6,5 @@ type SMTPConfig struct {
 	User     string
 	Password string
 	Sender   string
+	FromName string
 }

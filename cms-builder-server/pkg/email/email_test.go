@@ -7,29 +7,32 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestEmailSenderSendEmail verifies email sending functionality using SMTP configuration from .test.env.
-// This test requires valid SMTP credentials and server availability to pass.
 func TestEmailSenderSendEmail(t *testing.T) {
 	bed := testPkg.SetupEmailTestBed()
 
 	bed.Logger.Info().Interface("EmailSender", bed.EmailSender).Msg("EmailSender configured")
 
 	recipientEmail := "frangdelsolar@gmail.com"
-	subject := "Test Email - Desarrollo Psicositio (Go Backend)"
-	body := "<h1>Correo de Prueba Exitoso</h1><p>Este mensaje confirma que el servicio de correo de <b>Golang</b> está funcionando correctamente.</p>"
+	subject := "Test Email - Desarrollo Psicositio"
+	body := "<h1>Correo de Prueba</h1><p>Verificando remitentes y overrides.</p>"
 
-	t.Run("Successful Email Send with HTML Content", func(t *testing.T) {
-		err := bed.EmailSender.SendEmail([]string{recipientEmail}, subject, body)
+	t.Run("Send with Default FromName", func(t *testing.T) {
+		// Usa el FromName configurado en bed.EmailSender (desde .test.env)
+		err := bed.EmailSender.SendEmail([]string{recipientEmail}, subject, body, "")
 
-		assert.NoError(t, err, "Email sending failed. Verify SMTP credentials in .test.env and recipient address.")
+		assert.NoError(t, err)
+	})
 
-		if err != nil {
-			bed.Logger.Error().Err(err).Msg("Failed to send email. Check SMTP configuration in .test.env.")
-		}
+	t.Run("Send with Override FromName", func(t *testing.T) {
+		// Forzamos un nombre distinto para este envío específico
+		overrideName := "Soporte Psicositio"
+		err := bed.EmailSender.SendEmail([]string{recipientEmail}, subject, body, overrideName)
+
+		assert.NoError(t, err)
 	})
 
 	t.Run("Empty Recipient List Returns Error", func(t *testing.T) {
-		err := bed.EmailSender.SendEmail([]string{}, subject, body)
-		assert.Error(t, err, "Expected error when attempting to send without recipients")
+		err := bed.EmailSender.SendEmail([]string{}, subject, body, "")
+		assert.Error(t, err)
 	})
 }
