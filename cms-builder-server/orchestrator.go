@@ -26,7 +26,7 @@ import (
 	storeTypes "github.com/frangdelsolar/cms-builder/cms-builder-server/pkg/store/types"
 )
 
-const orchestratorVersion = "1.6.63"
+const orchestratorVersion = "1.6.64"
 
 type OrchestratorUsers struct {
 	God       *authModels.User
@@ -303,9 +303,19 @@ func (o *Orchestrator) InitSMTPConfig() error {
 		User:     o.Config.GetString(EnvKeys.SMTPUser),
 		Password: o.Config.GetString(EnvKeys.SMTPPassword),
 		Sender:   o.Config.GetString(EnvKeys.SMTPSender),
+		FromName: o.Config.GetString(EnvKeys.SMTPFromName), // Asegúrate de tener esta clave
 	}
+
 	o.Logger.Info().Interface("SMTPConfig", o.SMTPConfig).Msg("SMTP Config initialized")
-	o.EmailSender = emailPkg.NewEmailSender(o.SMTPConfig.Host, o.SMTPConfig.Port, o.SMTPConfig.User, o.SMTPConfig.Password, o.SMTPConfig.Sender)
+
+	o.EmailSender = emailPkg.NewEmailSender(
+		o.SMTPConfig.Host,
+		o.SMTPConfig.Port,
+		o.SMTPConfig.User,
+		o.SMTPConfig.Password,
+		o.SMTPConfig.Sender,
+		o.SMTPConfig.FromName,
+	)
 	return nil
 }
 

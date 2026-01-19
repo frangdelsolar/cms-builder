@@ -22,6 +22,7 @@ type ConfigKeys struct {
 	SMTPUser           string `json:"smtpUser"`
 	SMTPPassword       string `json:"smtpPassword"`
 	SMTPSender         string `json:"smtpSender"`         // Server port
+	SMTPFromName       string `json:"smtpFromName"`       // SMTP from name
 	CsrfToken          string `json:"csrfToken"`          // CSRF token
 	FirebaseSecret     string `json:"firebaseSecret"`     // Firebase secret
 	FirebaseApiKey     string `json:"firebaseApiKey"`     // Firebase API key
@@ -64,6 +65,7 @@ var EnvKeys = ConfigKeys{
 	SMTPUser:           "SMTP_USER",
 	SMTPPassword:       "SMTP_PASSWORD",
 	SMTPSender:         "SMTP_SENDER",
+	SMTPFromName:       "SMTP_FROM_NAME",
 	StoreMaxSize:       "STORE_MAX_SIZE",
 	StoreSupportedMime: "STORE_SUPPORTED_MIME_TYPES",
 	StoreType:          "STORE_TYPE",
