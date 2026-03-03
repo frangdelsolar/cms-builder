@@ -64,6 +64,10 @@ func RunServer(s *svrTypes.Server, getRoutes svrTypes.GetRoutesFunc, certificate
 	authRouter := publicRouter.PathPrefix("/private").Subrouter()
 	authRouter.Use(svrMiddlewares.ProtectedRouteMiddleware)
 
+	for _, middleware := range s.Middlewares {
+		authRouter.Use(middleware)
+	}
+
 	for _, route := range routes {
 		if !route.RequiresAuth {
 			continue
